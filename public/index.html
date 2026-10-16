@@ -1,0 +1,893 @@
+<title>Trimmy</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: kassa-achtige werkplek. Vaste kop met tabbladen, per tab één werkvlak; agenda als tijdrooster, kassa als raster + bon. */
+:root{
+ --bg:#edf0ed;--panel:#fbfcfb;--sunk:#e3e8e4;--ink:#1c2220;--mute:#5d6964;--line:#d3dcd7;
+ --acc:#6a3560;--acc-ink:#ffffff;--acc-soft:#f0e4ed;
+ --ok:#2b7650;--warn:#ad412b;--amber:#9a6410;
+ --f-d:"Gabarito","Figtree",system-ui,sans-serif;--f-b:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+ --r:8px;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121615;--panel:#1a1f1d;--sunk:#232a27;--ink:#e6ece9;--mute:#97a49e;--line:#2d3633;--acc:#d6a0c9;--acc-ink:#2b0f25;--acc-soft:#38242f;--ok:#6fc79b;--warn:#ee8f7a;--amber:#e2b35e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121615;--panel:#1a1f1d;--sunk:#232a27;--ink:#e6ece9;--mute:#97a49e;--line:#2d3633;--acc:#d6a0c9;--acc-ink:#2b0f25;--acc-soft:#38242f;--ok:#6fc79b;--warn:#ee8f7a;--amber:#e2b35e;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-b);font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--panel)}
+h1,h2,h3{font-family:var(--f-d);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:20px}h3{font-size:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0;color:var(--ink)}
+textarea{resize:vertical}
+label{display:grid;gap:4px;font-weight:500;font-size:14px;min-width:0}
+label.chk{display:flex;align-items:center;gap:8px}label.chk input{width:auto}
+small,.mute{color:var(--mute)}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+.hbar{display:flex;align-items:center;gap:18px;padding-block:10px;max-width:1400px;margin:0 auto}
+.logo{font:800 23px/1 var(--f-d);letter-spacing:-.03em;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.logo svg{width:24px;height:24px;color:var(--acc)}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;min-width:0;flex:1}
+nav::-webkit-scrollbar{display:none}
+nav button{border:0;background:none;padding:8px 12px;border-radius:6px;font-weight:600;color:var(--mute);white-space:nowrap}
+nav button:hover{color:var(--ink)}
+nav button[aria-selected="true"]{background:var(--acc);color:var(--acc-ink)}
+.sync{font-size:12px;color:var(--mute);white-space:nowrap}
+.sync b{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line);margin-right:5px;vertical-align:1px}
+.sync.on b{background:var(--ok)}.sync.err b{background:var(--warn)}
+@media(max-width:700px){.hbar{flex-wrap:wrap;gap:8px}nav{order:3;flex-basis:100%}}
+
+main{max-width:1400px;margin:0 auto;padding-block:16px 40px}
+.banner{max-width:1400px;margin:12px auto 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--acc-soft);border-radius:var(--r);padding:10px 14px;font-size:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.bar input[type=search]{flex:1;min-width:160px;width:auto}
+.bar select{width:auto}
+.sp{flex:1}
+.btn{padding:8px 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel);font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--mute)}
+.btn.p{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn.s{padding:4px 10px;font-size:13px}
+.btn.d{color:var(--warn)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:none;border-radius:99px;padding:5px 12px;font-size:13px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:none;padding:7px 12px;font-weight:600;color:var(--mute)}
+.seg button[aria-pressed="true"]{background:var(--sunk);color:var(--ink)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--sunk);color:var(--mute);white-space:nowrap}
+.pill.ok{color:var(--ok)}.pill.warn{color:var(--warn)}.pill.amber{color:var(--amber)}.pill.acc{background:var(--acc-soft);color:var(--acc)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+td.r,th.r{text-align:right}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--sunk)}
+.empty{padding:28px 16px;color:var(--mute);text-align:center}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 16px;min-width:130px}
+.stat b{display:block;font:700 21px/1.2 var(--f-d)}
+.stat span{font-size:13px;color:var(--mute)}
+
+/* agenda */
+.ag-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.ag{display:grid;min-width:720px}
+.ag .hd{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 8px;font-weight:600;font-size:13px;z-index:2}
+.ag .hd.today{color:var(--acc)}
+.ag .hd small{display:block;font-weight:500}
+.ag .tcol{position:relative;border-right:1px solid var(--line)}
+.ag .tcol span{position:absolute;right:6px;font-size:11px;color:var(--mute);transform:translateY(-50%)}
+.ag .col{position:relative;border-right:1px solid var(--line);cursor:copy;background-image:repeating-linear-gradient(to bottom,var(--line) 0 1px,transparent 1px var(--hh)),repeating-linear-gradient(to bottom,transparent 0 calc(var(--hh)/2),color-mix(in srgb,var(--line) 45%,transparent) calc(var(--hh)/2) calc(var(--hh)/2 + 1px),transparent calc(var(--hh)/2 + 1px) var(--hh))}
+.ag .col:last-child{border-right:0}
+.ag .col.dicht{background-color:var(--sunk)}
+.blk{position:absolute;border-radius:6px;padding:4px 6px;font-size:12px;line-height:1.3;overflow:hidden;cursor:pointer;border:1px solid color-mix(in srgb,var(--mw) 60%,var(--line));background:color-mix(in srgb,var(--mw) 16%,var(--panel));color:var(--ink);text-align:left}
+.blk:hover{z-index:3;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.blk b{display:block;font-size:12.5px}
+.blk .t{color:var(--mute);font-size:11px}
+.blk.x{opacity:.5;text-decoration:line-through}
+.blk.paid{background:var(--sunk);border-style:dashed}
+.now{position:absolute;left:0;right:0;height:2px;background:var(--warn);z-index:4;pointer-events:none}
+.now::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;background:var(--mw);vertical-align:-1px}
+.daylist{margin-top:14px}
+.daylist h3{margin-bottom:8px}
+
+/* kassa */
+.kassa{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+@media(max-width:900px){.kassa{grid-template-columns:1fr}}
+.kassa .tools{padding:12px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:12px}
+.prod{text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:10px;display:grid;gap:2px;align-content:start;min-height:84px}
+.prod:hover{border-color:var(--acc)}
+.prod b{font-weight:600;font-size:14px;line-height:1.25}
+.prod .pr{font:700 15px var(--f-d);margin-top:auto}
+.prod small{font-size:12px}
+.prod.dienst{background:color-mix(in srgb,var(--acc) 5%,var(--panel))}
+.bon{position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px);display:flex;flex-direction:column;max-height:calc(100vh - 100px)}
+.bon>h2{padding:14px 16px;border-bottom:1px solid var(--line)}
+.bk{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:14px}
+.lines{overflow:auto;flex:1;min-height:80px}
+.line{padding:10px 16px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:4px 8px;align-items:center}
+.line .q{display:flex;gap:6px;align-items:center;grid-column:1/3}
+.line .q button{width:30px;height:30px;border:1px solid var(--line);background:none;border-radius:6px}
+.line .q input{width:86px;padding:5px 8px}
+.line .q .rm{margin-left:auto;width:auto;padding:0 10px;color:var(--warn);border:0}
+.tot{padding:12px 16px;border-top:1px solid var(--line);display:grid;gap:3px}
+.row{display:flex;justify-content:space-between;gap:12px}
+.row.big{font:700 22px var(--f-d);padding-top:6px}
+.disc{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.disc input{width:72px}
+.pay{width:100%;margin-top:10px;padding:14px;border:0;border-radius:6px;background:var(--acc);color:var(--acc-ink);font-weight:700;font-size:16px}
+.pay:disabled{opacity:.4;cursor:not-allowed}
+
+/* klanten */
+.kl{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.kl{grid-template-columns:1fr}}
+.klist{max-height:calc(100vh - 170px);overflow:auto}
+.ki{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 14px}
+.ki:hover{background:var(--sunk)}
+.ki[aria-current="true"]{background:var(--acc-soft)}
+.ki b{display:block}
+.ki small{display:block}
+.det{padding:18px;display:grid;gap:18px}
+.det .hdr{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px 18px;font-size:14px}
+.kv span{display:block;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.dogs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.dog{border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;grid-template-columns:64px 1fr;gap:4px 12px;align-items:start}
+.dog.inact{opacity:.6}
+.av{width:64px;height:64px;border-radius:50%;background:var(--acc-soft) center/cover no-repeat;display:grid;place-items:center;font:700 22px var(--f-d);color:var(--acc);grid-row:span 3}
+.dog .meta{font-size:13px;color:var(--mute)}
+.dog .note{grid-column:1/-1;font-size:13px;background:var(--sunk);border-radius:6px;padding:6px 8px}
+.dog .note.w{color:var(--warn)}
+.dog .acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.sec{display:grid;gap:8px}
+.sec>.hdr{display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+/* historie */
+.tl{display:grid;gap:0}
+.tl .day{font:600 13px var(--f-b);text-transform:uppercase;letter-spacing:.06em;color:var(--mute);padding:14px 0 6px}
+.ev{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:12px;padding:10px 12px;border-bottom:1px solid var(--line);align-items:start;background:var(--panel)}
+.ev:first-of-type{border-top:1px solid var(--line)}
+.ev .k{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.ev .k.beh{color:var(--acc)}.ev .k.fac{color:var(--ok)}.ev .k.mis{color:var(--warn)}
+@media(max-width:600px){.ev{grid-template-columns:1fr}}
+
+/* instellingen */
+details.set{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px}
+details.set>summary{cursor:pointer;font-weight:700;padding:13px 16px;font-family:var(--f-d);font-size:16px}
+details.set>summary small{font:500 13px var(--f-b);margin-left:8px}
+details.set[open]>summary{border-bottom:1px solid var(--line)}
+.sbody{padding:16px;display:grid;gap:12px;max-width:720px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:120px 1fr;gap:10px}
+@media(max-width:520px){.g2{grid-template-columns:1fr}}
+.note{background:var(--sunk);border-radius:6px;padding:10px 12px;font-size:14px}
+.note.w{color:var(--warn)}
+code{font:13px ui-monospace,Menlo,Consolas,monospace;background:var(--sunk);padding:1px 5px;border-radius:4px}
+
+/* dialogen */
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:0;width:min(520px,94vw);max-height:92vh}
+dialog.wide{width:min(880px,96vw)}
+dialog::backdrop{background:rgba(10,14,12,.55)}
+.dlg{padding:20px;display:grid;gap:12px;max-height:92vh;overflow:auto}
+.acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.acts.l{justify-content:flex-start}
+.msg{color:var(--warn);font-size:14px;min-height:0}
+.msg:empty{display:none}
+.chk-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px 12px;max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.chk-list label{font-weight:400}
+.methods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.methods button{padding:12px 6px;border:1px solid var(--line);background:none;border-radius:6px;font-weight:600}
+.methods button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.receipt{font-size:14px;display:grid;gap:2px}
+.receipt hr{border:0;border-top:1px dashed var(--line);margin:6px 0;width:100%}
+
+/* factuur (altijd licht, zoals papier) */
+.invwrap{background:var(--sunk);padding:14px;border-radius:8px;overflow:auto}
+.inv{background:#fff;color:#151515;max-width:794px;margin:0 auto;padding:36px 40px;font:10.5pt/1.45 var(--f-b);box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.inv h1{font:800 24pt var(--f-d);text-align:right;margin-bottom:6px;color:#151515}
+.inv table{width:100%;border-collapse:collapse}
+.inv th,.inv td{color:#151515;border-bottom:1px solid #ddd;padding:6px 6px 6px 0;text-transform:none;letter-spacing:0;font-size:10.5pt}
+.inv th{border-bottom:2px solid #151515;font-weight:600}
+.inv .r{text-align:right;padding-right:0}
+.inv .top{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:24px}
+.inv .to{border-top:1px solid #151515;border-bottom:1px solid #bbb;padding:10px 0;margin-bottom:22px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.inv .m{color:#666;font-size:9.5pt}
+.inv .tt{width:55%;margin:12px 0 0 auto}
+.inv .tt td{border:0;padding:2px 0}
+.inv .tt .b td{font-weight:700;font-size:12.5pt;border-top:2px solid #151515;padding-top:6px}
+.inv .foot{margin-top:28px;padding-top:8px;border-top:1px solid #bbb;font-size:9pt;color:#444}
+#printArea{display:none}
+@media print{
+ @page{size:A4;margin:14mm}
+ body>*:not(#printArea){display:none!important}
+ body::before{display:none}
+ #printArea{display:block}
+ #printArea .inv{box-shadow:none;padding:0;max-width:none}
+ #printArea.bon{width:76mm;font-size:10pt}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header><div class="hbar wrap">
+ <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg><span id="logoName">Trimmy</span></div>
+ <nav role="tablist" id="nav"></nav>
+ <div class="sync" id="syncDot" title="Database"><b></b><span>Alleen dit apparaat</span></div>
+</div></header>
+<div class="wrap"><div class="banner" id="demo" hidden><span>Je bekijkt <b>voorbeeldgegevens</b>: verzonnen klanten, honden en afspraken om de app te leren kennen.</span><span class="sp"></span><button class="btn s" id="demoWipe" type="button">Voorbeeldgegevens wissen en leeg beginnen</button></div></div>
+
+<main class="wrap">
+ <section class="view" id="v-agenda">
+  <div class="bar">
+   <button class="btn" id="agPrev" type="button" aria-label="Vorige">‹</button>
+   <button class="btn" id="agToday" type="button">Vandaag</button>
+   <button class="btn" id="agNext" type="button" aria-label="Volgende">›</button>
+   <h2 id="agLabel" style="margin-left:6px"></h2>
+   <span class="sp"></span>
+   <select id="agMw" aria-label="Medewerker"></select>
+   <div class="seg" id="agSeg"><button type="button" data-m="dag">Dag</button><button type="button" data-m="week">Week</button></div>
+   <button class="btn p" id="agNew" type="button">Nieuwe afspraak</button>
+  </div>
+  <div class="ag-scroll"><div class="ag" id="ag"></div></div>
+  <div class="legend" id="agLeg"></div>
+  <div class="daylist" id="agList"></div>
+ </section>
+
+ <section class="view" id="v-kassa" hidden>
+  <div class="kassa">
+   <div class="panel">
+    <div class="tools"><input id="kq" type="search" placeholder="Zoek behandeling of product" aria-label="Zoeken"><div class="chips" id="kChips"></div></div>
+    <div class="grid" id="kGrid"></div>
+   </div>
+   <aside class="panel bon">
+    <h2>Bon</h2>
+    <div class="bk" id="bonAf" hidden></div>
+    <div class="bk" id="bonKl"></div>
+    <div class="lines" id="bonLines"></div>
+    <div class="tot">
+     <div class="disc"><label for="bonDisc" style="display:block">Korting (%)</label><input id="bonDisc" type="number" min="0" max="100" value="0"></div>
+     <div class="row"><span>Subtotaal</span><span id="bSub"></span></div>
+     <div class="row" id="bDiscRow"><span>Korting</span><span id="bDisc"></span></div>
+     <div id="bBtw"></div>
+     <div class="row big"><span>Totaal</span><span id="bTot"></span></div>
+     <button class="pay" id="bPay" type="button" disabled>Afrekenen</button>
+     <button class="btn" id="bClr" type="button" style="width:100%;margin-top:8px">Bon leegmaken</button>
+    </div>
+   </aside>
+  </div>
+ </section>
+
+ <section class="view" id="v-klanten" hidden>
+  <div class="kl">
+   <div class="panel">
+    <div class="bar" style="padding:12px;margin:0;border-bottom:1px solid var(--line)"><input id="klq" type="search" placeholder="Zoek klant, hond, plaats of telefoon" aria-label="Zoek klant"><button class="btn p" id="klNew" type="button">Nieuwe klant</button></div>
+    <div class="klist" id="klList"></div>
+   </div>
+   <div class="panel" id="klDet"></div>
+  </div>
+ </section>
+
+ <section class="view" id="v-facturen" hidden>
+  <div class="stats" id="fStats"></div>
+  <div class="bar"><input id="fq" type="search" placeholder="Zoek op factuurnummer, klant of hond" aria-label="Zoek factuur"><div class="seg" id="fSeg"><button type="button" data-f="alle">Alle</button><button type="button" data-f="open">Openstaand</button><button type="button" data-f="betaald">Betaald</button></div></div>
+  <div class="panel scroll"><table><thead><tr><th>Factuur</th><th>Datum</th><th>Klant en hond</th><th>Omschrijving</th><th>Betaling</th><th class="r">Totaal</th><th>Status</th></tr></thead><tbody id="fBody"></tbody></table></div>
+ </section>
+
+ <section class="view" id="v-artikelen" hidden>
+  <div class="bar"><input id="aq" type="search" placeholder="Zoek artikel" aria-label="Zoek artikel"><div class="seg" id="aSeg"><button type="button" data-a="alle">Alles</button><button type="button" data-a="dienst">Behandelingen</button><button type="button" data-a="product">Producten</button></div><button class="btn p" id="aNew" type="button">Nieuw artikel</button></div>
+  <div class="panel scroll"><table><thead><tr><th>Artikel</th><th>Categorie</th><th>Soort</th><th class="r">Prijs incl. btw</th><th class="r">Btw</th><th class="r">Duur / voorraad</th><th>Status</th></tr></thead><tbody id="aBody"></tbody></table></div>
+ </section>
+
+ <section class="view" id="v-historie" hidden>
+  <div class="bar"><input id="hq" type="search" placeholder="Zoek op hond, klant, behandeling of notitie" aria-label="Zoek in historie"><select id="hf" aria-label="Soort"><option value="">Alles</option><option value="beh">Behandelingen</option><option value="fac">Facturen</option><option value="mis">Gemist of geannuleerd</option></select><button class="btn p" id="hNew" type="button">Behandeling vastleggen</button></div>
+  <div class="tl" id="hList"></div>
+ </section>
+
+ <section class="view" id="v-inst" hidden>
+  <details class="set" open id="sDb"><summary>Database (Aiven) <small id="dbSum"></small></summary><div class="sbody">
+   <div class="note" id="dbStat"></div>
+   <div class="note w" id="dbFrame" hidden>Deze voorbeeldversie draait binnen Claude en mag geen verbinding maken met andere websites. De koppeling met Aiven werkt in de versie op jullie eigen webadres (Netlify); zie LEESMIJ.md.</div>
+   <label>Adres van de koppelservice<input id="dbUrl" type="url" placeholder="https://jouw-trimmy.netlify.app/api/db?code=…" autocomplete="off"></label>
+   <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database</label>
+   <div class="acts l"><button class="btn p" id="dbNow" type="button">Nu synchroniseren</button></div>
+   <small>Trimmy bewaart elke soort gegevens in een eigen tabel: <code>klanten</code>, <code>honden</code>, <code>artikelen</code>, <code>afspraken</code>, <code>facturen</code> met <code>factuurregels</code> en <code>betalingen</code>, <code>behandelingen</code>, <code>medewerkers</code> en <code>bedrijf</code>. De koppelservice draait op Netlify en praat met je Aiven MySQL-database. Zolang de database uit staat of onbereikbaar is, werkt Trimmy gewoon door op dit apparaat en synchroniseert later. Geef elke kassa een eigen Kassa-ID voordat je dit aanzet.</small>
+  </div></details>
+  <details class="set" id="sBed"><summary>Bedrijfsgegevens</summary><div class="sbody">
+   <label>Naam salon<input id="bNaam"></label>
+   <label>Straat en huisnummer<input id="bStraat"></label>
+   <div class="g3"><label>Postcode<input id="bPc" maxlength="8"></label><label>Plaats<input id="bPlaats"></label></div>
+   <div class="g2"><label>Telefoon<input id="bTel" type="tel"></label><label>E-mail<input id="bMail" type="email"></label></div>
+   <div class="g2"><label>KvK-nummer<input id="bKvk"></label><label>Btw-nummer<input id="bBtwnr"></label></div>
+   <div class="g2"><label>IBAN<input id="bIban"></label><label>Betaaltermijn op rekening (dagen)<input id="bTermijn" type="number" min="0" max="90"></label></div>
+   <label>Tekst onderaan factuur<input id="bVoet"></label>
+   <div class="g2"><label>Kassa-ID (uniek per apparaat)<input id="bKassa" maxlength="6"></label><label>Agenda open van/tot (uur)<span style="display:flex;gap:6px"><input id="bOpen" type="number" min="0" max="23"><input id="bSluit" type="number" min="1" max="24"></span></label></div>
+   <label class="chk"><input type="checkbox" id="bZon"> Zondag tonen in de weekagenda</label>
+   <div class="acts l"><button class="btn p" id="bSave" type="button">Opslaan</button><span class="mute" id="bMsg" role="status"></span></div>
+  </div></details>
+  <details class="set" id="sMw"><summary>Medewerkers <small id="mwSum"></small></summary><div class="sbody">
+   <div id="mwList" style="display:grid;gap:8px"></div>
+   <div class="acts l"><button class="btn" id="mwAdd" type="button">Medewerker toevoegen</button></div>
+  </div></details>
+  <details class="set" id="sBk"><summary>Back-up en herstel</summary><div class="sbody">
+   <div class="acts l"><button class="btn p" id="bkMake" type="button">Back-up maken</button><button class="btn" id="bkCopy" type="button" hidden>Kopiëren</button><a class="btn" id="bkDl" hidden download="trimmy-backup.json">Opslaan als bestand</a></div>
+   <label>Back-up (JSON). Plak hier een eerdere back-up om die te herstellen.<textarea id="bkTxt" rows="6" spellcheck="false"></textarea></label>
+   <div class="acts l"><button class="btn d" id="bkRestore" type="button">Herstellen uit tekst hierboven</button><span id="bkMsg" role="status" class="mute"></span></div>
+   <small>Herstellen vervangt alle gegevens op dit apparaat. Staat de database aan, dan gaat de herstelde stand daarna ook naar Aiven. Een back-up bevat klantgegevens: bewaar hem veilig.</small>
+  </div></details>
+  <details class="set" id="sReset"><summary>Alles wissen op dit apparaat</summary><div class="sbody">
+   <p style="margin:0">Wist klanten, honden, afspraken, facturen, artikelen en historie op dit apparaat. In de Aiven-database blijven facturen altijd bewaard.</p>
+   <div class="acts l"><button class="btn d" id="wipeAll" type="button">Alles wissen</button></div>
+  </div></details>
+ </section>
+</main>
+<div id="printArea"></div>
+
+<script>
+"use strict";
+/* ---------- hulpjes ---------- */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rnd=n=>Math.round((+n||0)*100)/100;
+const eur=n=>"€ "+rnd(n).toFixed(2).replace(".",",").replace(/\B(?=(\d{3})+(?!\d))/g,".");
+const num=v=>{let s=String(v??"").trim();if(s.includes(","))s=s.replace(/\./g,"").replace(",",".");const n=parseFloat(s);return isFinite(n)?n:0};
+const nm=n=>String(rnd(n)).replace(".",",");
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const pad=n=>String(n).padStart(2,"0");
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fromYmd=s=>{const[a,b,c]=String(s).split("-").map(Number);return new Date(a,(b||1)-1,c||1)};
+const toMin=t=>{const[h,m]=String(t||"0:0").split(":").map(Number);return(h||0)*60+(m||0)};
+const toHM=m=>pad(Math.floor(m/60))+":"+pad(m%60);
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const isoWeek=d=>{const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const k=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-k);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/864e5+1)/7)};
+const weekStart=d=>{const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
+const fDate=s=>fromYmd(s).toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"numeric"});
+const fDT=ts=>new Date(ts).toLocaleString("nl-NL",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+const by=k=>(a,b)=>String(a[k]||"").localeCompare(String(b[k]||""),"nl");
+const S={get(k,d){try{const v=JSON.parse(localStorage.getItem("tr_"+k));return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("tr_"+k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem("tr_"+k)}catch(e){}}};
+const STANDALONE=(()=>{try{return window.self===window.top}catch(e){return false}})();
+function arm(btn,fn,txt="Klik nogmaals om te bevestigen"){if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.orig;fn();return}btn.dataset.orig=btn.textContent;btn.dataset.armed=1;btn.textContent=txt;setTimeout(()=>{if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.orig}},4000)}
+function modal(html,cls=""){const d=document.createElement("dialog");if(cls)d.className=cls;d.innerHTML=`<div class="dlg">${html}</div>`;document.body.append(d);d.q=s=>d.querySelector(s);d.addEventListener("close",()=>d.remove());d.showModal();return d}
+
+/* ---------- gegevens ---------- */
+const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers"];
+const D={};COLS.forEach(c=>D[c]=S.get(c,[]));
+const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false};
+let bed={...BED0,...S.get("bedrijf",{})};
+const saveC=c=>{if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);dbSoon()};
+const get=(c,id)=>id?D[c].find(x=>x.id===id):null;
+const klLab=k=>k.naam+(k.plaats?" · "+k.plaats:"");
+const hondLab=h=>{const k=get("klanten",h.klantId);return h.naam+(h.ras?" ("+h.ras+")":"")+(k?" · "+k.naam:"")};
+const mwKleur=id=>(get("medewerkers",id)||{}).kleur||"#8a8f8c";
+const STAT=[["gepland","Gepland",""],["bevestigd","Bevestigd","acc"],["binnen","Hond is binnen","amber"],["klaar","Klaar, kan opgehaald","ok"],["afgerekend","Afgerekend","ok"],["noshow","Niet gekomen","warn"],["geannuleerd","Geannuleerd","warn"]];
+const statLab=s=>(STAT.find(x=>x[0]===s)||STAT[0])[1];
+const statCls=s=>(STAT.find(x=>x[0]===s)||STAT[0])[2];
+function leeftijd(geb){if(!geb)return"";const g=fromYmd(geb),n=new Date();let m=(n.getFullYear()-g.getFullYear())*12+n.getMonth()-g.getMonth();if(n.getDate()<g.getDate())m--;if(m<0)return"";return m<24?m+" mnd":Math.floor(m/12)+" jaar"}
+
+function seed(){
+ const T=today(),d=n=>ymd(addDays(T,n)),wd=(()=>{const k=T.getDay();return k===0?1:0})();
+ const mw=[{id:"mw1",naam:"Sanne",kleur:"#8a4a7e"},{id:"mw2",naam:"Joris",kleur:"#2f7d6d"}];
+ const A=(id,naam,cat,type,prijs,duur,voorraad,btw=21)=>({id,naam,cat,type,prijs,btw,duur:type==="dienst"?duur:null,voorraad:type==="product"?voorraad:null,nr:"",actief:true});
+ const art=[A("a1","Wassen en föhnen, klein","Wassen","dienst",35,45),A("a2","Wassen en föhnen, middel","Wassen","dienst",45,60),A("a3","Wassen en föhnen, groot","Wassen","dienst",60,75),
+  A("a4","Volledige trimbeurt, klein","Trimmen","dienst",55,90),A("a5","Volledige trimbeurt, middel","Trimmen","dienst",70,120),A("a6","Volledige trimbeurt, groot","Trimmen","dienst",90,150),
+  A("a7","Plukken ruwhaar, per uur","Trimmen","dienst",50,60),A("a8","Ontklitten, per kwartier","Extra","dienst",12.5,15),A("a9","Nagels knippen","Extra","dienst",10,10),A("a10","Oren reinigen","Extra","dienst",8,10),A("a11","Puppy-kennismaking","Extra","dienst",25,30),
+  A("p1","Shampoo gevoelige huid 250 ml","Verzorging","product",14.95,0,12),A("p2","Ontklitspray 200 ml","Verzorging","product",12.95,0,8),A("p3","Slicker borstel","Borstels en kammen","product",18.5,0,6),A("p4","Metalen kam 19 cm","Borstels en kammen","product",11.95,0,2),A("p5","Kauwstaaf natuurlijk","Snacks","product",3.5,0,40)];
+ const kl=[{id:"k1",naam:"Familie de Vries",straat:"Prinsengracht 412",pc:"1016 JC",plaats:"Amsterdam",tel:"06 12345678",email:"devries@voorbeeld.nl",notitie:"Liefst ochtendafspraken"},
+  {id:"k2",naam:"Ahmed Bakker",straat:"Javastraat 88",pc:"1094 HK",plaats:"Amsterdam",tel:"06 23456789",email:"a.bakker@voorbeeld.nl",notitie:""},
+  {id:"k3",naam:"Lotte Jansen",straat:"Dorpsstraat 5",pc:"1183 AA",plaats:"Amstelveen",tel:"06 34567890",email:"lotte.jansen@voorbeeld.nl",notitie:"Betaalt meestal op rekening"}];
+ const ho=[{id:"h1",klantId:"k1",naam:"Bobbie",ras:"Labradoodle",geb:ymd(addDays(T,-1150)),geslacht:"Reu",gecast:true,gewicht:24,vacht:"Krullend",kleur:"Abrikoos",chip:"528140000123456",gedrag:"Vrolijk, springt graag op de tafel",medisch:"",notitie:"Klitgevoelig achter de oren. Voeten kort, kop rond.",foto:"",inactief:false},
+  {id:"h2",klantId:"k1",naam:"Mila",ras:"Shih Tzu",geb:ymd(addDays(T,-2600)),geslacht:"Teef",gecast:true,gewicht:6.5,vacht:"Lang",kleur:"Wit-goud",chip:"",gedrag:"Rustig",medisch:"Allergisch voor parfum in shampoo",notitie:"Puppycoupe, staartje lang laten",foto:"",inactief:false},
+  {id:"h3",klantId:"k2",naam:"Rocky",ras:"Border Terriër",geb:ymd(addDays(T,-1700)),geslacht:"Reu",gecast:false,gewicht:7,vacht:"Ruwhaar",kleur:"Grizzle en tan",chip:"528140000654321",gedrag:"Wil niet aan de achterpoten gezeten worden",medisch:"",notitie:"Alleen plukken, nooit scheren",foto:"",inactief:false},
+  {id:"h4",klantId:"k3",naam:"Pip",ras:"Toypoedel",geb:ymd(addDays(T,-400)),geslacht:"Teef",gecast:false,gewicht:3.2,vacht:"Krullend",kleur:"Zwart",chip:"",gedrag:"Angstig bij de föhn, rustig opbouwen",medisch:"",notitie:"",foto:"",inactief:false}];
+ const af=[{id:"af1",datum:d(wd),start:"09:00",duur:120,klantId:"k1",hondId:"h1",mwId:"mw1",diensten:["a5"],status:"bevestigd",notitie:"",factuurId:null},
+  {id:"af2",datum:d(wd),start:"09:30",duur:60,klantId:"k2",hondId:"h3",mwId:"mw2",diensten:["a7"],status:"gepland",notitie:"",factuurId:null},
+  {id:"af3",datum:d(wd),start:"11:30",duur:55,klantId:"k3",hondId:"h4",mwId:"mw2",diensten:["a1","a9"],status:"gepland",notitie:"Föhn op laagste stand",factuurId:null},
+  {id:"af4",datum:d(wd),start:"13:30",duur:90,klantId:"k1",hondId:"h2",mwId:"mw1",diensten:["a4"],status:"gepland",notitie:"",factuurId:null},
+  {id:"af5",datum:d(wd+2),start:"10:00",duur:120,klantId:"k3",hondId:"h4",mwId:"mw1",diensten:["a5"],status:"gepland",notitie:"",factuurId:null},
+  {id:"af6",datum:d(wd+3),start:"14:00",duur:60,klantId:"k2",hondId:"h3",mwId:"mw2",diensten:["a7"],status:"gepland",notitie:"",factuurId:null},
+  {id:"af7",datum:d(-35),start:"10:00",duur:120,klantId:"k1",hondId:"h1",mwId:"mw1",diensten:["a5"],status:"afgerekend",notitie:"",factuurId:"f1"},
+  {id:"af8",datum:d(-21),start:"15:00",duur:60,klantId:"k2",hondId:"h3",mwId:"mw2",diensten:["a7"],status:"noshow",notitie:"Niet gekomen, niet afgemeld",factuurId:null},
+  {id:"af9",datum:d(-14),start:"11:00",duur:60,klantId:"k3",hondId:"h4",mwId:"mw2",diensten:["a11","a9"],status:"afgerekend",notitie:"",factuurId:"f2"}];
+ const y=T.getFullYear(),ts=n=>addDays(T,n).getTime()+11*3600e3;
+ const reg=(a,q=1,p)=>{const x=art.find(z=>z.id===a);const pr=p??x.prijs;return{artId:a,naam:x.naam,type:x.type,aantal:q,prijs:pr,btw:x.btw,totaal:rnd(q*pr)}};
+ const mkF=(id,nr,t,k,h,afId,regels,bet)=>{const tot=rnd(regels.reduce((s,r)=>s+r.totaal,0));const paid=rnd(bet.reduce((s,b)=>s+b.bedrag,0));return{id,nr,ts:t,klantId:k,hondId:h,afspraakId:afId,regels,korting:0,sub:tot,totaal:tot,betalingen:bet,betaald:paid,rest:rnd(tot-paid),kassa:"K1",door:"Sanne"}};
+ const fa=[mkF("f1",`${y}-K1-0001`,ts(-35),"k1","h1","af7",[reg("a5"),reg("p2")],[{ts:ts(-35),methode:"PIN",bedrag:82.95}]),
+  mkF("f2",`${y}-K1-0002`,ts(-14),"k3","h4","af9",[reg("a11"),reg("a9")],[])];
+ fa[1].door="Joris";
+ const be=[{id:"b1",datum:d(-35),hondId:"h1",klantId:"k1",afspraakId:"af7",factuurId:"f1",diensten:"Volledige trimbeurt, middel",mw:"Sanne",mesje:"Lijf mes 5F, kop met schaar",vacht:"Klitten",gedrag:"Rustig",notitie:"Veel klitten achter de oren, eigenaar borstel-tip gegeven"},
+  {id:"b2",datum:d(-14),hondId:"h4",klantId:"k3",afspraakId:"af9",factuurId:"f2",diensten:"Puppy-kennismaking, Nagels knippen",mw:"Joris",mesje:"",vacht:"Goed",gedrag:"Wat onrustig",notitie:"Eerste keer föhn, ging na 10 minuten beter"},
+  {id:"b3",datum:d(-70),hondId:"h3",klantId:"k2",afspraakId:null,factuurId:null,diensten:"Plukken ruwhaar",mw:"Joris",mesje:"Plukmes fijn",vacht:"Goed",gedrag:"Lastig",notitie:"Achterpoten in twee rondes gedaan"}];
+ Object.assign(D,{medewerkers:mw,artikelen:art,klanten:kl,honden:ho,afspraken:af,facturen:fa,behandelingen:be});
+ bed={...BED0,naam:"Trimsalon Vachtwerk",straat:"Kinkerstraat 120",pc:"1053 ED",plaats:"Amsterdam",tel:"020 1234567",mail:"info@voorbeeld.nl",kvk:"12345678",btwnr:"NL001234567B01",iban:"NL00 BANK 0123 4567 89"};
+ COLS.forEach(c=>S.set(c,D[c]));S.set("bedrijf",bed);S.set("demo",1);
+}
+if(!S.get("init",0)){seed();S.set("init",1)}
+
+/* ---------- navigatie ---------- */
+const TABS=[["agenda","Agenda"],["kassa","Kassa"],["klanten","Klanten"],["facturen","Facturen"],["artikelen","Artikelen"],["historie","Historie"],["inst","Instellingen"]];
+let tab=S.get("tab","agenda");if(!TABS.some(t=>t[0]===tab))tab="agenda";
+$("#nav").innerHTML=TABS.map(([k,l])=>`<button role="tab" type="button" data-t="${k}">${l}</button>`).join("");
+$("#nav").onclick=e=>{const b=e.target.closest("button");if(b)go(b.dataset.t)};
+function go(t){tab=t;S.set("tab",t);$$(".view").forEach(v=>v.hidden=v.id!=="v-"+t);$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t));draw();window.scrollTo(0,0)}
+function draw(){({agenda:drawAg,kassa:drawKassa,klanten:drawKl,facturen:drawFac,artikelen:drawArt,historie:drawHis,inst:drawInst})[tab]();$("#demo").hidden=!S.get("demo",0);$("#logoName").textContent="Trimmy"}
+$("#demoWipe").onclick=e=>arm(e.target,()=>{wipeLocal();S.set("demo",0);draw()},"Klik nogmaals: alles wissen");
+function wipeLocal(){COLS.forEach(c=>{D[c]=[];S.set(c,[])});D.medewerkers=[{id:uid(),naam:"Medewerker 1",kleur:"#8a4a7e"}];saveC("medewerkers");bed={...BED0};saveC("bedrijf");bon=newBon();saveBon()}
+
+/* ---------- agenda ---------- */
+let agD=today(),agMode=S.get("agmode","week"),agMw=S.get("agmw","");
+const PXM=1.1;
+function agDays(){if(agMode==="dag")return[new Date(agD)];const s=weekStart(agD);return Array.from({length:bed.zondag?7:6},(_,i)=>addDays(s,i))}
+function lanes(list){const out=[];let cl=[],ends=[],cmax=0;const flush=()=>{cl.forEach(x=>x.n=ends.length);cl=[];ends=[]};
+ list.slice().sort((a,b)=>toMin(a.start)-toMin(b.start)).forEach(a=>{const s=toMin(a.start),e=s+(+a.duur||30);if(cl.length&&s>=cmax)flush();
+  let L=ends.findIndex(x=>x<=s);if(L<0){L=ends.length;ends.push(e)}else ends[L]=e;cmax=cl.length?Math.max(cmax,e):e;const it={a,L};cl.push(it);out.push(it)});flush();return out}
+function drawAg(){
+ const o=(+bed.open||8)*60,c=Math.max(o+60,(+bed.sluit||18)*60),H=(c-o)*PXM,days=agDays(),tdy=ymd(today());
+ $("#agMw").innerHTML=`<option value="">Alle medewerkers</option>`+D.medewerkers.map(m=>`<option value="${m.id}" ${m.id===agMw?"selected":""}>${esc(m.naam)}</option>`).join("");
+ $$("#agSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.m===agMode));
+ if(agMode==="week"){const a=days[0],b=days[days.length-1];const wk=isoWeek(a);
+  $("#agLabel").textContent=`Week ${wk} · ${a.getDate()} ${a.toLocaleDateString("nl-NL",{month:"short"})} – ${b.getDate()} ${b.toLocaleDateString("nl-NL",{month:"short",year:"numeric"})}`}
+ else $("#agLabel").textContent=agD.toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+ let cols;
+ if(agMode==="week")cols=days.map(d=>({date:ymd(d),mw:agMw||null,head:`${d.toLocaleDateString("nl-NL",{weekday:"short"})} ${d.getDate()}`,sub:"",today:ymd(d)===tdy}));
+ else{const ds=ymd(agD);const ms=D.medewerkers.filter(m=>!agMw||m.id===agMw);cols=ms.map(m=>({date:ds,mw:m.id,head:m.naam,sub:"",today:false,kleur:m.kleur}));
+  if(!agMw&&D.afspraken.some(a=>a.datum===ds&&!get("medewerkers",a.mwId)))cols.push({date:ds,mw:"-",head:"Zonder medewerker",today:false});
+  if(!cols.length)cols=[{date:ds,mw:null,head:"Afspraken",today:false}]}
+ const ag=$("#ag");ag.style.gridTemplateColumns=`52px repeat(${cols.length},minmax(${agMode==="week"?110:160}px,1fr))`;
+ let h=`<div class="hd"></div>`+cols.map(x=>`<div class="hd ${x.today?"today":""}">${esc(x.head)}${x.kleur?` <i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${x.kleur}"></i>`:""}</div>`).join("");
+ h+=`<div class="tcol" style="height:${H}px">`;for(let m=o+60;m<c;m+=60)h+=`<span style="top:${(m-o)*PXM}px">${toHM(m)}</span>`;h+=`</div>`;
+ const nowM=new Date().getHours()*60+new Date().getMinutes();
+ for(const x of cols){
+  const list=D.afspraken.filter(a=>a.datum===x.date&&(x.mw==null||(x.mw==="-"?!get("medewerkers",a.mwId):a.mwId===x.mw)));
+  const dicht=fromYmd(x.date).getDay()===0&&!bed.zondag;
+  h+=`<div class="col ${dicht?"dicht":""}" data-date="${x.date}" data-mw="${x.mw&&x.mw!=="-"?x.mw:""}" style="height:${H}px;--hh:${60*PXM}px">`;
+  for(const it of lanes(list)){const a=it.a,s=toMin(a.start),top=Math.max(0,(s-o)*PXM),ht=Math.max(22,(+a.duur||30)*PXM-2);
+   const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),w=100/it.n;
+   const dn=(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", ");
+   h+=`<button type="button" class="blk ${["noshow","geannuleerd"].includes(a.status)?"x":""} ${a.status==="afgerekend"?"paid":""}" data-af="${a.id}" style="--mw:${mwKleur(a.mwId)};top:${top}px;height:${ht}px;left:calc(${it.L*w}% + 2px);width:calc(${w}% - 4px)" title="${esc(a.start+" "+(hd?hd.naam:"")+" · "+dn)}"><span class="t">${a.start}–${toHM(s+(+a.duur||30))}${a.status!=="gepland"?" · "+esc(statLab(a.status)):""}</span><b>${esc(hd?hd.naam:"Geen hond")}${hd&&hd.ras?` <span class="t">${esc(hd.ras)}</span>`:""}</b>${ht>40?`<span>${esc(kl?kl.naam:"")}</span>`:""}${ht>58&&dn?`<br><span class="t">${esc(dn)}</span>`:""}</button>`}
+  if(x.date===tdy&&nowM>o&&nowM<c)h+=`<div class="now" style="top:${(nowM-o)*PXM}px"></div>`;
+  h+=`</div>`}
+ ag.innerHTML=h;
+ $("#agLeg").innerHTML=D.medewerkers.map(m=>`<span style="--mw:${m.kleur}"><i></i>${esc(m.naam)}</span>`).join("")+`<span>Klik op een leeg vak om een afspraak te maken.</span>`;
+ // dagoverzicht
+ const ds=agMode==="dag"?ymd(agD):(days.some(d=>ymd(d)===tdy)?tdy:ymd(days[0]));
+ const L=D.afspraken.filter(a=>a.datum===ds&&(!agMw||a.mwId===agMw)).sort((a,b)=>toMin(a.start)-toMin(b.start));
+ $("#agList").innerHTML=`<h3>${ds===tdy?"Vandaag":fromYmd(ds).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"})} · ${L.length} afspra${L.length===1?"ak":"ken"}</h3><div class="panel scroll"><table><tbody>${L.length?L.map(a=>{const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),m=get("medewerkers",a.mwId);
+  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(hd?hd.naam:"–")}</b> <span class="mute">${esc(hd?hd.ras:"")}</span><br><small>${esc(kl?kl.naam+(kl.tel?" · "+kl.tel:""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${hd&&(hd.medisch||hd.gedrag)?`<br><small style="color:var(--warn)">${esc([hd.medisch,hd.gedrag].filter(Boolean).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span></td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
+}
+$("#agPrev").onclick=()=>{agD=addDays(agD,agMode==="week"?-7:-1);drawAg()};
+$("#agNext").onclick=()=>{agD=addDays(agD,agMode==="week"?7:1);drawAg()};
+$("#agToday").onclick=()=>{agD=today();drawAg()};
+$("#agSeg").onclick=e=>{const m=e.target.dataset.m;if(m){agMode=m;S.set("agmode",m);drawAg()}};
+$("#agMw").onchange=e=>{agMw=e.target.value;S.set("agmw",agMw);drawAg()};
+$("#agNew").onclick=()=>afDlg(null,{datum:ymd(agMode==="dag"?agD:(agDays().some(d=>ymd(d)===ymd(today()))?today():agD)),start:"09:00",mwId:agMw||""});
+$("#ag").onclick=e=>{const b=e.target.closest(".blk");if(b){afDlg(b.dataset.af);return}
+ const col=e.target.closest(".col");if(!col)return;const r=col.getBoundingClientRect();const o=(+bed.open||8)*60;
+ const m=Math.max(o,Math.min((+bed.sluit||18)*60-15,o+Math.floor((e.clientY-r.top)/PXM/15)*15));
+ afDlg(null,{datum:col.dataset.date,start:toHM(m),mwId:col.dataset.mw||agMw||""})};
+$("#agList").onclick=e=>{const r=e.target.closest("[data-af]");if(r)afDlg(r.dataset.af)};
+
+/* klant + hond kiezer */
+function khHtml(kId){const k=get("klanten",kId);return`<label>Klant<input id="khK" list="khL" autocomplete="off" value="${k?esc(klLab(k)):""}" placeholder="Typ een naam"></label><datalist id="khL">${D.klanten.slice().sort(by("naam")).map(k=>`<option value="${esc(klLab(k))}">${esc(k.tel||"")}</option>`).join("")}</datalist><label>Hond<select id="khH"></select></label>`}
+const khKlant=d=>{const v=d.q("#khK").value.trim().toLowerCase();if(!v)return null;return D.klanten.find(k=>klLab(k).toLowerCase()===v)||D.klanten.find(k=>k.naam.toLowerCase()===v)||null};
+function khBind(d,hId,cb){const fill=()=>{const k=khKlant(d);const hs=k?D.honden.filter(h=>h.klantId===k.id&&(!h.inactief||h.id===hId)):[];
+  d.q("#khH").innerHTML=`<option value="">${k?(hs.length?"Kies een hond":"Nog geen hond bij deze klant"):"Kies eerst een klant"}</option>`+hs.map(h=>`<option value="${h.id}" ${h.id===hId?"selected":""}>${esc(h.naam)}${h.ras?" · "+esc(h.ras):""}</option>`).join("");
+  if(hs.length===1&&!d.q("#khH").value)d.q("#khH").value=hs[0].id;cb&&cb()};
+ d.q("#khK").addEventListener("input",()=>{hId=null;fill()});d.q("#khH").addEventListener("change",()=>cb&&cb());fill();
+ return{set(k,h){d.q("#khK").value=k?klLab(k):"";hId=h||null;fill()}}}
+
+/* afspraak dialoog */
+function afDlg(id,init={}){
+ const a=id?get("afspraken",id):{id:null,datum:init.datum||ymd(today()),start:init.start||"09:00",duur:60,klantId:init.klantId||null,hondId:init.hondId||null,mwId:init.mwId||"",diensten:[],status:"gepland",notitie:"",factuurId:null};
+ if(!a)return;
+ const dien=D.artikelen.filter(x=>x.type==="dienst"&&(x.actief||(a.diensten||[]).includes(x.id)));
+ const d=modal(`<h2>${id?"Afspraak":"Nieuwe afspraak"}</h2>
+  ${khHtml(a.klantId)}
+  <div class="acts l" style="margin-top:-4px"><button class="btn s" type="button" id="afNk">Nieuwe klant</button><button class="btn s" type="button" id="afNh">Hond toevoegen</button><button class="btn s" type="button" id="afKk" ${a.klantId?"":"hidden"}>Klantkaart openen</button></div>
+  <div class="note w" id="afHw" hidden></div>
+  <div><div style="font-weight:500;font-size:14px;margin-bottom:4px">Behandelingen</div><div class="chk-list">${dien.map(x=>`<label class="chk"><input type="checkbox" value="${x.id}" ${(a.diensten||[]).includes(x.id)?"checked":""}> ${esc(x.naam)} <small>${x.duur||0} min</small></label>`).join("")||`<span class="mute">Nog geen behandelingen. Voeg ze toe onder Artikelen.</span>`}</div></div>
+  <div class="g2"><label>Datum<input id="afD" type="date" value="${a.datum}"></label><label>Begintijd<input id="afS" type="time" step="900" value="${a.start}"></label></div>
+  <div class="g2"><label>Duur (minuten)<input id="afDu" type="number" min="5" step="5" value="${a.duur}"></label><label>Medewerker<select id="afM"><option value="">Geen</option>${D.medewerkers.map(m=>`<option value="${m.id}" ${m.id===a.mwId?"selected":""}>${esc(m.naam)}</option>`).join("")}</select></label></div>
+  <label>Status<select id="afSt">${STAT.map(s=>`<option value="${s[0]}" ${s[0]===a.status?"selected":""} ${s[0]==="afgerekend"&&!a.factuurId?"disabled":""}>${s[1]}</option>`).join("")}</select></label>
+  <label>Notitie<textarea id="afN" rows="2">${esc(a.notitie)}</textarea></label>
+  <div class="note" id="afC" hidden></div><div class="msg" id="afMsg"></div>
+  <div class="acts">${id?`<button class="btn d" type="button" id="afDel">Verwijderen</button><span class="sp"></span>`:""}
+   <button class="btn" type="button" id="afX">Annuleren</button>
+   ${id&&a.status!=="afgerekend"?`<button class="btn" type="button" id="afPay">Opslaan en afrekenen</button>`:""}
+   ${a.factuurId?`<button class="btn" type="button" id="afInv">Factuur bekijken</button>`:""}
+   <button class="btn p" type="button" id="afOk">Opslaan</button></div>`);
+ const upd=()=>{const k=khKlant(d),h=get("honden",d.q("#khH").value);d.q("#afKk").hidden=!k;
+  const w=h?[h.medisch&&"Medisch: "+h.medisch,h.gedrag&&"Gedrag: "+h.gedrag].filter(Boolean):[];d.q("#afHw").hidden=!w.length;d.q("#afHw").textContent=w.join(" · ");conf()};
+ const kh=khBind(d,a.hondId,upd);
+ function conf(){const ds=d.q("#afD").value,s=toMin(d.q("#afS").value),e=s+num(d.q("#afDu").value),m=d.q("#afM").value;
+  const c=D.afspraken.filter(x=>x.id!==a.id&&x.datum===ds&&m&&x.mwId===m&&!["noshow","geannuleerd"].includes(x.status)&&toMin(x.start)<e&&toMin(x.start)+(+x.duur)>s);
+  d.q("#afC").hidden=!c.length;d.q("#afC").textContent=c.length?`Let op: ${(get("medewerkers",m)||{}).naam} heeft dan al ${c.map(x=>x.start+" "+((get("honden",x.hondId)||{}).naam||"")).join(", ")}.`:""};
+ d.querySelectorAll(".chk-list input").forEach(cb=>cb.onchange=()=>{const sel=[...d.querySelectorAll(".chk-list input:checked")].map(x=>get("artikelen",x.value));const t=sel.reduce((s,x)=>s+(+x.duur||0),0);if(t)d.q("#afDu").value=t;conf()});
+ ["#afD","#afS","#afDu","#afM"].forEach(s=>d.q(s).addEventListener("input",conf));conf();
+ d.q("#afX").onclick=()=>d.close();
+ d.q("#afNk").onclick=()=>klantDlg(null,k=>{kh.set(k,null);hondDlg(null,k.id,h=>kh.set(k,h.id))});
+ d.q("#afNh").onclick=()=>{const k=khKlant(d);if(!k){d.q("#afMsg").textContent="Kies eerst een klant.";return}hondDlg(null,k.id,h=>kh.set(k,h.id))};
+ d.q("#afKk").onclick=()=>{const k=khKlant(d);if(k){d.close();selKl=k.id;go("klanten")}};
+ const collect=()=>{const k=khKlant(d),msg=t=>{d.q("#afMsg").textContent=t;return null};
+  if(!k)return msg("Kies een bestaande klant of maak een nieuwe aan.");
+  if(!d.q("#afD").value||!d.q("#afS").value)return msg("Vul datum en begintijd in.");
+  const du=Math.round(num(d.q("#afDu").value));if(!(du>0))return msg("Vul een duur in minuten in.");
+  return{datum:d.q("#afD").value,start:d.q("#afS").value,duur:du,klantId:k.id,hondId:d.q("#khH").value||null,mwId:d.q("#afM").value,diensten:[...d.querySelectorAll(".chk-list input:checked")].map(x=>x.value),status:d.q("#afSt").value,notitie:d.q("#afN").value.trim()}};
+ const store=()=>{const v=collect();if(!v)return null;let r;if(id){r=get("afspraken",id);Object.assign(r,v)}else{r={id:uid(),factuurId:null,...v};D.afspraken.push(r)}saveC("afspraken");if(!id){agD=fromYmd(r.datum)}draw();return r};
+ d.q("#afOk").onclick=()=>{if(store())d.close()};
+ if(d.q("#afPay"))d.q("#afPay").onclick=()=>{const r=store();if(r){d.close();bonFromAf(r)}};
+ if(d.q("#afInv"))d.q("#afInv").onclick=()=>{const f=get("facturen",a.factuurId);if(f)invDlg(f)};
+ if(d.q("#afDel"))d.q("#afDel").onclick=e=>arm(e.target,()=>{D.afspraken=D.afspraken.filter(x=>x.id!==id);saveC("afspraken");d.close();draw()},"Nogmaals: verwijderen");
+ upd();
+}
+
+/* ---------- klant & hond dialogen ---------- */
+function klantDlg(id,cb){
+ const k=id?get("klanten",id):{naam:"",straat:"",pc:"",plaats:"",tel:"",email:"",notitie:""};
+ const heeftF=id&&D.facturen.some(f=>f.klantId===id);
+ const d=modal(`<h2>${id?"Klant wijzigen":"Nieuwe klant"}</h2>
+  <label>Naam<input id="kN" value="${esc(k.naam)}" autocomplete="off"></label>
+  <label>Straat en huisnummer<input id="kS" value="${esc(k.straat)}"></label>
+  <div class="g3"><label>Postcode<input id="kP" maxlength="8" value="${esc(k.pc)}"></label><label>Plaats<input id="kPl" value="${esc(k.plaats)}"></label></div>
+  <div class="g2"><label>Telefoon<input id="kT" type="tel" value="${esc(k.tel)}"></label><label>E-mail<input id="kE" type="email" value="${esc(k.email)}"></label></div>
+  <label>Notitie<textarea id="kNo" rows="2">${esc(k.notitie)}</textarea></label>
+  <div class="msg" id="kMsg"></div>
+  <div class="acts">${id?`<button class="btn d" type="button" id="kDel" ${heeftF?"disabled title=\"Klant heeft facturen en blijft bewaard\"":""}>Verwijderen</button><span class="sp"></span>`:""}<button class="btn" type="button" id="kX">Annuleren</button><button class="btn p" type="button" id="kOk">Opslaan</button></div>`);
+ d.q("#kX").onclick=()=>d.close();
+ d.q("#kOk").onclick=()=>{const v={naam:d.q("#kN").value.trim(),straat:d.q("#kS").value.trim(),pc:d.q("#kP").value.trim().toUpperCase(),plaats:d.q("#kPl").value.trim(),tel:d.q("#kT").value.trim(),email:d.q("#kE").value.trim(),notitie:d.q("#kNo").value.trim()};
+  if(!v.naam){d.q("#kMsg").textContent="Vul de naam in.";return}
+  if(v.email&&!/^\S+@\S+\.\S+$/.test(v.email)){d.q("#kMsg").textContent="Dit e-mailadres lijkt niet te kloppen.";return}
+  let r;if(id){r=get("klanten",id);Object.assign(r,v)}else{r={id:uid(),...v};D.klanten.push(r)}saveC("klanten");d.close();draw();cb&&cb(r)};
+ if(d.q("#kDel"))d.q("#kDel").onclick=e=>arm(e.target,()=>{D.klanten=D.klanten.filter(x=>x.id!==id);D.honden=D.honden.filter(h=>h.klantId!==id);D.afspraken=D.afspraken.filter(a=>a.klantId!==id||a.datum<ymd(today()));["klanten","honden","afspraken"].forEach(saveC);if(selKl===id)selKl=null;d.close();draw()},"Nogmaals: klant en honden verwijderen");
+ setTimeout(()=>d.q("#kN").focus(),30);
+}
+const VACHT=["Kort","Lang","Krullend","Ruwhaar","Draadhaar","Dubbele vacht","Zijdeachtig"];
+function hondDlg(id,klantId,cb){
+ const h=id?get("honden",id):{naam:"",ras:"",geb:"",geslacht:"",gecast:false,gewicht:"",vacht:"",kleur:"",chip:"",gedrag:"",medisch:"",notitie:"",foto:"",inactief:false,klantId};
+ let foto=h.foto||"";
+ const d=modal(`<h2>${id?"Hond wijzigen":"Hond toevoegen"}</h2>
+  <div style="display:flex;gap:14px;align-items:center"><div class="av" id="hAv" style="grid-row:auto;${foto?`background-image:url(${foto})`:""}">${foto?"":esc((h.naam||"?")[0])}</div><div class="acts l"><button class="btn s" type="button" id="hFp">Foto kiezen</button><button class="btn s" type="button" id="hFx">Foto weghalen</button><input type="file" id="hF" accept="image/*" hidden></div></div>
+  <div class="g2"><label>Naam<input id="hN" value="${esc(h.naam)}"></label><label>Ras<input id="hR" value="${esc(h.ras)}" list="rasL"></label></div>
+  <datalist id="rasL">${[...new Set(D.honden.map(x=>x.ras).filter(Boolean).concat(["Labradoodle","Shih Tzu","Toypoedel","Maltezer","Border Terriër","Cocker Spaniël","Golden Retriever","Westie","Yorkshire Terriër","Schnauzer","Bichon Frisé","Australian Labradoodle","Cavalier King Charles","Teckel ruwhaar"]))].map(r=>`<option value="${esc(r)}">`).join("")}</datalist>
+  <div class="g2"><label>Geboortedatum<input id="hG" type="date" value="${esc(h.geb)}"></label><label>Geslacht<select id="hS"><option value="">Onbekend</option>${["Reu","Teef"].map(x=>`<option ${x===h.geslacht?"selected":""}>${x}</option>`).join("")}</select></label></div>
+  <label class="chk"><input type="checkbox" id="hC" ${h.gecast?"checked":""}> Gecastreerd of gesteriliseerd</label>
+  <div class="g2"><label>Gewicht (kg)<input id="hW" inputmode="decimal" value="${h.gewicht===""||h.gewicht==null?"":nm(h.gewicht)}"></label><label>Vachttype<select id="hV"><option value="">Kies</option>${VACHT.map(x=>`<option ${x===h.vacht?"selected":""}>${x}</option>`).join("")}</select></label></div>
+  <div class="g2"><label>Kleur<input id="hK" value="${esc(h.kleur)}"></label><label>Chipnummer<input id="hCh" inputmode="numeric" maxlength="15" value="${esc(h.chip)}"></label></div>
+  <label>Gedrag tijdens het trimmen<input id="hGd" value="${esc(h.gedrag)}" placeholder="Bijvoorbeeld: angstig bij de föhn"></label>
+  <label>Medisch en allergieën<input id="hM" value="${esc(h.medisch)}"></label>
+  <label>Vaste wensen en coupe<textarea id="hNo" rows="2">${esc(h.notitie)}</textarea></label>
+  ${id?`<label class="chk"><input type="checkbox" id="hI" ${h.inactief?"checked":""}> Niet meer actief (verhuisd of overleden)</label>`:""}
+  <div class="msg" id="hMsg"></div>
+  <div class="acts"><button class="btn" type="button" id="hX">Annuleren</button><button class="btn p" type="button" id="hOk">Opslaan</button></div>`);
+ const av=()=>{d.q("#hAv").style.backgroundImage=foto?`url(${foto})`:"";d.q("#hAv").textContent=foto?"":(d.q("#hN").value||"?")[0].toUpperCase()};
+ d.q("#hFp").onclick=()=>d.q("#hF").click();d.q("#hFx").onclick=()=>{foto="";av()};
+ d.q("#hF").onchange=e=>{const f=e.target.files[0];if(!f)return;const img=new Image();const u=URL.createObjectURL(f);img.onload=()=>{const s=240,c=document.createElement("canvas"),r=Math.min(1,s/Math.min(img.width,img.height));c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext("2d").drawImage(img,0,0,c.width,c.height);foto=c.toDataURL("image/jpeg",.8);URL.revokeObjectURL(u);av()};img.src=u};
+ d.q("#hN").oninput=av;d.q("#hX").onclick=()=>d.close();
+ d.q("#hOk").onclick=()=>{const v={naam:d.q("#hN").value.trim(),ras:d.q("#hR").value.trim(),geb:d.q("#hG").value,geslacht:d.q("#hS").value,gecast:d.q("#hC").checked,gewicht:d.q("#hW").value.trim()?num(d.q("#hW").value):"",vacht:d.q("#hV").value,kleur:d.q("#hK").value.trim(),chip:d.q("#hCh").value.replace(/\s/g,""),gedrag:d.q("#hGd").value.trim(),medisch:d.q("#hM").value.trim(),notitie:d.q("#hNo").value.trim(),foto,inactief:id?d.q("#hI").checked:false};
+  if(!v.naam){d.q("#hMsg").textContent="Vul de naam van de hond in.";return}
+  if(v.chip&&!/^\d{15}$/.test(v.chip)){d.q("#hMsg").textContent="Een chipnummer bestaat uit 15 cijfers.";return}
+  let r;if(id){r=get("honden",id);Object.assign(r,v)}else{r={id:uid(),klantId,...v};D.honden.push(r)}saveC("honden");d.close();draw();cb&&cb(r)};
+ setTimeout(()=>d.q("#hN").focus(),30);
+}
+
+/* ---------- kassa ---------- */
+const newBon=()=>({lines:[],klantId:null,hondId:null,afspraakId:null,korting:0});
+let bon=S.get("bon",newBon()),kCat="Alles",kTerm="";
+const saveBon=()=>S.set("bon",bon);
+function bonFromAf(a){bon=newBon();bon.klantId=a.klantId;bon.hondId=a.hondId;bon.afspraakId=a.id;
+ (a.diensten||[]).forEach(i=>{const x=get("artikelen",i);if(x)bon.lines.push(lineOf(x))});saveBon();go("kassa")}
+const lineOf=x=>({artId:x.id,naam:x.naam,type:x.type,prijs:x.prijs,btw:x.btw,aantal:1});
+const lineTot=l=>rnd(l.aantal*l.prijs);
+const bonSub=()=>rnd(bon.lines.reduce((s,l)=>s+lineTot(l),0));
+const bonDisc=()=>Math.min(100,Math.max(0,num(bon.korting)));
+const bonTot=()=>rnd(bonSub()*(1-bonDisc()/100));
+function btwSpec(lines,k){const m={};lines.forEach(l=>{const t=l.aantal*l.prijs*(1-k/100);m[l.btw]=(m[l.btw]||0)+t});return Object.keys(m).sort((a,b)=>b-a).map(r=>({pct:+r,grondslag:rnd(m[r]/(1+r/100)),btw:rnd(m[r]-m[r]/(1+r/100))}))}
+function drawKassa(){
+ const arts=D.artikelen.filter(x=>x.actief);
+ const cats=["Alles","Behandelingen","Producten",...new Set(arts.map(x=>x.cat).filter(Boolean))];
+ if(!cats.includes(kCat))kCat="Alles";
+ $("#kChips").innerHTML=cats.map(c=>`<button type="button" class="chip" aria-pressed="${c===kCat}" data-c="${esc(c)}">${esc(c)}</button>`).join("");
+ const r=arts.filter(x=>(kCat==="Alles"||(kCat==="Behandelingen"?x.type==="dienst":kCat==="Producten"?x.type==="product":x.cat===kCat))&&x.naam.toLowerCase().includes(kTerm)).sort((a,b)=>(a.type===b.type?0:a.type==="dienst"?-1:1));
+ $("#kGrid").innerHTML=r.length?r.map(x=>`<button type="button" class="prod ${x.type}" data-id="${x.id}"><b>${esc(x.naam)}</b><small>${x.type==="dienst"?(x.duur||0)+" min":(x.voorraad==null||x.voorraad===""?"":`<span style="color:${+x.voorraad<=3?"var(--warn)":"inherit"}">${x.voorraad} op voorraad</span>`)}</small><span class="pr">${eur(x.prijs)}</span></button>`).join(""):`<div class="empty">Geen artikelen gevonden.</div>`;
+ drawBon();
+}
+function drawBon(){
+ const af=get("afspraken",bon.afspraakId),k=get("klanten",bon.klantId),h=get("honden",bon.hondId);
+ $("#bonAf").hidden=!af;if(af)$("#bonAf").innerHTML=`<span>Afspraak ${fDate(af.datum)} om ${af.start}</span><button class="btn s" type="button" id="bAfX">Loskoppelen</button>`;
+ $("#bonKl").innerHTML=k?`<span><b>${esc(k.naam)}</b>${h?` · ${esc(h.naam)}`:""}<br><small>${esc([k.plaats,k.tel].filter(Boolean).join(" · "))}</small></span><span style="display:flex;gap:6px"><button class="btn s" type="button" id="bKl">Wijzig</button><button class="btn s" type="button" id="bKx">Wis</button></span>`:`<span class="mute">Losse verkoop, geen klant</span><button class="btn s" type="button" id="bKl">Klant en hond kiezen</button>`;
+ $("#bonLines").innerHTML=bon.lines.length?bon.lines.map((l,i)=>`<div class="line"><b>${esc(l.naam)}</b><b>${eur(lineTot(l))}</b><div class="q"><button type="button" data-m="${i}" aria-label="Minder">−</button><span style="min-width:22px;text-align:center">${nm(l.aantal)}</span><button type="button" data-p="${i}" aria-label="Meer">+</button><span class="mute">à</span><input data-pr="${i}" inputmode="decimal" value="${nm(l.prijs)}" aria-label="Prijs per stuk"><button type="button" class="rm" data-r="${i}">Verwijder</button></div></div>`).join(""):`<div class="empty">De bon is leeg. Kies een behandeling of product.</div>`;
+ if(document.activeElement!==$("#bonDisc"))$("#bonDisc").value=bon.korting||0;
+ const s=bonSub(),t=bonTot();
+ $("#bSub").textContent=eur(s);$("#bDiscRow").hidden=!bonDisc();$("#bDisc").textContent="− "+eur(s-t);
+ $("#bBtw").innerHTML=btwSpec(bon.lines,bonDisc()).map(b=>`<div class="row mute"><span>Waarvan ${b.pct}% btw</span><span>${eur(b.btw)}</span></div>`).join("");
+ $("#bTot").textContent=eur(t);$("#bPay").disabled=!bon.lines.length;
+}
+$("#kChips").onclick=e=>{const c=e.target.dataset.c;if(c){kCat=c;drawKassa()}};
+$("#kq").oninput=e=>{kTerm=e.target.value.toLowerCase();drawKassa()};
+$("#kGrid").onclick=e=>{const b=e.target.closest(".prod");if(!b)return;const x=get("artikelen",b.dataset.id);const l=bon.lines.find(z=>z.artId===x.id&&z.prijs===x.prijs);if(l)l.aantal++;else bon.lines.push(lineOf(x));saveBon();drawBon()};
+$("#bonLines").onclick=e=>{const t=e.target.dataset;if(t.p!=null)bon.lines[t.p].aantal++;else if(t.m!=null){const l=bon.lines[t.m];l.aantal--;if(l.aantal<=0)bon.lines.splice(t.m,1)}else if(t.r!=null)bon.lines.splice(t.r,1);else return;saveBon();drawBon()};
+$("#bonLines").onchange=e=>{const i=e.target.dataset.pr;if(i!=null){bon.lines[i].prijs=Math.max(0,rnd(num(e.target.value)));saveBon();drawBon()}};
+$("#bonDisc").oninput=e=>{bon.korting=num(e.target.value);saveBon();drawBon()};
+$("#bClr").onclick=()=>{bon=newBon();saveBon();drawBon()};
+document.addEventListener("click",e=>{const id=e.target.id;
+ if(id==="bAfX"){bon.afspraakId=null;saveBon();drawBon()}
+ else if(id==="bKx"){bon.klantId=null;bon.hondId=null;saveBon();drawBon()}
+ else if(id==="bKl")pickKH()});
+function pickKH(){const d=modal(`<h2>Klant en hond</h2>${khHtml(bon.klantId)}<div class="acts l"><button class="btn s" type="button" id="pNk">Nieuwe klant</button></div><div class="acts"><button class="btn" type="button" id="pX">Annuleren</button><button class="btn p" type="button" id="pOk">Kiezen</button></div>`);
+ const kh=khBind(d,bon.hondId);d.q("#pX").onclick=()=>d.close();
+ d.q("#pNk").onclick=()=>klantDlg(null,k=>{kh.set(k,null);hondDlg(null,k.id,h=>kh.set(k,h.id))});
+ d.q("#pOk").onclick=()=>{const k=khKlant(d);bon.klantId=k?k.id:null;bon.hondId=k?(d.q("#khH").value||null):null;saveBon();d.close();drawBon()}}
+let lastMethode="PIN",lastDoor=S.get("door","");
+$("#bPay").onclick=()=>payDlg();
+function payDlg(){
+ const t=bonTot(),k=get("klanten",bon.klantId),h=get("honden",bon.hondId),af=get("afspraken",bon.afspraakId);
+ const heeftDienst=bon.lines.some(l=>l.type==="dienst");let pm=lastMethode;
+ if(!lastDoor&&af)lastDoor=af.mwId;
+ const d=modal(`<h2>Afrekenen ${eur(t)}</h2>
+  ${k?`<div class="note">${esc(k.naam)}${h?" · "+esc(h.naam):""}</div>`:""}
+  <div class="methods">${["PIN","Contant","Op rekening"].map(m=>`<button type="button" data-pm="${m}">${m}</button>`).join("")}</div>
+  <div id="pCash"><label>Ontvangen bedrag (€)<input id="pGiven" inputmode="decimal"></label><div class="note" id="pChg" style="margin-top:8px"></div></div>
+  <div class="note" id="pRek" hidden></div>
+  <label>Afgerekend door<select id="pDoor"><option value="">Kies</option>${D.medewerkers.map(m=>`<option value="${m.id}" ${m.id===lastDoor?"selected":""}>${esc(m.naam)}</option>`).join("")}</select></label>
+  ${h&&heeftDienst?`<details open><summary style="cursor:pointer;font-weight:600">Behandeling vastleggen voor ${esc(h.naam)}</summary><div style="display:grid;gap:10px;margin-top:10px">
+   <div class="g2"><label>Mesje, kam of techniek<input id="pMes" placeholder="Bijvoorbeeld: lijf 5F, kop schaar"></label><label>Vacht<select id="pVa">${["Goed","Klitten","Sterk vervilt","Huidproblemen","Vlooien gezien"].map(x=>`<option>${x}</option>`).join("")}</select></label></div>
+   <label>Gedrag<select id="pGe">${["Rustig","Wat onrustig","Lastig","Bijt of hapt"].map(x=>`<option>${x}</option>`).join("")}</select></label>
+   <label>Notitie voor volgende keer<textarea id="pNo" rows="2"></textarea></label></div></details>`:""}
+  <div class="msg" id="pMsg"></div>
+  <div class="acts"><button class="btn" type="button" id="pX">Terug</button><button class="btn p" type="button" id="pOk">Betaling afronden</button></div>`);
+ const set=()=>{d.querySelectorAll("[data-pm]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.pm===pm));d.q("#pCash").hidden=pm!=="Contant";d.q("#pRek").hidden=pm!=="Op rekening";
+  d.q("#pRek").textContent=k?`Er komt een factuur op naam van ${k.naam} met een betaaltermijn van ${bed.termijn||14} dagen.`:"Kies eerst een klant op de bon. Een factuur op rekening moet op naam staan.";chg()};
+ const chg=()=>{const g=num(d.q("#pGiven").value);d.q("#pChg").innerHTML=g>=t-1e-9?`Wisselgeld: <b>${eur(g-t)}</b>`:`Nog te ontvangen: <b>${eur(t-g)}</b>`};
+ d.q("#pGiven").value=nm(Math.ceil(t));d.q("#pGiven").oninput=chg;
+ d.querySelector(".methods").onclick=e=>{if(e.target.dataset.pm){pm=e.target.dataset.pm;set()}};set();
+ d.q("#pX").onclick=()=>d.close();
+ d.q("#pOk").onclick=()=>{const msg=x=>d.q("#pMsg").textContent=x;
+  if(pm==="Op rekening"&&!k)return msg("Kies eerst een klant op de bon. Sluit dit scherm met Terug.");
+  if(pm==="Contant"&&num(d.q("#pGiven").value)<t-1e-9)return msg("Het ontvangen bedrag is lager dan het totaal.");
+  lastMethode=pm;lastDoor=d.q("#pDoor").value;S.set("door",lastDoor);
+  const beh=d.q("#pMes")?{mesje:d.q("#pMes").value.trim(),vacht:d.q("#pVa").value,gedrag:d.q("#pGe").value,notitie:d.q("#pNo").value.trim()}:null;
+  const f=finish(pm,beh);d.close();receipt(f)};
+}
+function nextNr(){const y=new Date().getFullYear(),k=(bed.kassa||"K1").toUpperCase(),p=`${y}-${k}-`;const n=D.facturen.filter(f=>String(f.nr).startsWith(p)).map(f=>+String(f.nr).slice(p.length)||0);return p+String((n.length?Math.max(...n):0)+1).padStart(4,"0")}
+function finish(pm,beh){
+ const now=Date.now(),t=bonTot(),door=(get("medewerkers",lastDoor)||{}).naam||"";
+ const f={id:uid(),nr:nextNr(),ts:now,klantId:bon.klantId,hondId:bon.hondId,afspraakId:bon.afspraakId,
+  regels:bon.lines.map(l=>({artId:l.artId,naam:l.naam,type:l.type,aantal:l.aantal,prijs:l.prijs,btw:l.btw,totaal:lineTot(l)})),
+  korting:bonDisc(),sub:bonSub(),totaal:t,betalingen:pm==="Op rekening"?[]:[{ts:now,methode:pm,bedrag:t}],betaald:pm==="Op rekening"?0:t,rest:pm==="Op rekening"?t:0,kassa:bed.kassa||"K1",door,vervalt:pm==="Op rekening"?ymd(addDays(today(),+bed.termijn||14)):null};
+ D.facturen.push(f);saveC("facturen");
+ let vc=false;bon.lines.forEach(l=>{const x=get("artikelen",l.artId);if(x&&x.type==="product"&&x.voorraad!==""&&x.voorraad!=null){x.voorraad=+x.voorraad-l.aantal;vc=true}});if(vc)saveC("artikelen");
+ const af=get("afspraken",bon.afspraakId);if(af){af.status="afgerekend";af.factuurId=f.id;saveC("afspraken")}
+ if(bon.hondId&&beh){D.behandelingen.push({id:uid(),datum:af?af.datum:ymd(today()),hondId:bon.hondId,klantId:bon.klantId,afspraakId:bon.afspraakId,factuurId:f.id,diensten:bon.lines.filter(l=>l.type==="dienst").map(l=>l.naam).join(", "),mw:af?((get("medewerkers",af.mwId)||{}).naam||door):door,...beh});saveC("behandelingen")}
+ bon=newBon();saveBon();draw();return f}
+function bonHtml(f){const k=get("klanten",f.klantId),h=get("honden",f.hondId);
+ return`<h3>${esc(bed.naam)}</h3><div class="mute">${esc([bed.straat,[bed.pc,bed.plaats].filter(Boolean).join(" ")].filter(Boolean).join(", "))}</div><div class="mute">Bon ${esc(f.nr)} · ${new Date(f.ts).toLocaleString("nl-NL")}</div>${k?`<div><b>${esc(k.naam)}</b>${h?" · "+esc(h.naam):""}</div>`:""}<hr>`+
+ f.regels.map(r=>`<div class="row"><span>${r.aantal!==1?nm(r.aantal)+" × ":""}${esc(r.naam)}</span><span>${eur(r.totaal)}</span></div>`).join("")+`<hr>`+
+ (f.korting?`<div class="row"><span>Korting ${nm(f.korting)}%</span><span>− ${eur(f.sub-f.totaal)}</span></div>`:"")+
+ btwSpec(f.regels,f.korting).map(b=>`<div class="row mute"><span>Waarvan ${b.pct}% btw</span><span>${eur(b.btw)}</span></div>`).join("")+
+ `<div class="row big"><span>Totaal</span><span>${eur(f.totaal)}</span></div><hr>`+
+ f.betalingen.map(p=>`<div class="row"><span>Betaald (${esc(p.methode)}) ${new Date(p.ts).toLocaleDateString("nl-NL")}</span><span>${eur(p.bedrag)}</span></div>`).join("")+
+ (f.rest>0?`<div class="row" style="color:var(--warn);font-weight:700"><span>Nog te betalen${f.vervalt?" vóór "+fDate(f.vervalt):""}</span><span>${eur(f.rest)}</span></div>`:"")}
+function receipt(f){const d=modal(`<div class="receipt">${bonHtml(f)}</div><div class="acts">${STANDALONE?`<button class="btn" type="button" id="rP">Kassabon printen</button>`:""}<button class="btn" type="button" id="rI">Factuur bekijken (A4)</button><button class="btn p" type="button" id="rX">Klaar</button></div>`);
+ d.q("#rX").onclick=()=>d.close();d.q("#rI").onclick=()=>{d.close();invDlg(f)};
+ if(d.q("#rP"))d.q("#rP").onclick=()=>{const p=$("#printArea");p.className="bon";p.innerHTML=`<div class="receipt">${bonHtml(f)}</div>`;window.print()}}
+
+/* ---------- factuur A4 ---------- */
+function invHtml(f){const k=get("klanten",f.klantId),h=get("honden",f.hondId),sp=btwSpec(f.regels,f.korting);
+ return`<div class="inv"><div class="top"><div><b style="font:800 16pt var(--f-d)">${esc(bed.naam)}</b><br>${esc(bed.straat)}<br>${esc([bed.pc,bed.plaats].filter(Boolean).join(" "))}<br>${esc(bed.tel)}${bed.mail?"<br>"+esc(bed.mail):""}</div>
+ <div><h1>Factuur</h1><table style="width:auto;margin-left:auto"><tr><td class="m" style="border:0">Factuurnummer</td><td style="border:0;padding-left:16px">${esc(f.nr)}</td></tr><tr><td class="m" style="border:0">Datum</td><td style="border:0;padding-left:16px">${new Date(f.ts).toLocaleDateString("nl-NL")}</td></tr>${f.vervalt?`<tr><td class="m" style="border:0">Vervaldatum</td><td style="border:0;padding-left:16px">${fDate(f.vervalt)}</td></tr>`:""}</table></div></div>
+ <div class="to"><div><span class="m">Aan</span><br>${k?`<b>${esc(k.naam)}</b><br>${esc(k.straat)}<br>${esc([k.pc,k.plaats].filter(Boolean).join(" "))}`:"Contante verkoop"}</div>${h?`<div><span class="m">Hond</span><br><b>${esc(h.naam)}</b>${h.ras?"<br>"+esc(h.ras):""}</div>`:""}</div>
+ <table><thead><tr><th>Omschrijving</th><th class="r">Aantal</th><th class="r">Prijs</th><th class="r">Btw</th><th class="r">Bedrag</th></tr></thead><tbody>${f.regels.map(r=>`<tr><td>${esc(r.naam)}</td><td class="r">${nm(r.aantal)}</td><td class="r">${eur(r.prijs)}</td><td class="r">${r.btw}%</td><td class="r">${eur(r.totaal)}</td></tr>`).join("")}</tbody></table>
+ <table class="tt">${f.korting?`<tr><td>Subtotaal</td><td class="r">${eur(f.sub)}</td></tr><tr><td>Korting ${nm(f.korting)}%</td><td class="r">− ${eur(f.sub-f.totaal)}</td></tr>`:""}
+ ${sp.map(b=>`<tr><td>Grondslag ${b.pct}%</td><td class="r">${eur(b.grondslag)}</td></tr><tr><td>Btw ${b.pct}%</td><td class="r">${eur(b.btw)}</td></tr>`).join("")}
+ <tr class="b"><td>Totaal incl. btw</td><td class="r">${eur(f.totaal)}</td></tr>${f.betalingen.map(p=>`<tr><td>Betaald ${esc(p.methode)} ${new Date(p.ts).toLocaleDateString("nl-NL")}</td><td class="r">− ${eur(p.bedrag)}</td></tr>`).join("")}${f.rest>0?`<tr class="b"><td>Te betalen</td><td class="r">${eur(f.rest)}</td></tr>`:""}</table>
+ ${f.rest>0?`<p style="margin-top:18px;border:1px solid #151515;padding:10px 12px">Graag ${eur(f.rest)} overmaken${bed.iban?" naar "+esc(bed.iban):""} ten name van ${esc(bed.naam)}, onder vermelding van factuurnummer ${esc(f.nr)}${f.vervalt?", vóór "+fDate(f.vervalt):""}.</p>`:`<p class="m" style="text-align:right">Deze factuur is voldaan.</p>`}
+ ${bed.voet?`<p>${esc(bed.voet)}</p>`:""}
+ <div class="foot">${esc([bed.naam,bed.kvk&&"KvK "+bed.kvk,bed.btwnr&&"Btw "+bed.btwnr,bed.iban&&"IBAN "+bed.iban].filter(Boolean).join(" · "))}</div></div>`}
+function invDlg(f){const d=modal(`<div class="acts" style="justify-content:space-between"><h2>Factuur ${esc(f.nr)}</h2><div class="acts">${f.rest>0?`<button class="btn" type="button" id="iR">Restant afrekenen</button>`:""}${STANDALONE?`<button class="btn" type="button" id="iP">Printen of pdf</button>`:""}<button class="btn p" type="button" id="iX">Sluiten</button></div></div><div class="invwrap">${invHtml(f)}</div>${STANDALONE?"":`<small>Printen en pdf maken werkt in de versie die op jullie eigen webadres draait (Netlify).</small>`}`,"wide");
+ d.q("#iX").onclick=()=>d.close();if(d.q("#iR"))d.q("#iR").onclick=()=>{d.close();restDlg(f)};
+ if(d.q("#iP"))d.q("#iP").onclick=()=>{const p=$("#printArea");p.className="";p.innerHTML=invHtml(f);window.print()}}
+function restDlg(f){let pm="PIN";const d=modal(`<h2>Restant afrekenen</h2><div class="note">Factuur ${esc(f.nr)} · open: <b>${eur(f.rest)}</b></div>
+ <div class="methods" style="grid-template-columns:repeat(3,1fr)">${["PIN","Contant","Overboeking"].map(m=>`<button type="button" data-pm="${m}">${m}</button>`).join("")}</div>
+ <label>Bedrag (€)<input id="rB" inputmode="decimal" value="${nm(f.rest)}"></label><div class="msg" id="rM"></div>
+ <div class="acts"><button class="btn" type="button" id="rX">Annuleren</button><button class="btn p" type="button" id="rOk">Betaling vastleggen</button></div>`);
+ const s=()=>d.querySelectorAll("[data-pm]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.pm===pm));s();
+ d.querySelector(".methods").onclick=e=>{if(e.target.dataset.pm){pm=e.target.dataset.pm;s()}};d.q("#rX").onclick=()=>d.close();
+ d.q("#rOk").onclick=()=>{const b=rnd(num(d.q("#rB").value));if(!(b>0)||b>f.rest+1e-9){d.q("#rM").textContent=`Vul een bedrag in tussen € 0,01 en ${eur(f.rest)}.`;return}
+  f.betalingen.push({ts:Date.now(),methode:pm,bedrag:b});f.betaald=rnd(f.betaald+b);f.rest=rnd(f.totaal-f.betaald);saveC("facturen");d.close();draw()}}
+
+/* ---------- facturen ---------- */
+let fFil="alle";
+function drawFac(){
+ const day=new Date().toDateString(),pays=D.facturen.flatMap(f=>f.betalingen).filter(p=>new Date(p.ts).toDateString()===day),sum=a=>a.reduce((s,p)=>s+p.bedrag,0);
+ const mth=new Date();const mf=D.facturen.filter(f=>{const d=new Date(f.ts);return d.getMonth()===mth.getMonth()&&d.getFullYear()===mth.getFullYear()});
+ $("#fStats").innerHTML=`<div class="stat"><b>${eur(sum(pays))}</b><span>Ontvangen vandaag</span></div>`+["PIN","Contant"].map(m=>`<div class="stat"><b>${eur(sum(pays.filter(p=>p.methode===m)))}</b><span>${m} vandaag</span></div>`).join("")+
+  `<div class="stat"><b>${eur(mf.reduce((s,f)=>s+f.totaal,0))}</b><span>Omzet deze maand</span></div><div class="stat"><b style="color:${D.facturen.some(f=>f.rest>0)?"var(--warn)":"inherit"}">${eur(D.facturen.reduce((s,f)=>s+f.rest,0))}</b><span>Openstaand</span></div>`;
+ $$("#fSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.f===fFil));
+ const q=$("#fq").value.trim().toLowerCase();
+ const L=D.facturen.slice().sort((a,b)=>b.ts-a.ts).filter(f=>fFil==="alle"||(fFil==="open"?f.rest>0:f.rest<=0)).filter(f=>{if(!q)return true;const k=get("klanten",f.klantId),h=get("honden",f.hondId);return[f.nr,k&&k.naam,h&&h.naam,...f.regels.map(r=>r.naam)].join(" ").toLowerCase().includes(q)});
+ const tdy=ymd(today());
+ $("#fBody").innerHTML=L.length?L.map(f=>{const k=get("klanten",f.klantId),h=get("honden",f.hondId),te=f.rest>0&&f.vervalt&&f.vervalt<tdy;
+  return`<tr class="click" data-f="${f.id}"><td><b>${esc(f.nr)}</b>${f.door?`<br><small>${esc(f.door)}</small>`:""}</td><td style="white-space:nowrap">${fDT(f.ts)}</td><td>${k?`<b>${esc(k.naam)}</b>`:`<span class="mute">Losse verkoop</span>`}${h?`<br><small>${esc(h.naam)}</small>`:""}</td><td>${esc(f.regels.map(r=>r.naam).join(", "))}</td><td>${esc([...new Set(f.betalingen.map(p=>p.methode))].join(", ")||"Op rekening")}</td><td class="r"><b>${eur(f.totaal)}</b></td><td>${f.rest>0?`<span class="pill ${te?"warn":"amber"}">${te?"Te laat":"Open"} ${eur(f.rest)}</span>`:`<span class="pill ok">Betaald</span>`}</td></tr>`}).join(""):`<tr><td colspan="7" class="empty">${D.facturen.length?"Geen facturen gevonden met dit filter.":"Nog geen facturen. Reken een bon af op het tabblad Kassa."}</td></tr>`;
+}
+$("#fq").oninput=drawFac;$("#fSeg").onclick=e=>{if(e.target.dataset.f){fFil=e.target.dataset.f;drawFac()}};
+$("#fBody").onclick=e=>{const r=e.target.closest("[data-f]");if(r)invDlg(get("facturen",r.dataset.f))};
+
+/* ---------- klanten ---------- */
+let selKl=null;
+function drawKl(){
+ const q=$("#klq").value.trim().toLowerCase();
+ const L=D.klanten.slice().sort(by("naam")).filter(k=>{if(!q)return true;const hs=D.honden.filter(h=>h.klantId===k.id).map(h=>h.naam+" "+h.ras);return[k.naam,k.plaats,k.tel,k.email,...hs].join(" ").toLowerCase().includes(q)});
+ if(!selKl||!get("klanten",selKl))selKl=L[0]?L[0].id:null;
+ $("#klList").innerHTML=L.length?L.map(k=>{const hs=D.honden.filter(h=>h.klantId===k.id&&!h.inactief);return`<button type="button" class="ki" data-k="${k.id}" aria-current="${k.id===selKl}"><b>${esc(k.naam)}</b><small>${esc(hs.map(h=>h.naam).join(", ")||"Geen honden")}${k.plaats?" · "+esc(k.plaats):""}</small></button>`}).join(""):`<div class="empty">${D.klanten.length?"Geen klant gevonden.":"Nog geen klanten. Maak de eerste aan met Nieuwe klant."}</div>`;
+ const k=get("klanten",selKl),el=$("#klDet");
+ if(!k){el.innerHTML=`<div class="empty">Kies links een klant.</div>`;return}
+ const hs=D.honden.filter(h=>h.klantId===k.id).sort((a,b)=>(a.inactief?1:0)-(b.inactief?1:0));
+ const tdy=ymd(today());
+ const kom=D.afspraken.filter(a=>a.klantId===k.id&&a.datum>=tdy&&!["geannuleerd","afgerekend"].includes(a.status)).sort((a,b)=>(a.datum+a.start).localeCompare(b.datum+b.start));
+ const fs=D.facturen.filter(f=>f.klantId===k.id),open=fs.reduce((s,f)=>s+f.rest,0),omzet=fs.reduce((s,f)=>s+f.totaal,0);
+ const mis=D.afspraken.filter(a=>a.klantId===k.id&&a.status==="noshow").length;
+ el.innerHTML=`<div class="det"><div class="hdr"><div><h2>${esc(k.naam)}</h2><div class="mute">${fs.length} facturen · ${eur(omzet)} totaal${open>0?` · <b style="color:var(--warn)">${eur(open)} open</b>`:""}${mis?` · <span style="color:var(--warn)">${mis}× niet gekomen</span>`:""}</div></div><div class="acts"><button class="btn" type="button" data-act="kEdit">Gegevens wijzigen</button><button class="btn p" type="button" data-act="kAf">Afspraak maken</button></div></div>
+ <div class="kv"><div><span>Adres</span>${esc(k.straat||"–")}<br>${esc([k.pc,k.plaats].filter(Boolean).join(" "))}</div><div><span>Telefoon</span>${esc(k.tel||"–")}</div><div><span>E-mail</span>${esc(k.email||"–")}</div>${k.notitie?`<div><span>Notitie</span>${esc(k.notitie)}</div>`:""}</div>
+ <div class="sec"><div class="hdr"><h3>Honden</h3><button class="btn s" type="button" data-act="hNew">Hond toevoegen</button></div>
+ ${hs.length?`<div class="dogs">${hs.map(h=>{const last=D.behandelingen.filter(b=>b.hondId===h.id).sort((a,b)=>b.datum.localeCompare(a.datum))[0];
+  return`<div class="dog ${h.inactief?"inact":""}"><div class="av" style="${h.foto?`background-image:url(${h.foto})`:""}">${h.foto?"":esc(h.naam[0]||"?")}</div><div><b style="font:700 17px var(--f-d)">${esc(h.naam)}</b>${h.inactief?` <span class="pill">Niet actief</span>`:""}<div class="meta">${esc([h.ras,leeftijd(h.geb),h.geslacht&&(h.geslacht+(h.gecast?", gecastreerd":""))].filter(Boolean).join(" · "))}</div></div>
+  <div class="meta">${esc([h.gewicht!==""&&h.gewicht!=null?nm(h.gewicht)+" kg":"",h.vacht,h.kleur].filter(Boolean).join(" · "))}${h.chip?`<br>Chip ${esc(h.chip)}`:""}</div>
+  <div class="meta">${last?`Laatst: ${fDate(last.datum)}${last.mesje?" · "+esc(last.mesje):""}`:"Nog geen behandelingen"}</div>
+  ${h.medisch?`<div class="note w">Medisch: ${esc(h.medisch)}</div>`:""}${h.gedrag?`<div class="note${/angst|bijt|hap|lastig|niet/i.test(h.gedrag)?" w":""}">Gedrag: ${esc(h.gedrag)}</div>`:""}${h.notitie?`<div class="note">${esc(h.notitie)}</div>`:""}
+  <div class="acts"><button class="btn s" type="button" data-act="hEdit" data-h="${h.id}">Wijzigen</button><button class="btn s" type="button" data-act="hAf" data-h="${h.id}">Afspraak</button><button class="btn s" type="button" data-act="hHis" data-h="${h.id}">Historie</button></div></div>`}).join("")}</div>`:`<div class="empty" style="padding:12px">Nog geen honden. Voeg de eerste hond toe.</div>`}</div>
+ <div class="sec"><h3>Komende afspraken</h3>${kom.length?`<div class="scroll"><table><tbody>${kom.map(a=>`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap">${fDate(a.datum)} ${a.start}</td><td>${esc((get("honden",a.hondId)||{}).naam||"")}</td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}</td><td><span class="pill ${statCls(a.status)}">${statLab(a.status)}</span></td></tr>`).join("")}</tbody></table></div>`:`<div class="mute">Geen komende afspraken.</div>`}</div>
+ <div class="sec"><h3>Historie</h3>${hisRows(evts().filter(e=>e.klantId===k.id).slice(0,30))||`<div class="mute">Nog geen historie.</div>`}</div></div>`;
+}
+$("#klq").oninput=drawKl;$("#klNew").onclick=()=>klantDlg(null,k=>{selKl=k.id;drawKl();hondDlg(null,k.id)});
+$("#klList").onclick=e=>{const b=e.target.closest("[data-k]");if(b){selKl=b.dataset.k;drawKl();if(innerWidth<900)$("#klDet").scrollIntoView({behavior:"smooth"})}};
+$("#klDet").onclick=e=>{const b=e.target.closest("[data-act],[data-af],[data-ev]");if(!b)return;
+ if(b.dataset.af)return afDlg(b.dataset.af);if(b.dataset.ev)return openEv(b.dataset.ev);
+ const a=b.dataset.act,h=b.dataset.h;
+ if(a==="kEdit")klantDlg(selKl);else if(a==="kAf")afDlg(null,{klantId:selKl,datum:ymd(today()),start:"09:00"});
+ else if(a==="hNew")hondDlg(null,selKl);else if(a==="hEdit")hondDlg(h,selKl);
+ else if(a==="hAf")afDlg(null,{klantId:selKl,hondId:h,datum:ymd(today()),start:"09:00"});
+ else if(a==="hHis"){$("#hq").value=get("honden",h).naam;$("#hf").value="";go("historie")}};
+
+/* ---------- artikelen ---------- */
+let aFil="alle";
+function drawArt(){
+ $$("#aSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.a===aFil));
+ const q=$("#aq").value.trim().toLowerCase();
+ const L=D.artikelen.filter(x=>(aFil==="alle"||x.type===aFil)&&[x.naam,x.cat,x.nr].join(" ").toLowerCase().includes(q)).sort((a,b)=>(a.type===b.type?String(a.cat).localeCompare(b.cat)||a.naam.localeCompare(b.naam):a.type==="dienst"?-1:1));
+ $("#aBody").innerHTML=L.length?L.map(x=>`<tr class="click" data-a="${x.id}"><td><b>${esc(x.naam)}</b>${x.nr?`<br><small>${esc(x.nr)}</small>`:""}</td><td>${esc(x.cat||"")}</td><td>${x.type==="dienst"?"Behandeling":"Product"}</td><td class="r">${eur(x.prijs)}</td><td class="r">${x.btw}%</td><td class="r">${x.type==="dienst"?(x.duur||0)+" min":(x.voorraad===""||x.voorraad==null?`<span class="mute">niet bijgehouden</span>`:`<span style="color:${+x.voorraad<=3?"var(--warn)":"inherit"};font-weight:${+x.voorraad<=3?700:400}">${x.voorraad} st.</span>`)}</td><td>${x.actief?`<span class="pill ok">Actief</span>`:`<span class="pill">Uit</span>`}</td></tr>`).join(""):`<tr><td colspan="7" class="empty">Geen artikelen gevonden.</td></tr>`;
+}
+$("#aq").oninput=drawArt;$("#aSeg").onclick=e=>{if(e.target.dataset.a){aFil=e.target.dataset.a;drawArt()}};
+$("#aNew").onclick=()=>artDlg(null);$("#aBody").onclick=e=>{const r=e.target.closest("[data-a]");if(r)artDlg(r.dataset.a)};
+function artDlg(id){
+ const x=id?get("artikelen",id):{naam:"",cat:"",type:aFil==="product"?"product":"dienst",prijs:0,btw:21,duur:30,voorraad:"",nr:"",actief:true};
+ const used=id&&D.facturen.some(f=>f.regels.some(r=>r.artId===id));
+ const d=modal(`<h2>${id?"Artikel wijzigen":"Nieuw artikel"}</h2>
+  <label>Naam<input id="xN" value="${esc(x.naam)}"></label>
+  <div class="g2"><label>Soort<select id="xT"><option value="dienst" ${x.type==="dienst"?"selected":""}>Behandeling</option><option value="product" ${x.type==="product"?"selected":""}>Product</option></select></label><label>Categorie<input id="xC" list="catL" value="${esc(x.cat)}"></label></div>
+  <datalist id="catL">${[...new Set(D.artikelen.map(a=>a.cat).filter(Boolean))].map(c=>`<option value="${esc(c)}">`).join("")}</datalist>
+  <div class="g2"><label>Prijs incl. btw (€)<input id="xP" inputmode="decimal" value="${nm(x.prijs)}"></label><label>Btw-tarief<select id="xB">${[21,9,0].map(r=>`<option value="${r}" ${+x.btw===r?"selected":""}>${r}%</option>`).join("")}</select></label></div>
+  <label id="xDuL">Standaardduur (minuten)<input id="xDu" type="number" min="0" step="5" value="${x.duur??""}"></label>
+  <label id="xVoL">Voorraad (leeg laten als je die niet bijhoudt)<input id="xVo" type="number" step="1" value="${x.voorraad??""}"></label>
+  <label>Artikelnummer of EAN (optioneel)<input id="xNr" value="${esc(x.nr)}"></label>
+  <label class="chk"><input type="checkbox" id="xA" ${x.actief?"checked":""}> Actief (zichtbaar in kassa en agenda)</label>
+  <div class="msg" id="xM"></div>
+  <div class="acts">${id?`<button class="btn d" type="button" id="xDel">${used?"Op inactief zetten":"Verwijderen"}</button><span class="sp"></span>`:""}<button class="btn" type="button" id="xX">Annuleren</button><button class="btn p" type="button" id="xOk">Opslaan</button></div>`);
+ const t=()=>{const p=d.q("#xT").value==="product";d.q("#xDuL").hidden=p;d.q("#xVoL").hidden=!p};d.q("#xT").onchange=t;t();
+ d.q("#xX").onclick=()=>d.close();
+ d.q("#xOk").onclick=()=>{const ty=d.q("#xT").value,v={naam:d.q("#xN").value.trim(),type:ty,cat:d.q("#xC").value.trim(),prijs:rnd(num(d.q("#xP").value)),btw:+d.q("#xB").value,duur:ty==="dienst"?Math.round(num(d.q("#xDu").value)):null,voorraad:ty==="product"&&d.q("#xVo").value!==""?Math.round(num(d.q("#xVo").value)):(ty==="product"?"":null),nr:d.q("#xNr").value.trim(),actief:d.q("#xA").checked};
+  if(!v.naam){d.q("#xM").textContent="Vul een naam in.";return}if(!(v.prijs>=0)){d.q("#xM").textContent="Vul een geldige prijs in.";return}
+  if(id)Object.assign(get("artikelen",id),v);else D.artikelen.push({id:uid(),...v});saveC("artikelen");d.close();draw()};
+ if(d.q("#xDel"))d.q("#xDel").onclick=e=>{if(used){get("artikelen",id).actief=false;saveC("artikelen");d.close();draw();return}arm(e.target,()=>{D.artikelen=D.artikelen.filter(a=>a.id!==id);saveC("artikelen");d.close();draw()},"Nogmaals: verwijderen")};
+}
+
+/* ---------- historie ---------- */
+function evts(){const out=[];
+ D.behandelingen.forEach(b=>out.push({id:"b:"+b.id,soort:"beh",datum:b.datum,ts:fromYmd(b.datum).getTime()+1,klantId:b.klantId,hondId:b.hondId,b}));
+ D.facturen.forEach(f=>out.push({id:"f:"+f.id,soort:"fac",datum:ymd(new Date(f.ts)),ts:f.ts,klantId:f.klantId,hondId:f.hondId,f}));
+ D.afspraken.filter(a=>["noshow","geannuleerd"].includes(a.status)).forEach(a=>out.push({id:"a:"+a.id,soort:"mis",datum:a.datum,ts:fromYmd(a.datum).getTime()+toMin(a.start)*6e4,klantId:a.klantId,hondId:a.hondId,a}));
+ return out.sort((a,b)=>b.datum.localeCompare(a.datum)||b.ts-a.ts)}
+const evText=e=>{const h=get("honden",e.hondId),k=get("klanten",e.klantId);return[h&&h.naam,h&&h.ras,k&&k.naam,e.b&&[e.b.diensten,e.b.mesje,e.b.notitie,e.b.mw,e.b.vacht,e.b.gedrag].join(" "),e.f&&[e.f.nr,...e.f.regels.map(r=>r.naam)].join(" "),e.a&&e.a.notitie].join(" ").toLowerCase()};
+function hisRows(L,withDays){let last="",h="";for(const e of L){if(withDays&&e.datum!==last){h+=`<div class="day">${fromYmd(e.datum).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>`;last=e.datum}
+  const hd=get("honden",e.hondId),k=get("klanten",e.klantId),who=`<b>${esc(hd?hd.naam:"")}</b>${hd&&hd.ras?` <span class="mute">${esc(hd.ras)}</span>`:""}${k?` · ${esc(k.naam)}`:""}`;
+  let kind,body,right="";
+  if(e.soort==="beh"){const b=e.b;kind=`<span class="k beh">Behandeling</span>`;body=`${who}<br>${esc(b.diensten||"")}${b.mesje?` · <i>${esc(b.mesje)}</i>`:""}<br><small>${esc([b.vacht&&"Vacht: "+b.vacht,b.gedrag&&"Gedrag: "+b.gedrag,b.mw].filter(Boolean).join(" · "))}</small>${b.notitie?`<div class="note" style="margin-top:6px">${esc(b.notitie)}</div>`:""}`}
+  else if(e.soort==="fac"){const f=e.f;kind=`<span class="k fac">Factuur</span>`;body=`${who||`<span class="mute">Losse verkoop</span>`}<br>${esc(f.nr)} · ${esc(f.regels.map(r=>r.naam).join(", "))}`;right=`<b>${eur(f.totaal)}</b>${f.rest>0?`<br><span class="pill amber">Open ${eur(f.rest)}</span>`:""}`}
+  else{const a=e.a;kind=`<span class="k mis">${a.status==="noshow"?"Niet gekomen":"Geannuleerd"}</span>`;body=`${who}<br>Afspraak ${a.start}${a.notitie?" · "+esc(a.notitie):""}`}
+  h+=`<div class="ev" role="button" tabindex="0" data-ev="${e.id}" style="cursor:pointer"><div>${kind}${withDays?"":`<br><small>${fDate(e.datum)}</small>`}</div><div>${body}</div><div style="text-align:right">${right}</div></div>`}return h}
+function drawHis(){const q=$("#hq").value.trim().toLowerCase(),f=$("#hf").value;
+ const L=evts().filter(e=>(!f||e.soort===f)&&(!q||evText(e).includes(q))).slice(0,300);
+ $("#hList").innerHTML=L.length?hisRows(L,true):`<div class="panel empty">${q||f?"Niets gevonden. Pas de zoekterm of het filter aan.":"Nog geen historie. Behandelingen worden vastgelegd bij het afrekenen."}</div>`}
+function openEv(id){const[t,x]=id.split(":");if(t==="b")behDlg(x);else if(t==="f")invDlg(get("facturen",x));else afDlg(x)}
+$("#hq").oninput=drawHis;$("#hf").onchange=drawHis;$("#hNew").onclick=()=>behDlg(null);
+$("#hList").onclick=e=>{const r=e.target.closest("[data-ev]");if(r)openEv(r.dataset.ev)};
+$("#hList").onkeydown=e=>{if(e.key==="Enter"){const r=e.target.closest("[data-ev]");if(r)openEv(r.dataset.ev)}};
+function behDlg(id){
+ const b=id?get("behandelingen",id):{datum:ymd(today()),hondId:null,klantId:null,diensten:"",mw:(get("medewerkers",lastDoor)||{}).naam||"",mesje:"",vacht:"Goed",gedrag:"Rustig",notitie:""};
+ const d=modal(`<h2>${id?"Behandeling":"Behandeling vastleggen"}</h2>${khHtml(b.klantId)}
+  <div class="g2"><label>Datum<input id="bD" type="date" value="${b.datum}"></label><label>Medewerker<input id="bMw" list="mwL" value="${esc(b.mw)}"></label></div><datalist id="mwL">${D.medewerkers.map(m=>`<option value="${esc(m.naam)}">`).join("")}</datalist>
+  <label>Behandelingen<input id="bDi" value="${esc(b.diensten)}" placeholder="Bijvoorbeeld: volledige trimbeurt"></label>
+  <label>Mesje, kam of techniek<input id="bMe" value="${esc(b.mesje)}"></label>
+  <div class="g2"><label>Vacht<select id="bVa">${["Goed","Klitten","Sterk vervilt","Huidproblemen","Vlooien gezien"].map(x=>`<option ${x===b.vacht?"selected":""}>${x}</option>`).join("")}</select></label><label>Gedrag<select id="bGe">${["Rustig","Wat onrustig","Lastig","Bijt of hapt"].map(x=>`<option ${x===b.gedrag?"selected":""}>${x}</option>`).join("")}</select></label></div>
+  <label>Notitie<textarea id="bNo" rows="3">${esc(b.notitie)}</textarea></label>${b.factuurId?`<small>Hoort bij factuur ${esc((get("facturen",b.factuurId)||{}).nr||"")}</small>`:""}
+  <div class="msg" id="bM"></div>
+  <div class="acts">${id?`<button class="btn d" type="button" id="bDel">Verwijderen</button><span class="sp"></span>`:""}<button class="btn" type="button" id="bX">Annuleren</button><button class="btn p" type="button" id="bOk">Opslaan</button></div>`);
+ khBind(d,b.hondId);d.q("#bX").onclick=()=>d.close();
+ d.q("#bOk").onclick=()=>{const k=khKlant(d),h=d.q("#khH").value;if(!k||!h){d.q("#bM").textContent="Kies een klant en een hond.";return}
+  const v={klantId:k.id,hondId:h,datum:d.q("#bD").value||ymd(today()),mw:d.q("#bMw").value.trim(),diensten:d.q("#bDi").value.trim(),mesje:d.q("#bMe").value.trim(),vacht:d.q("#bVa").value,gedrag:d.q("#bGe").value,notitie:d.q("#bNo").value.trim()};
+  if(id)Object.assign(get("behandelingen",id),v);else D.behandelingen.push({id:uid(),afspraakId:null,factuurId:null,...v});saveC("behandelingen");d.close();draw()};
+ if(d.q("#bDel"))d.q("#bDel").onclick=e=>arm(e.target,()=>{D.behandelingen=D.behandelingen.filter(x=>x.id!==id);saveC("behandelingen");d.close();draw()},"Nogmaals: verwijderen");
+}
+
+/* ---------- instellingen ---------- */
+const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit"};
+function drawInst(){for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;
+ $("#mwSum").textContent=`(${D.medewerkers.length})`;
+ $("#mwList").innerHTML=D.medewerkers.map(m=>`<div style="display:flex;gap:8px;align-items:center"><input type="color" value="${m.kleur}" data-mc="${m.id}" aria-label="Kleur" style="width:46px;padding:2px;height:38px"><input value="${esc(m.naam)}" data-mn="${m.id}" aria-label="Naam"><button class="btn s d" type="button" data-md="${m.id}">Verwijderen</button></div>`).join("")||`<div class="mute">Nog geen medewerkers.</div>`;
+ $("#dbUrl").value=S.get("dburl","");$("#dbFrame").hidden=STANDALONE;dbUi()}
+$("#bSave").onclick=()=>{for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
+ bed.zondag=$("#bZon").checked;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;saveC("bedrijf");$("#bMsg").textContent="Opgeslagen.";setTimeout(()=>$("#bMsg").textContent="",2500);drawInst()};
+$("#mwAdd").onclick=()=>{const k=["#8a4a7e","#2f7d6d","#b0662a","#3d5fa8","#8d7a1c","#a8434f"];D.medewerkers.push({id:uid(),naam:"Nieuwe medewerker",kleur:k[D.medewerkers.length%k.length]});saveC("medewerkers");drawInst()};
+$("#mwList").onchange=e=>{const t=e.target.dataset;const m=get("medewerkers",t.mc||t.mn);if(!m)return;if(t.mc)m.kleur=e.target.value;else m.naam=e.target.value.trim()||m.naam;saveC("medewerkers")};
+$("#mwList").onclick=e=>{const id=e.target.dataset.md;if(id)arm(e.target,()=>{D.medewerkers=D.medewerkers.filter(m=>m.id!==id);saveC("medewerkers");drawInst()},"Zeker?")};
+$("#bkMake").onclick=()=>{const j=JSON.stringify({app:"Trimmy",versie:1,ts:Date.now(),bedrijf:bed,...Object.fromEntries(COLS.map(c=>[c,D[c]]))});$("#bkTxt").value=j;$("#bkCopy").hidden=false;
+ if(STANDALONE){const a=$("#bkDl");a.hidden=false;a.href=URL.createObjectURL(new Blob([j],{type:"application/json"}));a.download=`trimmy-backup-${ymd(new Date())}.json`}$("#bkMsg").textContent="Back-up staat in het tekstvak."};
+$("#bkCopy").onclick=()=>{const t=$("#bkTxt");navigator.clipboard.writeText(t.value).then(()=>$("#bkMsg").textContent="Gekopieerd.",()=>{t.select();$("#bkMsg").textContent="Geselecteerd. Kopieer met Ctrl+C."})};
+$("#bkRestore").onclick=e=>{let j;try{j=JSON.parse($("#bkTxt").value)}catch(x){$("#bkMsg").textContent="Dit is geen geldige back-up.";return}if(!j||j.app!=="Trimmy"){$("#bkMsg").textContent="Dit is geen Trimmy-back-up.";return}
+ arm(e.target,()=>{COLS.forEach(c=>{D[c]=Array.isArray(j[c])?j[c]:[];S.set(c,D[c])});bed={...BED0,...(j.bedrijf||{})};S.set("bedrijf",bed);S.set("demo",0);dbSnap={};dbPersist();dbSoon();$("#bkMsg").textContent="Hersteld.";draw()},"Nogmaals: alles vervangen")};
+$("#wipeAll").onclick=e=>arm(e.target,()=>{wipeLocal();S.set("demo",0);dbSnap={};dbPull={};dbPersist();draw()},"Nogmaals: alles wissen");
+
+/* ---------- synchronisatie met Aiven (via koppelservice) ---------- */
+const DBC=[...COLS,"bedrijf"];
+let dbSnap=S.get("dbsnap",{}),dbPull=S.get("dbpull",{}),dbInfo=S.get("dbinfo",{}),dbBusy=false;
+const dbPersist=()=>{S.set("dbsnap",dbSnap);S.set("dbpull",dbPull);S.set("dbinfo",dbInfo)};
+const dbOn=()=>S.get("dbon",0)===1&&!!S.get("dburl","");
+function stable(o){return JSON.stringify(o,(k,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v)}
+const hsh=s=>{let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0,c;i<s.length;i++){c=s.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return(4294967296*(2097151&h2)+(h1>>>0)).toString(36)};
+function dbLocal(c){const m=new Map();if(c==="bedrijf")m.set("bedrijf",bed);else D[c].forEach(x=>m.set(String(x.id),x));return m}
+function dbApply(c,id,data,del){if(c==="bedrijf"){if(!del)bed={...BED0,...data};return}const a=D[c],i=a.findIndex(x=>String(x.id)===id);if(del){if(i>=0)a.splice(i,1)}else if(i<0)a.push(data);else a[i]=data}
+function dbUrl(c){let u;try{u=new URL(S.get("dburl",""))}catch(e){throw new Error("het adres van de koppelservice is geen geldig webadres")}u.pathname=u.pathname.replace(/\/+$/,"")+"/"+c;return u.toString()}
+async function dbCall(c,body,since){const u=dbUrl(c);const r=body?await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}):await fetch(u+(u.includes("?")?"&":"?")+"since="+since,{cache:"no-store"});
+ const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"status "+r.status);return j}
+function dbSoon(){if(!dbOn())return;clearTimeout(dbSoon.t);dbSoon.t=setTimeout(dbSync,2000)}
+async function dbSync(){
+ if(dbBusy||!dbOn())return;dbBusy=true;dbInfo={...dbInfo,busy:true};dbUi();let pulled=0,pushed=0,changed=false;
+ try{for(const c of DBC){const snap=dbSnap[c]||(dbSnap[c]={});let since=dbPull[c]||0,touched=false;
+   for(let page=0;page<200;page++){const j=await dbCall(c,null,since),loc=dbLocal(c);
+    for(const r of j.records){const id=String(r.id),l=loc.get(id),lh=l?hsh(stable(l)):null,sh=snap[id];
+     if(r.deleted){if(l&&lh===sh){dbApply(c,id,null,true);touched=true;pulled++}if(!l||lh===sh)delete snap[id]}
+     else{const rh=hsh(stable(r.data));if(!l&&sh!=null)continue;
+      if(!l||lh===sh){if(lh!==rh){dbApply(c,id,r.data,false);touched=true;pulled++}snap[id]=rh}else if(lh===rh)snap[id]=rh}}
+    const next=j.max||since;if(!j.more||!j.records.length||next===since){dbPull[c]=Math.max(dbPull[c]||0,next);break}since=next;dbPull[c]=next}
+   if(touched){if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);changed=true}
+   const loc=dbLocal(c),batch=[];
+   for(const[id,dt]of loc){const h=hsh(stable(dt));if(snap[id]!==h)batch.push({id,data:dt,deleted:false,h})}
+   if(c!=="facturen")for(const id of Object.keys(snap))if(!loc.has(id))batch.push({id,data:{},deleted:true,h:null});
+   const size=c==="honden"?20:100;
+   for(let i=0;i<batch.length;i+=size){const part=batch.slice(i,i+size);await dbCall(c,{kassa:bed.kassa||"K1",records:part.map(({id,data,deleted})=>({id,data,deleted}))});part.forEach(x=>{if(x.deleted)delete snap[x.id];else snap[x.id]=x.h});pushed+=part.length}}
+  dbInfo={ts:Date.now(),pulled,pushed,err:null};if(changed){S.set("demo",0);draw()}
+ }catch(e){dbInfo={...dbInfo,busy:false,err:e.message}}
+ finally{dbBusy=false;dbInfo.busy=false;dbPersist();dbUi()}}
+function dbUi(){const on=S.get("dbon",0)===1,url=S.get("dburl",""),t=ts=>new Date(ts).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
+ let sum="uit",stat="Staat uit. Gegevens blijven alleen in de browser van dit apparaat.",cls="",dot="Alleen dit apparaat";
+ if(on&&!url){sum="adres ontbreekt";stat="Vul hieronder het adres van de koppelservice in.";cls="err";dot="Database: adres ontbreekt"}
+ else if(on){if(dbInfo.busy){sum="bezig";stat="Bezig met synchroniseren…";cls="on";dot="Synchroniseren…"}
+  else if(dbInfo.err){sum="fout";stat="Synchroniseren mislukt: "+dbInfo.err+". Trimmy probeert het opnieuw; er gaat niets verloren.";cls="err";dot="Database: fout"}
+  else if(dbInfo.ts){sum="laatst "+t(dbInfo.ts);stat=`Laatste synchronisatie om ${t(dbInfo.ts)}. Opgehaald: ${dbInfo.pulled||0}, verstuurd: ${dbInfo.pushed||0}.`;cls="on";dot="Aiven · "+t(dbInfo.ts)}
+  else{sum="aan";stat="Aan. De eerste synchronisatie volgt zo.";cls="on";dot="Aiven"}}
+ const s=$("#syncDot");s.className="sync "+cls;s.querySelector("span").textContent=dot;
+ if($("#dbSum")){$("#dbSum").textContent="("+sum+")";$("#dbStat").textContent=stat;$("#dbStat").classList.toggle("w",cls==="err");$("#dbOn").checked=on}}
+$("#dbUrl").onchange=e=>{S.set("dburl",e.target.value.trim());dbUi();dbSoon()};
+$("#dbOn").onchange=e=>{S.set("dbon",e.target.checked?1:0);dbInfo={};dbUi();if(e.target.checked)dbSync()};
+$("#dbNow").onclick=()=>{S.set("dburl",$("#dbUrl").value.trim());if(!dbOn()){dbUi();return}dbSync()};
+setInterval(()=>{if(dbOn()&&document.visibilityState==="visible")dbSync()},60000);
+setInterval(()=>{if(tab==="agenda")drawAg()},120000);
+
+go(tab);dbUi();if(dbOn())dbSync();
+</script>

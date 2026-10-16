@@ -1,0 +1,10 @@
+{
+  "name": "trimmy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Trimmy - kassa, agenda en klantbeheer voor hondentrimsalons, met Aiven MySQL",
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}
