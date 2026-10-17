@@ -265,7 +265,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 </style>
 
 <header><div class="hbar wrap">
- <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg><span id="logoName">Trimmy</span></div>
+ <div class="logo" id="hdrLogo"><img id="hdrImg" alt="" hidden style="display:block;max-height:34px;max-width:170px;width:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg><span id="logoName">Trimmy</span></div>
  <nav role="tablist" id="nav"></nav>
  <div class="sync" id="syncDot" title="Database"><b></b><span>Alleen dit apparaat</span></div>
  <div class="who" id="who" hidden></div>
@@ -432,7 +432,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
  </section>
 </main>
 <div id="printArea"></div>
-<div id="lock" hidden><div class="box" role="dialog" aria-labelledby="lockH"><div class="logo" style="font-size:22px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:24px;height:24px;color:var(--acc)"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Trimmy</div><h2 id="lockH">Wie werkt er?</h2><div class="ppl" id="lockPpl"></div><label id="lockL" hidden>Inlogcode<input id="lockCode" type="password" inputmode="numeric" autocomplete="off"></label><div class="msg" id="lockMsg"></div><button class="btn p" type="button" id="lockGo" disabled>Inloggen</button></div></div>
+<div id="lock" hidden><div class="box" role="dialog" aria-labelledby="lockH"><img id="lockImg" alt="" hidden style="display:block;max-height:80px;max-width:260px;width:auto;margin:0 auto 4px"><div class="logo" id="lockTrimmy" style="font-size:22px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:24px;height:24px;color:var(--acc)"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Trimmy</div><h2 id="lockH">Wie werkt er?</h2><div class="ppl" id="lockPpl"></div><label id="lockL" hidden>Inlogcode<input id="lockCode" type="password" inputmode="numeric" autocomplete="off"></label><div class="msg" id="lockMsg"></div><button class="btn p" type="button" id="lockGo" disabled>Inloggen</button></div></div>
 
 <script>
 "use strict";
@@ -610,7 +610,7 @@ let tab=S.get("tab","agenda");if(!TABS.some(t=>t[0]===tab))tab="agenda";
 $("#nav").innerHTML=TABS.map(([k,l,adm],i)=>(adm&&!TABS[i-1][2]?`<span class="navsep adm" aria-hidden="true"></span><span class="navlab adm">Beheer</span>`:"")+`<button role="tab" type="button" data-t="${k}" ${adm?'class="adm"':""}>${l}</button>`).join("");
 $("#nav").onclick=e=>{const b=e.target.closest("button");if(b)go(b.dataset.t)};
 function go(t){if(!canTab(t))t="agenda";tab=t;S.set("tab",t);$$(".view").forEach(v=>v.hidden=v.id!=="v-"+t);$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t));draw();window.scrollTo(0,0)}
-function draw(){navUi();({agenda:drawAg,kassa:drawKassa,klanten:drawKl,facturen:drawFac,artikelen:drawArt,historie:drawHis,inst:drawInst})[tab]();$("#demo").hidden=!S.get("demo",0);$("#logoName").textContent="Trimmy"}
+function draw(){navUi();({agenda:drawAg,kassa:drawKassa,klanten:drawKl,facturen:drawFac,artikelen:drawArt,historie:drawHis,inst:drawInst})[tab]();$("#demo").hidden=!S.get("demo",0);$("#logoName").textContent="Trimmy";brandUi()}
 $("#demoWipe").onclick=e=>arm(e.target,()=>{wipeLocal();S.set("demo",0);draw()},"Klik nogmaals: alles wissen");
 function wipeLocal(){COLS.forEach(c=>{D[c]=[];S.set(c,[])});D.medewerkers=[{id:uid(),naam:"Medewerker 1",kleur:"#8a4a7e"}];saveC("medewerkers");bed={...BED0};saveC("bedrijf");bon=newBon();saveBon()}
 
@@ -1169,13 +1169,13 @@ $("#bAutoUur").onchange=autoPending;$("#bAutoStil").onchange=autoPending;
 function autoPending(){const st=$("#autoStat");st.classList.add("w");st.textContent="Nog niet opgeslagen. Klik onderaan dit blok op Opslaan om de wijziging door te voeren."}
 function drawLogo(){const el=$("#logoPv");if(!el)return;el.innerHTML=bed.logo?`<img src="${bed.logo}" alt="Logo" style="max-width:240px;max-height:80px;display:block">`:"Nog geen logo";$("#logoDel").hidden=!bed.logo}
 $("#logoPick").onclick=()=>$("#logoF").click();
-$("#logoDel").onclick=()=>{delete bed.logo;delete bed.logoW;delete bed.logoH;saveC("bedrijf");drawLogo();toast("Logo verwijderd.")};
+$("#logoDel").onclick=()=>{delete bed.logo;delete bed.logoW;delete bed.logoH;saveC("bedrijf");drawLogo();brandUi();toast("Logo verwijderd.")};
 $("#logoF").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(f.size>8e6){toast("Dit bestand is te groot. Kies een logo kleiner dan 8 MB.");return}
  const u=URL.createObjectURL(f),img=new Image();
  img.onload=()=>{let w=img.naturalWidth||img.width||480,h=img.naturalHeight||img.height||160;const sc=Math.min(1,480/w,160/h);w=Math.max(1,Math.round(w*sc));h=Math.max(1,Math.round(h*sc));
   const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(img,0,0,w,h);let d=c.toDataURL("image/png");
   if(d.length>180000){x.globalCompositeOperation="destination-over";x.fillStyle="#ffffff";x.fillRect(0,0,w,h);d=c.toDataURL("image/jpeg",.88)}
-  URL.revokeObjectURL(u);bed.logo=d;bed.logoW=w;bed.logoH=h;saveC("bedrijf");drawLogo();toast("Logo opgeslagen. Het staat nu in je e-mails en op je facturen.")};
+  URL.revokeObjectURL(u);bed.logo=d;bed.logoW=w;bed.logoH=h;saveC("bedrijf");drawLogo();brandUi();toast("Logo opgeslagen. Het staat nu in je e-mails en op je facturen.")};
  img.onerror=()=>{URL.revokeObjectURL(u);toast("Dit bestand kan Trimmy niet als afbeelding openen. Probeer een PNG of JPG.")};img.src=u};
 $("#bMailTest").onclick=async()=>{const m=$("#mailStat");m.classList.remove("w");
  if(!bed.mail){m.classList.add("w");m.textContent="Vul eerst bij Bedrijfsgegevens het e-mailadres van de salon in.";return}
@@ -1319,7 +1319,10 @@ function navUi(){$$("#nav button").forEach(b=>b.hidden=!canTab(b.dataset.t));con
  const w=$("#who"),m=cur();w.hidden=!m;if(m)w.innerHTML=`<span class="dot" style="background:${esc(m.kleur||"#888")}">${esc((m.naam||"?")[0].toUpperCase())}</span><span><b>${esc(m.naam)}</b><br><small>${m.rol==="beheerder"?"Beheerder":"Medewerker"}</small></span><button class="btn s" type="button" id="lockNow">Vergrendelen</button>`}
 document.addEventListener("click",e=>{if(e.target.id==="lockNow"){S.del("sessie");lockCheck()}});
 let lockSel=null;
-function lockCheck(){const need=accessOn()&&!cur();$("#lock").hidden=!need;if(!need){navUi();return}
+function brandUi(){const L=bed.logo||"";const hi=$("#hdrImg"),li=$("#lockImg");
+ hi.hidden=!L;li.hidden=!L;if(L){hi.src=L;hi.alt=bed.naam||"Logo";li.src=L;li.alt=bed.naam||"Logo"}
+ $$("#hdrLogo>svg,#logoName").forEach(x=>x.toggleAttribute("hidden",!!L));$("#lockTrimmy").hidden=!!L;$("#hdrLogo").title=L?(bed.naam||"")+" · Trimmy":"Trimmy"}
+function lockCheck(){brandUi();const need=accessOn()&&!cur();$("#lock").hidden=!need;if(!need){navUi();return}
  if(document.querySelector("dialog[open]"))$$("dialog[open]").forEach(d=>d.close());
  const ppl=D.medewerkers.filter(m=>m.pin);if(!ppl.some(m=>m.id===lockSel))lockSel=ppl.length===1?ppl[0].id:null;
  $("#lockPpl").innerHTML=ppl.map(m=>`<button type="button" data-u="${m.id}" aria-pressed="${m.id===lockSel}"><span class="dot" style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;background:${esc(m.kleur||"#888")}">${esc(m.naam[0].toUpperCase())}</span>${esc(m.naam)}</button>`).join("");
