@@ -346,6 +346,13 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
    <label>Afspraak verplaatst<textarea id="bMsgWij" rows="3"></textarea></label>
    <label>Onderwerp van de e-mail<input id="bMsgOnd"></label>
    <small>Deze woorden vult Trimmy zelf in: {klant} {hond} {dag} {datum} {tijd} {behandeling} {salon} {salontel} {adres}</small>
+   <h3 style="margin-top:6px">Automatische herinnering</h3>
+   <label class="chk"><input type="checkbox" id="bAutoHer"> Herinnering automatisch per e-mail versturen</label>
+   <div class="g2"><label>Hoe lang vóór de afspraak<select id="bAutoUur"><option value="2">2 uur</option><option value="4">4 uur</option><option value="12">12 uur</option><option value="24">24 uur (een dag van tevoren)</option><option value="48">48 uur</option><option value="72">3 dagen</option></select></label>
+   <label class="chk" style="align-self:end"><input type="checkbox" id="bAutoStil"> Niet versturen tussen 21:00 en 08:00</label></div>
+   <div class="note" id="autoStat">Staat uit.</div>
+   <div id="autoList"></div>
+   <small>De herinneringen worden ingepland op je Netlify-server en daar verstuurd, ook als Trimmy niet openstaat. Hiervoor moet direct versturen aan staan (hieronder). Klanten zonder e-mailadres krijgen geen automatische herinnering. Een afspraak die later wordt gemaakt dan de ingestelde tijd vooraf, krijgt alleen de bevestiging. Verplaats of annuleer je een afspraak, dan past Trimmy de herinnering aan.</small>
    <h3 style="margin-top:6px">Opgemaakte e-mail</h3>
    <div class="g2"><label>Kleur in e-mails<input id="bKleur" type="color" style="height:40px;padding:3px"></label><span></span></div>
    <label class="chk"><input type="checkbox" id="bMailDirect"> E-mail direct vanuit Trimmy versturen (via de koppelservice op Netlify)</label>
@@ -489,9 +496,9 @@ function remDlg(){
 /* ---------- gegevens ---------- */
 const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers"];
 const D={};COLS.forEach(c=>D[c]=S.get(c,[]));
-const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",kleur:"#6a3560",mailDirect:false,msgBev:"Hoi {klant}! Hierbij de bevestiging van de afspraak voor {hond}: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
+const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",kleur:"#6a3560",mailDirect:false,autoHer:false,autoUur:24,autoStil:true,msgBev:"Hoi {klant}! Hierbij de bevestiging van de afspraak voor {hond}: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
 let bed={...BED0,...S.get("bedrijf",{})};
-const saveC=c=>{if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);dbSoon()};
+const saveC=c=>{if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);dbSoon();if(c==="afspraken"||c==="klanten"||c==="bedrijf"||c==="honden")planSoon()};
 const get=(c,id)=>id?D[c].find(x=>x.id===id):null;
 const klLab=k=>k.naam+(k.plaats?" · "+k.plaats:"");
 const hondLab=h=>{const k=get("klanten",h.klantId);return h.naam+(h.ras?" ("+h.ras+")":"")+(k?" · "+k.naam:"")};
@@ -590,7 +597,7 @@ function drawAg(){
  const ds=agMode==="dag"?ymd(agD):(days.some(d=>ymd(d)===tdy)?tdy:ymd(days[0]));
  const L=D.afspraken.filter(a=>a.datum===ds&&(!agMw||a.mwId===agMw)).sort((a,b)=>toMin(a.start)-toMin(b.start));
  $("#agList").innerHTML=`<h3>${ds===tdy?"Vandaag":fromYmd(ds).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"})} · ${L.length} afspra${L.length===1?"ak":"ken"}</h3><div class="panel scroll"><table><tbody>${L.length?L.map(a=>{const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),m=get("medewerkers",a.mwId);
-  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(hd?hd.naam:"–")}</b> <span class="mute">${esc(hd?hd.ras:"")}</span><br><small>${esc(kl?kl.naam+(kl.tel?" · "+kl.tel:""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${hd&&(hd.medisch||hd.gedrag)?`<br><small style="color:var(--warn)">${esc([hd.medisch,hd.gedrag].filter(Boolean).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span>${a.bevestigd&&!a.herinnerd?` <span class="pill acc">Bevestiging verstuurd</span>`:""}${a.herinnerd?` <span class="pill acc">Herinnerd</span>`:""}${conflicts(a).length?` <span class="pill warn">Dubbel</span>`:""}</td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
+  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(hd?hd.naam:"–")}</b> <span class="mute">${esc(hd?hd.ras:"")}</span><br><small>${esc(kl?kl.naam+(kl.tel?" · "+kl.tel:""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${hd&&(hd.medisch||hd.gedrag)?`<br><small style="color:var(--warn)">${esc([hd.medisch,hd.gedrag].filter(Boolean).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span>${a.bevestigd&&!a.herinnerd?` <span class="pill acc">Bevestiging verstuurd</span>`:""}${a.herinnerd?` <span class="pill acc">Herinnerd</span>`:planFor(a.id)?` <span class="pill">Herinnering ${fDT(planFor(a.id).sendAt)}</span>`:""}${conflicts(a).length?` <span class="pill warn">Dubbel</span>`:""}</td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
 }
 $("#agPrev").onclick=()=>{agD=addDays(agD,agMode==="week"?-7:-1);drawAg()};
 $("#agNext").onclick=()=>{agD=addDays(agD,agMode==="week"?7:1);drawAg()};
@@ -689,7 +696,7 @@ function afDlg(id,init={}){
  const store=()=>{const v=collect();if(!v)return null;const cf=conflicts({...v,id:a.id});
   if(cf.length){if(bed.dubbel==="blokkeer"){d.q("#afMsg").textContent="Kies een andere tijd of medewerker: "+confText(v,cf);return null}
    if(!d.ok2){d.ok2=1;d.q("#afMsg").textContent="Dit is een dubbele boeking. Klik nogmaals om hem toch in te plannen.";d.q("#afOk").textContent="Toch opslaan";if(d.q("#afPay"))d.q("#afPay").textContent="Toch opslaan en afrekenen";return null}}
-  let r;if(id){r=get("afspraken",id);Object.assign(r,v)}else{r={id:uid(),factuurId:null,...v};D.afspraken.push(r)}saveC("afspraken");if(!id){agD=fromYmd(r.datum)}draw();return r};
+  let r;if(id){r=get("afspraken",id);Object.assign(r,v)}else{r={id:uid(),factuurId:null,aangemaakt:Date.now(),...v};D.afspraken.push(r)}saveC("afspraken");if(!id){agD=fromYmd(r.datum)}draw();return r};
  const was=id?{datum:a.datum,start:a.start}:null;
  d.q("#afOk").onclick=()=>{const bev=d.q("#afBev").checked;if(!id)S.set("bevauto",bev?1:0);const r=store();if(!r)return;d.close();
   if(bev){if(!get("klanten",r.klantId))return;const moved=was&&(was.datum!==r.datum||was.start!==r.start);msgDlg(r,!id?"bevestiging":moved?"wijziging":"bevestiging")}
@@ -1092,14 +1099,15 @@ function behDlg(id){
 }
 
 /* ---------- instellingen ---------- */
-const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgBev:"msgBev",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd",bKleur:"kleur"};
-function drawInst(){for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;drawLogo();$("#bMailDirect").checked=!!bed.mailDirect;
+const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgBev:"msgBev",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd",bKleur:"kleur",bAutoUur:"autoUur"};
+function drawInst(){for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;drawLogo();$("#bMailDirect").checked=!!bed.mailDirect;$("#bAutoHer").checked=!!bed.autoHer;$("#bAutoStil").checked=bed.autoStil!==false;$("#bAutoUur").value=String(bed.autoUur||24);planUi();
  $("#mwSum").textContent=`(${D.medewerkers.length})`;
  $("#mwList").innerHTML=D.medewerkers.map(m=>`<div style="display:flex;gap:8px;align-items:center"><input type="color" value="${m.kleur}" data-mc="${m.id}" aria-label="Kleur" style="width:46px;padding:2px;height:38px"><input value="${esc(m.naam)}" data-mn="${m.id}" aria-label="Naam"><button class="btn s d" type="button" data-md="${m.id}">Verwijderen</button></div>`).join("")||`<div class="mute">Nog geen medewerkers.</div>`;
  $("#dbUrl").value=S.get("dburl","");$("#dbFrame").hidden=STANDALONE;dbUi()}
 function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
- bed.zondag=$("#bZon").checked;bed.mailDirect=$("#bMailDirect").checked;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgBev","msgHer","msgWij","msgOnd"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
+ bed.zondag=$("#bZon").checked;bed.mailDirect=$("#bMailDirect").checked;bed.autoHer=$("#bAutoHer").checked;bed.autoStil=$("#bAutoStil").checked;bed.autoUur=+bed.autoUur||24;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgBev","msgHer","msgWij","msgOnd"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
 $("#bSave").onclick=()=>saveBed($("#bMsg"));
+$("#bAutoHer").onchange=()=>{if($("#bAutoHer").checked&&!$("#bMailDirect").checked){$("#bMailDirect").checked=true}};
 function drawLogo(){const el=$("#logoPv");if(!el)return;el.innerHTML=bed.logo?`<img src="${bed.logo}" alt="Logo" style="max-width:240px;max-height:80px;display:block">`:"Nog geen logo";$("#logoDel").hidden=!bed.logo}
 $("#logoPick").onclick=()=>$("#logoF").click();
 $("#logoDel").onclick=()=>{delete bed.logo;delete bed.logoW;delete bed.logoH;saveC("bedrijf");drawLogo();toast("Logo verwijderd.")};
@@ -1171,6 +1179,44 @@ $("#dbUrl").onchange=e=>{S.set("dburl",e.target.value.trim());dbUi();dbSoon()};
 $("#dbOn").onchange=e=>{S.set("dbon",e.target.checked?1:0);dbInfo={};dbUi();if(e.target.checked)dbSync()};
 $("#dbNow").onclick=()=>{S.set("dburl",$("#dbUrl").value.trim());if(!dbOn()){dbUi();return}dbSync()};
 setInterval(()=>{if(dbOn()&&document.visibilityState==="visible")dbSync()},60000);
+/* ---------- automatische herinneringen (ingepland op Netlify) ---------- */
+let planList=S.get("planlist",[]),planInfo={ts:0,err:null},planBusy=false;
+function planApi(){const m=mailApi();return m?m.replace(/\/api\/mail(?=\?|$)/,"/api/plan"):null}
+const planFor=id=>planList.find(x=>x.id===id&&x.status==="gepland");
+function afEpoch(a){const[y,m,d]=String(a.datum).split("-").map(Number),[h,mi]=String(a.start||"0:0").split(":").map(Number);return new Date(y,(m||1)-1,d||1,h||0,mi||0).getTime()}
+function sendAtFor(a){let t=afEpoch(a)-(+bed.autoUur||24)*36e5;if(bed.autoStil!==false){const d=new Date(t),h=d.getHours();if(h>=21){d.setHours(20,0,0,0);t=d.getTime()}else if(h<8){d.setDate(d.getDate()-1);d.setHours(20,0,0,0);t=d.getTime()}}return t}
+function planWanted(){const out=new Map();if(!bed.autoHer)return out;const now=Date.now(),H=(+bed.autoUur||24)*36e5;
+ for(const a of D.afspraken){if(DEAD.includes(a.status)||a.status==="afgerekend")continue;const k=get("klanten",a.klantId);if(!k||!/^\S+@\S+\.\S+$/.test(String(k.email||"").trim()))continue;
+  const at=afEpoch(a);if(!(at>now+30*6e4)||at-now>45*864e5)continue;if(a.aangemaakt&&at-a.aangemaakt<H)continue;if(a.herinnerd&&!a.herinnerdAuto)continue;const sa=sendAtFor(a);if(sa<now&&at-now<H/2&&!S.get("plansnap",{})[a.id])continue;
+  const text=fillMsg(bed.msgHer||BED0.msgHer,a);let html=mailHtml(a,"herinnering",text);const logo=bed.logo&&html.includes(bed.logo)?bed.logo:null;if(logo)html=html.split(bed.logo).join("cid:trimmy-logo");
+  out.set(a.id,{id:a.id,sendAt:sendAtFor(a),afspraakAt:at,to:String(k.email).trim(),subject:"Herinnering: "+fillMsg(bed.msgOnd||BED0.msgOnd,a),html,text,logo})}
+ return out}
+async function planCall(body){const u=planApi();const r=await fetch(u+(body?"":(u.includes("?")?"&":"?")+"t="+Date.now()),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(r.status===404?"de planner staat nog niet op Netlify (plan.mjs ontbreekt)":(j.error||"status "+r.status));return j}
+function planSoon(){clearTimeout(planSoon.t);planSoon.t=setTimeout(()=>planSync(),3000)}
+async function planSync(){
+ if(planBusy||!planApi()||!bed.mailDirect)return planUi();
+ const snap=S.get("plansnap",{}),want=planWanted(),up=[],rm=[];
+ for(const[id,it]of want){const h=hsh(stable(it));if(snap[id]!==h)up.push([id,it,h])}for(const id of Object.keys(snap))if(!want.has(id))rm.push(id);
+ planBusy=true;try{
+  const chunks=[];for(let i=0;i<up.length;i+=10)chunks.push(up.slice(i,i+10));if(!chunks.length&&rm.length)chunks.push([]);
+  for(let c=0;c<chunks.length;c++){await planCall({upsert:chunks[c].map(x=>x[1]),remove:c===0?rm:[]});chunks[c].forEach(x=>{snap[x[0]]=x[2]});if(c===0)rm.forEach(id=>{delete snap[id]});S.set("plansnap",snap)}
+  const j=await planCall(null);planList=Array.isArray(j.items)?j.items:[];S.set("planlist",planList);
+  let ch=false;for(const it of planList){if(it.status!=="verstuurd")continue;const a=get("afspraken",it.id);if(a&&afEpoch(a)===it.afspraakAt&&a.herinnerd!==it.sentAt){a.herinnerd=it.sentAt;a.herinnerdAuto=true;ch=true}}
+  planInfo={ts:Date.now(),err:null};if(ch){S.set("afspraken",D.afspraken);dbSoon();draw()}
+ }catch(e){planInfo={ts:planInfo.ts,err:STANDALONE?e.message:"inplannen werkt alleen in Trimmy op jullie eigen webadres (Netlify)"}}
+ finally{planBusy=false;planUi()}}
+function planUi(){const st=$("#autoStat"),li=$("#autoList");if(!st)return;st.classList.remove("w");li.innerHTML="";
+ if(!bed.autoHer){st.textContent="Staat uit.";return}
+ if(!bed.mailDirect||!planApi()){st.classList.add("w");st.textContent="Zet eerst E-mail direct vanuit Trimmy versturen aan en vul bij Koppelservice en database het adres in.";return}
+ if(planInfo.err){st.classList.add("w");st.textContent="Inplannen mislukt: "+planInfo.err+". Trimmy probeert het over 10 minuten opnieuw.";}
+ const now=Date.now(),komend=planList.filter(x=>x.status==="gepland").sort((a,b)=>a.sendAt-b.sendAt),recent=planList.filter(x=>x.status!=="gepland").sort((a,b)=>(b.sentAt||b.afspraakAt)-(a.sentAt||a.afspraakAt)).slice(0,6);
+ if(!planInfo.err)st.textContent=`Aan. ${komend.length} herinnering${komend.length===1?"":"en"} ingepland, verstuurd ${bed.autoUur||24} uur vooraf${bed.autoStil!==false?" (niet 's nachts)":""}.${planInfo.ts?" Bijgewerkt om "+new Date(planInfo.ts).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"})+".":""}`;
+ const row=x=>{const a=get("afspraken",x.id),h=a&&get("honden",a.hondId),k=a&&get("klanten",a.klantId);const pill=x.status==="gepland"?`<span class="pill">Gepland</span>`:x.status==="verstuurd"?`<span class="pill ok">Verstuurd</span>`:x.status==="mislukt"?`<span class="pill warn">Mislukt</span>`:`<span class="pill">Vervallen</span>`;
+  return`<tr><td style="white-space:nowrap">${fDT(x.status==="verstuurd"&&x.sentAt?x.sentAt:x.sendAt)}</td><td>${esc(h?h.naam:"")}${k?` · ${esc(k.naam)}`:""}<br><small>${esc(x.to)}</small></td><td>${a?`Afspraak ${fDT(x.afspraakAt)}`:""}${x.error?`<br><small style="color:var(--warn)">${esc(x.error)}</small>`:""}</td><td>${pill}</td></tr>`};
+ if(komend.length||recent.length)li.innerHTML=`<div class="scroll"><table><thead><tr><th>Moment</th><th>Hond en klant</th><th>Afspraak</th><th>Status</th></tr></thead><tbody>${komend.slice(0,8).map(row).join("")}${recent.map(row).join("")}</tbody></table></div>`;
+ void now}
+setInterval(()=>{if(bed.autoHer||Object.keys(S.get("plansnap",{})).length)planSync()},600000);
+setTimeout(()=>{if(bed.autoHer||Object.keys(S.get("plansnap",{})).length)planSync()},4000);
 setInterval(()=>{if(tab==="agenda")drawAg()},120000);
 
 go(tab);dbUi();if(dbOn())dbSync();
