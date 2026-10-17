@@ -377,14 +377,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
      <div class="note" id="accStat"></div>
      <div id="mwList" style="display:grid;gap:8px"></div>
      <div class="acts l"><button class="btn" id="mwAdd" type="button">Medewerker toevoegen</button></div>
-     <table class="rights"><thead><tr><th>Onderdeel</th><th>Medewerker</th><th>Beheerder</th></tr></thead><tbody>
-      <tr><td>Agenda, kassa, klanten, historie</td><td>Ja</td><td>Ja</td></tr>
-      <tr><td>Facturen bekijken en restant afrekenen</td><td>Ja</td><td>Ja</td></tr>
-      <tr><td>Omzetcijfers en export voor de accountant</td><td>Nee</td><td>Ja</td></tr>
-      <tr><td>Klanten verwijderen</td><td>Nee</td><td>Ja</td></tr>
-      <tr><td>Artikelen en prijzen beheren</td><td>Nee</td><td>Ja</td></tr>
-      <tr><td>Instellingen</td><td>Nee</td><td>Ja</td></tr>
-     </tbody></table>
+     <div><h3 style="margin:6px 0 4px">Rechten van medewerkers</h3><small>Vink aan wat medewerkers mogen. Een beheerder mag altijd alles. Wijzigingen gelden direct.</small><div class="scroll" style="margin-top:6px"><table class="rights" id="rights"></table></div></div>
      <label>Automatisch vergrendelen als er niets gebeurt<select id="bAutoLock"><option value="0">Nooit</option><option value="5">Na 5 minuten</option><option value="15">Na 15 minuten</option><option value="30">Na 30 minuten</option><option value="60">Na 1 uur</option></select></label>
      <div class="acts l"><button class="btn p" id="bSave5" type="button">Opslaan</button><span class="mute" id="bMsg5" role="status"></span></div>
      <small>Inloggen houdt nieuwsgierige blikken weg bij omzet en instellingen, maar is geen volledige beveiliging: Trimmy draait in de browser en iemand met technische kennis kan het omzeilen. Kies codes die niet makkelijk te raden zijn. Een vergeten code kan een beheerder opnieuw instellen.</small>
@@ -560,7 +553,7 @@ function remDlg(){
 /* ---------- gegevens ---------- */
 const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers"];
 const D={};COLS.forEach(c=>D[c]=S.get(c,[]));
-const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",kleur:"#6a3560",mailDirect:false,autoLock:0,autoHer:false,autoUur:24,autoStil:true,msgBev:"Hoi {klant}! Hierbij de bevestiging van de afspraak voor {hond}: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
+const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",kleur:"#6a3560",mailDirect:false,autoLock:0,perms:{historie:true,facturen:true,prijsBon:true,omzet:false,klantDel:false,artikelen:false,inst:false},autoHer:false,autoUur:24,autoStil:true,msgBev:"Hoi {klant}! Hierbij de bevestiging van de afspraak voor {hond}: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
 let bed={...BED0,...S.get("bedrijf",{})};
 const saveC=c=>{if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);dbSoon();if(c==="afspraken"||c==="klanten"||c==="bedrijf"||c==="honden")planSoon()};
 const get=(c,id)=>id?D[c].find(x=>x.id===id):null;
@@ -616,7 +609,7 @@ const TABS=[["agenda","Agenda"],["kassa","Kassa"],["klanten","Klanten"],["histor
 let tab=S.get("tab","agenda");if(!TABS.some(t=>t[0]===tab))tab="agenda";
 $("#nav").innerHTML=TABS.map(([k,l,adm],i)=>(adm&&!TABS[i-1][2]?`<span class="navsep adm" aria-hidden="true"></span><span class="navlab adm">Beheer</span>`:"")+`<button role="tab" type="button" data-t="${k}" ${adm?'class="adm"':""}>${l}</button>`).join("");
 $("#nav").onclick=e=>{const b=e.target.closest("button");if(b)go(b.dataset.t)};
-function go(t){if((TABS.find(x=>x[0]===t)||[])[2]&&!isAdmin())t="agenda";tab=t;S.set("tab",t);$$(".view").forEach(v=>v.hidden=v.id!=="v-"+t);$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t));draw();window.scrollTo(0,0)}
+function go(t){if(!canTab(t))t="agenda";tab=t;S.set("tab",t);$$(".view").forEach(v=>v.hidden=v.id!=="v-"+t);$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t));draw();window.scrollTo(0,0)}
 function draw(){navUi();({agenda:drawAg,kassa:drawKassa,klanten:drawKl,facturen:drawFac,artikelen:drawArt,historie:drawHis,inst:drawInst})[tab]();$("#demo").hidden=!S.get("demo",0);$("#logoName").textContent="Trimmy"}
 $("#demoWipe").onclick=e=>arm(e.target,()=>{wipeLocal();S.set("demo",0);draw()},"Klik nogmaals: alles wissen");
 function wipeLocal(){COLS.forEach(c=>{D[c]=[];S.set(c,[])});D.medewerkers=[{id:uid(),naam:"Medewerker 1",kleur:"#8a4a7e"}];saveC("medewerkers");bed={...BED0};saveC("bedrijf");bon=newBon();saveBon()}
@@ -782,7 +775,7 @@ function klantDlg(id,cb){
   <div class="g2"><label>Telefoon<input id="kT" type="tel" value="${esc(k.tel)}"></label><label>E-mail<input id="kE" type="email" value="${esc(k.email)}"></label></div>
   <label>Notitie<textarea id="kNo" rows="2">${esc(k.notitie)}</textarea></label>
   <div class="msg" id="kMsg"></div>
-  <div class="acts">${id&&isAdmin()?`<button class="btn d" type="button" id="kDel" ${heeftF?"disabled title=\"Klant heeft facturen en blijft bewaard\"":""}>Verwijderen</button><span class="sp"></span>`:""}<button class="btn" type="button" id="kX">Annuleren</button><button class="btn p" type="button" id="kOk">Opslaan</button></div>`);
+  <div class="acts">${id&&can("klantDel")?`<button class="btn d" type="button" id="kDel" ${heeftF?"disabled title=\"Klant heeft facturen en blijft bewaard\"":""}>Verwijderen</button><span class="sp"></span>`:""}<button class="btn" type="button" id="kX">Annuleren</button><button class="btn p" type="button" id="kOk">Opslaan</button></div>`);
  d.q("#kX").onclick=()=>d.close();
  d.q("#kOk").onclick=()=>{const v={naam:d.q("#kN").value.trim(),straat:d.q("#kS").value.trim(),pc:d.q("#kP").value.trim().toUpperCase(),plaats:d.q("#kPl").value.trim(),tel:d.q("#kT").value.trim(),email:d.q("#kE").value.trim(),notitie:d.q("#kNo").value.trim()};
   if(!v.naam){d.q("#kMsg").textContent="Vul de naam in.";return}
@@ -841,11 +834,11 @@ function drawKassa(){
  $("#kGrid").innerHTML=r.length?r.map(x=>`<button type="button" class="prod ${x.type}" data-id="${x.id}"><b>${esc(x.naam)}</b><small>${x.type==="dienst"?(x.duur||0)+" min":(x.voorraad==null||x.voorraad===""?"":`<span style="color:${+x.voorraad<=3?"var(--warn)":"inherit"}">${x.voorraad} op voorraad</span>`)}</small><span class="pr">${eur(x.prijs)}</span></button>`).join(""):`<div class="empty">Geen artikelen gevonden.</div>`;
  drawBon();
 }
-function drawBon(){
+function drawBon(){const pb=can("prijsBon");$("#bonDisc").disabled=!pb;$("#kVrij").hidden=!pb;
  const af=get("afspraken",bon.afspraakId),k=get("klanten",bon.klantId),h=get("honden",bon.hondId);
  $("#bonAf").hidden=!af;if(af)$("#bonAf").innerHTML=`<span>Afspraak ${fDate(af.datum)} om ${af.start}</span><button class="btn s" type="button" id="bAfX">Loskoppelen</button>`;
  $("#bonKl").innerHTML=k?`<span><b>${esc(k.naam)}</b>${h?` · ${esc(h.naam)}`:""}<br><small>${esc([k.plaats,k.tel].filter(Boolean).join(" · "))}</small></span><span style="display:flex;gap:6px"><button class="btn s" type="button" id="bKl">Wijzig</button><button class="btn s" type="button" id="bKx">Wis</button></span>`:`<span class="mute">Losse verkoop, geen klant</span><button class="btn s" type="button" id="bKl">Klant en hond kiezen</button>`;
- $("#bonLines").innerHTML=bon.lines.length?bon.lines.map((l,i)=>`<div class="line"><b>${esc(l.naam)}</b><b>${eur(lineTot(l))}</b><div class="q"><button type="button" data-m="${i}" aria-label="Minder">−</button><span style="min-width:22px;text-align:center">${nm(l.aantal)}</span><button type="button" data-p="${i}" aria-label="Meer">+</button><span class="mute">à</span><input data-pr="${i}" inputmode="decimal" value="${nm(l.prijs)}" aria-label="Prijs per stuk"><button type="button" class="rm" data-r="${i}">Verwijder</button></div></div>`).join(""):`<div class="empty">De bon is leeg. Kies een behandeling of product.</div>`;
+ $("#bonLines").innerHTML=bon.lines.length?bon.lines.map((l,i)=>`<div class="line"><b>${esc(l.naam)}</b><b>${eur(lineTot(l))}</b><div class="q"><button type="button" data-m="${i}" aria-label="Minder">−</button><span style="min-width:22px;text-align:center">${nm(l.aantal)}</span><button type="button" data-p="${i}" aria-label="Meer">+</button><span class="mute">à</span><input data-pr="${i}" inputmode="decimal" ${pb?"":"readonly"} value="${nm(l.prijs)}" aria-label="Prijs per stuk"><button type="button" class="rm" data-r="${i}">Verwijder</button></div></div>`).join(""):`<div class="empty">De bon is leeg. Kies een behandeling of product.</div>`;
  if(document.activeElement!==$("#bonDisc"))$("#bonDisc").value=bon.korting||0;
  const s=bonSub(),t=bonTot();
  $("#bSub").textContent=eur(s);$("#bDiscRow").hidden=!bonDisc();$("#bDisc").textContent="− "+eur(s-t);
@@ -958,7 +951,7 @@ function restDlg(f){let pm="PIN";const d=modal(`<h2>Restant afrekenen</h2><div c
 
 /* ---------- facturen ---------- */
 let fFil="alle";
-function drawFac(){const adm=isAdmin();$("#fStats").hidden=!adm;$("#fExp").hidden=!adm;
+function drawFac(){const adm=can("omzet");$("#fStats").hidden=!adm;$("#fExp").hidden=!adm;
  const day=new Date().toDateString(),pays=D.facturen.flatMap(f=>f.betalingen).filter(p=>new Date(p.ts).toDateString()===day),sum=a=>a.reduce((s,p)=>s+p.bedrag,0);
  const mth=new Date();const mf=D.facturen.filter(f=>{const d=new Date(f.ts);return d.getMonth()===mth.getMonth()&&d.getFullYear()===mth.getFullYear()});
  $("#fStats").innerHTML=`<div class="stat"><b>${eur(sum(pays))}</b><span>Ontvangen vandaag</span></div>`+["PIN","Contant"].map(m=>`<div class="stat"><b>${eur(sum(pays.filter(p=>p.methode===m)))}</b><span>${m} vandaag</span></div>`).join("")+
@@ -1164,7 +1157,7 @@ function behDlg(id){
 
 /* ---------- instellingen ---------- */
 const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgBev:"msgBev",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd",bKleur:"kleur",bAutoUur:"autoUur",bAutoLock:"autoLock"};
-function drawInst(){instPane(S.get("instpane","salon"));for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;drawLogo();$("#bMailDirect").checked=!!bed.mailDirect;$("#bAutoHer").checked=!!bed.autoHer;$("#bAutoStil").checked=bed.autoStil!==false;$("#bAutoUur").value=String(bed.autoUur||24);planUi();
+function drawInst(){instPane(S.get("instpane","salon"));{const ad=isAdmin();$("#wipeAll").hidden=!ad;$("#bkRestore").hidden=!ad;}for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;drawLogo();$("#bMailDirect").checked=!!bed.mailDirect;$("#bAutoHer").checked=!!bed.autoHer;$("#bAutoStil").checked=bed.autoStil!==false;$("#bAutoUur").value=String(bed.autoUur||24);planUi();
  $("#mwSum").textContent=`(${D.medewerkers.length})`;
  drawTeam();
  $("#dbUrl").value=S.get("dburl","");$("#dbFrame").hidden=STANDALONE;dbUi()}
@@ -1191,15 +1184,16 @@ $("#bMailTest").onclick=async()=>{const m=$("#mailStat");m.classList.remove("w")
  try{await sendMailApi(bed.mail,"Testmail van Trimmy",mailHtml(demo,"bevestiging","Dit is een testmail. Zo zien bevestigingen en herinneringen er voor je klanten uit."),"Dit is een testmail van Trimmy.");m.textContent="Testmail verstuurd naar "+bed.mail+". Kijk ook in de map Spam."}
  catch(e){m.classList.add("w");m.textContent="Versturen mislukt: "+e.message}};$("#bSave2").onclick=()=>saveBed($("#bMsg2"));[["#bSave3","#bMsg3"],["#bSave4","#bMsg4"],["#bSave5","#bMsg5"]].forEach(([b,m])=>{$(b).onclick=()=>saveBed($(m))});
 $("#snav").onclick=e=>{const b=e.target.closest("[data-p]");if(b)instPane(b.dataset.p)};
-function instPane(p){if(!$(`.pane[data-p="${p}"]`))p="salon";S.set("instpane",p);$$(".pane").forEach(x=>x.hidden=x.dataset.p!==p);$$("#snav button").forEach(x=>x.setAttribute("aria-current",x.dataset.p===p))}
+function instPane(p){if(!$(`.pane[data-p="${p}"]`)||(p==="team"&&!isAdmin()))p="salon";S.set("instpane",p);$$(".pane").forEach(x=>x.hidden=x.dataset.p!==p);$$("#snav button").forEach(x=>x.setAttribute("aria-current",x.dataset.p===p))}
 $("#mwAdd").onclick=()=>{const k=["#8a4a7e","#2f7d6d","#b0662a","#3d5fa8","#8d7a1c","#a8434f"];D.medewerkers.push({id:uid(),naam:"Nieuwe medewerker",kleur:k[D.medewerkers.length%k.length],rol:"medewerker"});saveC("medewerkers");drawTeam()};
 function drawTeam(){$("#mwSum").textContent=`(${D.medewerkers.length})`;
  const on=accessOn(),me=cur();
  $("#accStat").className="note"+(on?"":" w");
  $("#accStat").textContent=on?`Inloggen staat aan. Je bent ingelogd als ${me?me.naam:"onbekend"}. Medewerkers zonder code kunnen niet inloggen.`:"Iedereen ziet nu alles. Geef een beheerder een inlogcode om Artikelen, Instellingen en de omzetcijfers af te schermen.";
  $("#mwList").innerHTML=D.medewerkers.map(m=>`<div class="mwrow"><input type="color" value="${esc(m.kleur||"#8a8f8c")}" data-mc="${m.id}" aria-label="Kleur van ${esc(m.naam)}" style="width:46px;padding:2px;height:38px"><input value="${esc(m.naam)}" data-mn="${m.id}" aria-label="Naam"><select data-mr="${m.id}" aria-label="Rol"><option value="medewerker" ${m.rol!=="beheerder"?"selected":""}>Medewerker</option><option value="beheerder" ${m.rol==="beheerder"?"selected":""}>Beheerder</option></select><div class="acts l"><span class="code">${m.pin?"Code ingesteld":"Geen code"}</span><button class="btn s" type="button" data-mp="${m.id}">${m.pin?"Code wijzigen":"Code instellen"}</button>${m.pin?`<button class="btn s" type="button" data-mx="${m.id}">Code wissen</button>`:""}<button class="btn s d" type="button" data-md="${m.id}" ${me&&me.id===m.id?"disabled title=\"Je kunt jezelf niet verwijderen\"":""}>Verwijderen</button></div></div>`).join("")||`<div class="mute">Nog geen medewerkers.</div>`;
- $("#bAutoLock").value=String(bed.autoLock||0)}
+ $("#bAutoLock").value=String(bed.autoLock||0);drawRights()}
 const adminsWithCode=(ex)=>D.medewerkers.filter(m=>m.id!==ex&&m.rol==="beheerder"&&m.pin);
+$("#rights").onchange=e=>{const k=e.target.dataset.perm;if(!k)return;bed.perms={...BED0.perms,...(bed.perms||{}),[k]:e.target.checked};saveC("bedrijf");navUi();toast("Rechten bijgewerkt.")};
 $("#mwList").onchange=e=>{const t=e.target.dataset;const m=get("medewerkers",t.mc||t.mn||t.mr);if(!m)return;
  if(t.mc)m.kleur=e.target.value;else if(t.mn)m.naam=e.target.value.trim()||m.naam;
  else if(t.mr){if(e.target.value!=="beheerder"&&m.pin&&accessOn()&&!adminsWithCode(m.id).length){e.target.value="beheerder";toast("Er moet minstens één beheerder met een inlogcode zijn.");return}m.rol=e.target.value}
@@ -1315,7 +1309,13 @@ async function pinHash(code,salt){const txt=salt+"|"+code;try{const b=await cryp
 function accessOn(){return D.medewerkers.some(m=>m.pin&&m.rol==="beheerder")}
 function cur(){if(!accessOn())return null;const s=S.get("sessie",null);return s?get("medewerkers",s.id)||null:null}
 function isAdmin(){if(!accessOn())return true;const m=cur();return!!(m&&m.rol==="beheerder")}
-function navUi(){const adm=isAdmin();$$("#nav .adm").forEach(x=>x.hidden=!adm);
+const PERMS=[["historie","Historie bekijken"],["facturen","Facturen bekijken en restant afrekenen"],["prijsBon","Prijs en korting op de bon aanpassen, vrij bedrag invoeren"],["omzet","Omzetcijfers en export voor de accountant"],["klantDel","Klanten verwijderen"],["artikelen","Artikelen en prijzen beheren"],["inst","Instellingen (zonder medewerkers en toegang)"]];
+function can(k){if(isAdmin())return true;const p={...BED0.perms,...(bed.perms||{})};return!!p[k]}
+const TABPERM={historie:"historie",facturen:"facturen",artikelen:"artikelen",inst:"inst"};
+const canTab=t=>!TABPERM[t]||can(TABPERM[t]);
+function drawRights(){const p={...BED0.perms,...(bed.perms||{})};
+ $("#rights").innerHTML=`<thead><tr><th>Onderdeel</th><th>Medewerker</th><th>Beheerder</th></tr></thead><tbody><tr><td>Agenda, kassa en klanten</td><td>Altijd</td><td>Ja</td></tr>`+PERMS.map(([k,l])=>`<tr><td><label for="perm-${k}" style="font-weight:400;display:inline">${esc(l)}</label></td><td><input type="checkbox" id="perm-${k}" data-perm="${k}" ${p[k]?"checked":""} style="width:auto"></td><td>Ja</td></tr>`).join("")+`<tr><td>Medewerkers, rollen en rechten</td><td>Nooit</td><td>Ja</td></tr></tbody>`}
+function navUi(){$$("#nav button").forEach(b=>b.hidden=!canTab(b.dataset.t));const anyAdm=TABS.some(x=>x[2]&&canTab(x[0]));$$("#nav .navsep,#nav .navlab").forEach(x=>x.hidden=!anyAdm);const tp=isAdmin();$$('#snav [data-p="team"]').forEach(x=>x.hidden=!tp);
  const w=$("#who"),m=cur();w.hidden=!m;if(m)w.innerHTML=`<span class="dot" style="background:${esc(m.kleur||"#888")}">${esc((m.naam||"?")[0].toUpperCase())}</span><span><b>${esc(m.naam)}</b><br><small>${m.rol==="beheerder"?"Beheerder":"Medewerker"}</small></span><button class="btn s" type="button" id="lockNow">Vergrendelen</button>`}
 document.addEventListener("click",e=>{if(e.target.id==="lockNow"){S.del("sessie");lockCheck()}});
 let lockSel=null;
@@ -1327,7 +1327,7 @@ function lockCheck(){const need=accessOn()&&!cur();$("#lock").hidden=!need;if(!n
 $("#lockPpl").onclick=e=>{const b=e.target.closest("[data-u]");if(b){lockSel=b.dataset.u;lockCheck()}};
 async function lockTry(){const u=get("medewerkers",lockSel);if(!u)return;const ok=(await pinHash($("#lockCode").value,u.salt||""))===u.pin;
  if(!ok){$("#lockMsg").textContent="Deze code klopt niet. Probeer het opnieuw.";$("#lockCode").value="";$("#lockCode").focus();return}
- S.set("sessie",{id:u.id,ts:Date.now()});lastDoor=u.id;S.set("door",u.id);$("#lock").hidden=true;go(isAdmin()?tab:(TABS.find(x=>x[0]===tab)||[])[2]?"agenda":tab)}
+ S.set("sessie",{id:u.id,ts:Date.now()});lastDoor=u.id;S.set("door",u.id);$("#lock").hidden=true;go(canTab(tab)?tab:"agenda")}
 $("#lockGo").onclick=lockTry;$("#lockCode").onkeydown=e=>{if(e.key==="Enter")lockTry()};
 let lastAct=Date.now();["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,()=>{lastAct=Date.now()},true));
 setInterval(()=>{const mins=+bed.autoLock||0;if(mins&&cur()&&Date.now()-lastAct>mins*6e4){S.del("sessie");lockCheck()}},20000);
