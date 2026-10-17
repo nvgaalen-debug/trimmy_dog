@@ -43,10 +43,19 @@ export default async (req) => {
   if (!subject || (!html && !text)) return json(400, { error: "onderwerp en bericht zijn verplicht" });
   if (html.length > 300000) return json(413, { error: "bericht is te groot" });
 
+  // logo als ingesloten afbeelding (cid), zodat Gmail en Outlook het direct tonen
+  const attachments = [];
+  const logo = String(body?.logo || "");
+  if (logo && html.includes("cid:trimmy-logo")) {
+    const m = logo.match(/^data:(image\/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if (m && m[2].length < 700000) attachments.push({ filename: "logo." + (m[1].split("/")[1] === "jpeg" ? "jpg" : m[1].split("/")[1]), content: m[2], encoding: "base64", contentType: m[1], cid: "trimmy-logo", contentDisposition: "inline" });
+  }
+
   try {
     const info = await getTransport().sendMail({
       from: process.env.MAIL_FROM, to, subject, html: html || undefined, text: text || undefined,
       replyTo: process.env.MAIL_REPLY_TO || undefined,
+      attachments: attachments.length ? attachments : undefined,
     });
     return json(200, { ok: true, id: info.messageId });
   } catch (e) {
