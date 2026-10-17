@@ -47,7 +47,7 @@ nav button[aria-selected="true"]{background:var(--acc);color:var(--acc-ink)}
 .sync{font-size:12px;color:var(--mute);white-space:nowrap}
 .sync b{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line);margin-right:5px;vertical-align:1px}
 .sync.on b{background:var(--ok)}.sync.err b{background:var(--warn)}
-@media(max-width:700px){.hbar{flex-wrap:wrap;gap:8px}nav{order:3;flex-basis:100%}}
+@media(max-width:700px){.hbar{flex-wrap:wrap;gap:8px}#nav{order:3;flex-basis:100%}}
 
 main{max-width:1400px;margin:0 auto;padding-block:16px 40px}
 .banner{max-width:1400px;margin:12px auto 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--acc-soft);border-radius:var(--r);padding:10px 14px;font-size:14px}
@@ -222,6 +222,32 @@ dialog::backdrop{background:rgba(10,14,12,.55)}
  #printArea.bon{width:76mm;font-size:10pt}
 }
 [hidden]{display:none!important}
+.inst{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;align-items:start}
+.snav{display:flex;flex-direction:column;gap:2px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px)}
+.snav button{border:0;background:none;text-align:left;padding:9px 12px;border-radius:6px;font-weight:600;color:var(--mute)}
+.snav button:hover{color:var(--ink);background:var(--sunk)}
+.snav button[aria-current="true"]{background:var(--acc-soft);color:var(--acc)}
+.pane{padding:20px 22px}
+.pane>h2{margin-bottom:4px}
+.pane .lead{margin:0 0 16px;color:var(--mute);font-size:14px}
+.pane .sbody{padding:0}
+.pane h3{margin-top:10px}
+.rights{max-width:560px}
+.rights td,.rights th{padding:6px 10px;font-size:13.5px}
+.rights td:not(:first-child),.rights th:not(:first-child){text-align:center;width:110px}
+@media(max-width:800px){.inst{grid-template-columns:1fr}.snav{position:static;flex-direction:row;overflow-x:auto;scrollbar-width:none}.snav button{white-space:nowrap}}
+.navsep{width:1px;align-self:stretch;margin:6px 6px;background:var(--line);flex:none}
+.navlab{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);align-self:center;padding:0 4px;white-space:nowrap}
+.who{display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap}
+.who .dot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px}
+.mwrow{display:grid;grid-template-columns:46px minmax(120px,1fr) 150px auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px}
+.mwrow .code{font-size:12.5px;color:var(--mute)}
+@media(max-width:620px){.mwrow{grid-template-columns:46px 1fr}.mwrow>*:nth-child(n+3){grid-column:1/-1}}
+#lock{position:fixed;inset:0;z-index:90;background:var(--bg);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
+#lock .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px;width:min(440px,100%);display:grid;gap:14px}
+#lock .ppl{display:flex;flex-wrap:wrap;gap:8px}
+#lock .ppl button{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:6px 14px 6px 6px;font-weight:600}
+#lock .ppl button[aria-pressed="true"]{border-color:var(--acc);background:var(--acc-soft)}
 .blk{touch-action:none;user-select:none;-webkit-user-select:none}
 .blk.drag-src{opacity:.35}
 .blk .rz{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize}
@@ -242,6 +268,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
  <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg><span id="logoName">Trimmy</span></div>
  <nav role="tablist" id="nav"></nav>
  <div class="sync" id="syncDot" title="Database"><b></b><span>Alleen dit apparaat</span></div>
+ <div class="who" id="who" hidden></div>
 </div></header>
 <div class="wrap"><div class="banner" id="demo" hidden><span>Je bekijkt <b>voorbeeldgegevens</b>: verzonnen klanten, honden en afspraken om de app te leren kennen.</span><span class="sp"></span><button class="btn s" id="demoWipe" type="button">Voorbeeldgegevens wissen en leeg beginnen</button></div></div>
 
@@ -314,68 +341,105 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
  </section>
 
  <section class="view" id="v-inst" hidden>
-  <details class="set" open id="sDb"><summary>Koppelservice en database <small id="dbSum"></small></summary><div class="sbody">
-   <div class="note" id="dbStat"></div>
-   <div class="note w" id="dbFrame" hidden>Deze voorbeeldversie draait binnen Claude en mag geen verbinding maken met andere websites. De koppeling met Aiven werkt in de versie op jullie eigen webadres (Netlify); zie LEESMIJ.md.</div>
-   <label>Adres van de koppelservice (nodig voor e-mail en database)<input id="dbUrl" type="url" placeholder="https://jouw-trimmy.netlify.app/api/db?code=…" autocomplete="off"></label>
-   <small>Voor e-mail is alleen dit adres nodig. Zet het vinkje hieronder pas aan als de Aiven-database is ingericht.</small>
-   <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database</label>
-   <div class="acts l"><button class="btn p" id="dbNow" type="button">Nu synchroniseren</button></div>
-   <small>Trimmy bewaart elke soort gegevens in een eigen tabel: <code>klanten</code>, <code>honden</code>, <code>artikelen</code>, <code>afspraken</code>, <code>facturen</code> met <code>factuurregels</code> en <code>betalingen</code>, <code>behandelingen</code>, <code>medewerkers</code> en <code>bedrijf</code>. De koppelservice draait op Netlify en praat met je Aiven MySQL-database. Zolang de database uit staat of onbereikbaar is, werkt Trimmy gewoon door op dit apparaat en synchroniseert later. Geef elke kassa een eigen Kassa-ID voordat je dit aanzet.</small>
-  </div></details>
-  <details class="set" id="sBed"><summary>Bedrijfsgegevens</summary><div class="sbody">
-   <label>Naam salon<input id="bNaam"></label>
-   <label>Straat en huisnummer<input id="bStraat"></label>
-   <div class="g3"><label>Postcode<input id="bPc" maxlength="8"></label><label>Plaats<input id="bPlaats"></label></div>
-   <div class="g2"><label>Telefoon<input id="bTel" type="tel"></label><label>E-mail<input id="bMail" type="email"></label></div>
-   <div class="g2"><label>KvK-nummer<input id="bKvk"></label><label>Btw-nummer<input id="bBtwnr"></label></div>
-   <div class="g2"><label>IBAN<input id="bIban"></label><label>Betaaltermijn op rekening (dagen)<input id="bTermijn" type="number" min="0" max="90"></label></div>
-   <div><div style="font-weight:500;font-size:14px;margin-bottom:6px">Logo (voor e-mails en facturen)</div>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div id="logoPv" style="min-width:120px;min-height:56px;max-width:260px;border:1px dashed var(--line);border-radius:6px;background:#fff;display:grid;place-items:center;padding:8px;color:#888;font-size:13px"></div>
-    <div class="acts l"><button class="btn s" type="button" id="logoPick">Logo kiezen</button><button class="btn s d" type="button" id="logoDel">Verwijderen</button><input type="file" id="logoF" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div></div>
-    <small>Een liggend logo met transparante of witte achtergrond werkt het best. Trimmy verkleint het automatisch.</small></div>
-   <label>Tekst onderaan factuur<input id="bVoet"></label>
-   <div class="g2"><label>Kassa-ID (uniek per apparaat)<input id="bKassa" maxlength="6"></label><label>Agenda open van/tot (uur)<span style="display:flex;gap:6px"><input id="bOpen" type="number" min="0" max="23"><input id="bSluit" type="number" min="1" max="24"></span></label></div>
-   <label class="chk"><input type="checkbox" id="bZon"> Zondag tonen in de weekagenda</label>
-   <label>Dubbele boeking voor dezelfde medewerker<select id="bDubbel"><option value="waarschuw">Waarschuwen, toch inplannen kan</option><option value="blokkeer">Niet toestaan</option></select></label>
-   <div class="acts l"><button class="btn p" id="bSave" type="button">Opslaan</button><span class="mute" id="bMsg" role="status"></span></div>
-  </div></details>
-  <details class="set" id="sMsg"><summary>Berichten aan klanten</summary><div class="sbody">
-   <label>Bevestiging van een nieuwe afspraak<textarea id="bMsgBev" rows="4"></textarea></label>
-   <label>Herinnering voor een afspraak<textarea id="bMsgHer" rows="4"></textarea></label>
-   <label>Afspraak verplaatst<textarea id="bMsgWij" rows="3"></textarea></label>
-   <label>Onderwerp van de e-mail<input id="bMsgOnd"></label>
-   <small>Deze woorden vult Trimmy zelf in: {klant} {hond} {dag} {datum} {tijd} {behandeling} {salon} {salontel} {adres}</small>
-   <h3 style="margin-top:6px">Automatische herinnering</h3>
-   <label class="chk"><input type="checkbox" id="bAutoHer"> Herinnering automatisch per e-mail versturen</label>
-   <div class="g2"><label>Hoe lang vóór de afspraak<select id="bAutoUur"><option value="2">2 uur</option><option value="4">4 uur</option><option value="12">12 uur</option><option value="24">24 uur (een dag van tevoren)</option><option value="48">48 uur</option><option value="72">3 dagen</option></select></label>
-   <label class="chk" style="align-self:end"><input type="checkbox" id="bAutoStil"> Niet versturen tussen 21:00 en 08:00</label></div>
-   <div class="note" id="autoStat">Staat uit.</div>
-   <div id="autoList"></div>
-   <small>De herinneringen worden ingepland op je Netlify-server en daar verstuurd, ook als Trimmy niet openstaat. Hiervoor moet direct versturen aan staan (hieronder). Klanten zonder e-mailadres krijgen geen automatische herinnering. Een afspraak die later wordt gemaakt dan de ingestelde tijd vooraf, krijgt alleen de bevestiging. Verplaats of annuleer je een afspraak, dan past Trimmy de herinnering aan.</small>
-   <h3 style="margin-top:6px">Opgemaakte e-mail</h3>
-   <div class="g2"><label>Kleur in e-mails<input id="bKleur" type="color" style="height:40px;padding:3px"></label><span></span></div>
-   <label class="chk"><input type="checkbox" id="bMailDirect"> E-mail direct vanuit Trimmy versturen (via de koppelservice op Netlify)</label>
-   <div class="note" id="mailStat">Staat dit uit, dan kopieer je de opgemaakte e-mail en plak je hem in Outlook of Gmail.</div>
-   <div class="acts l"><button class="btn p" id="bSave2" type="button">Opslaan</button><button class="btn" id="bMailTest" type="button">Testmail naar salonadres</button><span class="mute" id="bMsg2" role="status"></span></div>
-  </div></details>
-  <details class="set" id="sMw"><summary>Medewerkers <small id="mwSum"></small></summary><div class="sbody">
-   <div id="mwList" style="display:grid;gap:8px"></div>
-   <div class="acts l"><button class="btn" id="mwAdd" type="button">Medewerker toevoegen</button></div>
-  </div></details>
-  <details class="set" id="sBk"><summary>Back-up en herstel</summary><div class="sbody">
-   <div class="acts l"><button class="btn p" id="bkMake" type="button">Back-up maken</button><button class="btn" id="bkCopy" type="button" hidden>Kopiëren</button><button class="btn" id="bkDl" type="button" hidden>Opslaan als bestand</button></div>
-   <label>Back-up (JSON). Plak hier een eerdere back-up om die te herstellen.<textarea id="bkTxt" rows="6" spellcheck="false"></textarea></label>
-   <div class="acts l"><button class="btn d" id="bkRestore" type="button">Herstellen uit tekst hierboven</button><span id="bkMsg" role="status" class="mute"></span></div>
-   <small>Herstellen vervangt alle gegevens op dit apparaat. Staat de database aan, dan gaat de herstelde stand daarna ook naar Aiven. Een back-up bevat klantgegevens: bewaar hem veilig.</small>
-  </div></details>
-  <details class="set" id="sReset"><summary>Alles wissen op dit apparaat</summary><div class="sbody">
-   <p style="margin:0">Wist klanten, honden, afspraken, facturen, artikelen en historie op dit apparaat. In de Aiven-database blijven facturen altijd bewaard.</p>
-   <div class="acts l"><button class="btn d" id="wipeAll" type="button">Alles wissen</button></div>
-  </div></details>
+  <div class="inst">
+   <nav class="snav" id="snav" aria-label="Onderdelen van instellingen">
+    <button type="button" data-p="salon">Salon</button>
+    <button type="button" data-p="agenda">Agenda</button>
+    <button type="button" data-p="team">Medewerkers en toegang</button>
+    <button type="button" data-p="berichten">Berichten aan klanten</button>
+    <button type="button" data-p="koppel">Koppelingen</button>
+    <button type="button" data-p="gegevens">Gegevens en apparaat</button>
+   </nav>
+   <div class="spanes">
+    <div class="pane panel" data-p="salon"><h2>Salon</h2><p class="lead">Deze gegevens staan op facturen, kassabonnen en in e-mails aan klanten.</p><div class="sbody">
+     <label>Naam salon<input id="bNaam"></label>
+     <label>Straat en huisnummer<input id="bStraat"></label>
+     <div class="g3"><label>Postcode<input id="bPc" maxlength="8"></label><label>Plaats<input id="bPlaats"></label></div>
+     <div class="g2"><label>Telefoon<input id="bTel" type="tel"></label><label>E-mail<input id="bMail" type="email"></label></div>
+     <div class="g2"><label>KvK-nummer<input id="bKvk"></label><label>Btw-nummer<input id="bBtwnr"></label></div>
+     <div class="g2"><label>IBAN<input id="bIban"></label><label>Betaaltermijn op rekening (dagen)<input id="bTermijn" type="number" min="0" max="90"></label></div>
+     <label>Tekst onderaan factuur<input id="bVoet"></label>
+     <div><div style="font-weight:500;font-size:14px;margin-bottom:6px">Logo (voor e-mails en facturen)</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div id="logoPv" style="min-width:120px;min-height:56px;max-width:260px;border:1px dashed var(--line);border-radius:6px;background:#fff;display:grid;place-items:center;padding:8px;color:#888;font-size:13px"></div>
+      <div class="acts l"><button class="btn s" type="button" id="logoPick">Logo kiezen</button><button class="btn s d" type="button" id="logoDel">Verwijderen</button><input type="file" id="logoF" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div></div>
+      <small>Een liggend logo met transparante of witte achtergrond werkt het best. Trimmy verkleint het automatisch en slaat het meteen op.</small></div>
+     <div class="acts l"><button class="btn p" id="bSave" type="button">Opslaan</button><span class="mute" id="bMsg" role="status"></span></div>
+    </div></div>
+
+    <div class="pane panel" data-p="agenda" hidden><h2>Agenda</h2><p class="lead">Hoe de agenda eruitziet en wat er gebeurt bij een dubbele boeking.</p><div class="sbody">
+     <label>Agenda open van/tot (uur)<span style="display:flex;gap:6px;max-width:220px"><input id="bOpen" type="number" min="0" max="23" aria-label="Open vanaf"><input id="bSluit" type="number" min="1" max="24" aria-label="Open tot"></span></label>
+     <label class="chk"><input type="checkbox" id="bZon"> Zondag tonen in de weekagenda</label>
+     <label>Dubbele boeking voor dezelfde medewerker<select id="bDubbel"><option value="waarschuw">Waarschuwen, toch inplannen kan</option><option value="blokkeer">Niet toestaan</option></select></label>
+     <div class="acts l"><button class="btn p" id="bSave3" type="button">Opslaan</button><span class="mute" id="bMsg3" role="status"></span></div>
+    </div></div>
+
+    <div class="pane panel" data-p="team" hidden><h2>Medewerkers en toegang <small id="mwSum" class="mute"></small></h2><p class="lead">Medewerkers verschijnen in de agenda. Geef ze een inlogcode om te bepalen wie wat mag zien.</p><div class="sbody">
+     <div class="note" id="accStat"></div>
+     <div id="mwList" style="display:grid;gap:8px"></div>
+     <div class="acts l"><button class="btn" id="mwAdd" type="button">Medewerker toevoegen</button></div>
+     <table class="rights"><thead><tr><th>Onderdeel</th><th>Medewerker</th><th>Beheerder</th></tr></thead><tbody>
+      <tr><td>Agenda, kassa, klanten, historie</td><td>Ja</td><td>Ja</td></tr>
+      <tr><td>Facturen bekijken en restant afrekenen</td><td>Ja</td><td>Ja</td></tr>
+      <tr><td>Omzetcijfers en export voor de accountant</td><td>Nee</td><td>Ja</td></tr>
+      <tr><td>Klanten verwijderen</td><td>Nee</td><td>Ja</td></tr>
+      <tr><td>Artikelen en prijzen beheren</td><td>Nee</td><td>Ja</td></tr>
+      <tr><td>Instellingen</td><td>Nee</td><td>Ja</td></tr>
+     </tbody></table>
+     <label>Automatisch vergrendelen als er niets gebeurt<select id="bAutoLock"><option value="0">Nooit</option><option value="5">Na 5 minuten</option><option value="15">Na 15 minuten</option><option value="30">Na 30 minuten</option><option value="60">Na 1 uur</option></select></label>
+     <div class="acts l"><button class="btn p" id="bSave5" type="button">Opslaan</button><span class="mute" id="bMsg5" role="status"></span></div>
+     <small>Inloggen houdt nieuwsgierige blikken weg bij omzet en instellingen, maar is geen volledige beveiliging: Trimmy draait in de browser en iemand met technische kennis kan het omzeilen. Kies codes die niet makkelijk te raden zijn. Een vergeten code kan een beheerder opnieuw instellen.</small>
+    </div></div>
+
+    <div class="pane panel" data-p="berichten" hidden><h2>Berichten aan klanten</h2><p class="lead">Teksten voor bevestigingen en herinneringen, automatisch versturen en de opmaak van e-mails.</p><div class="sbody">
+     <h3>Teksten</h3>
+     <label>Bevestiging van een nieuwe afspraak<textarea id="bMsgBev" rows="4"></textarea></label>
+     <label>Herinnering voor een afspraak<textarea id="bMsgHer" rows="4"></textarea></label>
+     <label>Afspraak verplaatst<textarea id="bMsgWij" rows="3"></textarea></label>
+     <label>Onderwerp van de e-mail<input id="bMsgOnd"></label>
+     <small>Deze woorden vult Trimmy zelf in: {klant} {hond} {dag} {datum} {tijd} {behandeling} {salon} {salontel} {adres}</small>
+     <h3>Opgemaakte e-mail</h3>
+     <div class="g2"><label>Kleur in e-mails<input id="bKleur" type="color" style="height:40px;padding:3px"></label><span></span></div>
+     <label class="chk"><input type="checkbox" id="bMailDirect"> E-mail direct vanuit Trimmy versturen (via de koppelservice op Netlify)</label>
+     <div class="note" id="mailStat">Staat dit uit, dan kopieer je de opgemaakte e-mail en plak je hem in Outlook of Gmail.</div>
+     <h3>Automatische herinnering</h3>
+     <label class="chk"><input type="checkbox" id="bAutoHer"> Herinnering automatisch per e-mail versturen</label>
+     <div class="g2"><label>Hoe lang vóór de afspraak<select id="bAutoUur"><option value="2">2 uur</option><option value="4">4 uur</option><option value="12">12 uur</option><option value="24">24 uur (een dag van tevoren)</option><option value="48">48 uur</option><option value="72">3 dagen</option></select></label>
+     <label class="chk" style="align-self:end"><input type="checkbox" id="bAutoStil"> Niet versturen tussen 21:00 en 08:00</label></div>
+     <div class="note" id="autoStat">Staat uit.</div>
+     <div id="autoList"></div>
+     <small>De herinneringen worden ingepland op je Netlify-server en daar verstuurd, ook als Trimmy niet openstaat. Hiervoor moet direct versturen aan staan. Klanten zonder e-mailadres krijgen geen automatische herinnering. Een afspraak die later wordt gemaakt dan de ingestelde tijd vooraf, krijgt alleen de bevestiging. Verplaats of annuleer je een afspraak, dan past Trimmy de herinnering aan.</small>
+     <div class="acts l"><button class="btn p" id="bSave2" type="button">Opslaan</button><button class="btn" id="bMailTest" type="button">Testmail naar salonadres</button><span class="mute" id="bMsg2" role="status"></span></div>
+    </div></div>
+
+    <div class="pane panel" data-p="koppel" hidden><h2>Koppelingen <small id="dbSum" class="mute"></small></h2><p class="lead">De koppelservice op Netlify verstuurt e-mail en kan je gegevens in een database bewaren.</p><div class="sbody">
+     <div class="note" id="dbStat"></div>
+     <div class="note w" id="dbFrame" hidden>Deze voorbeeldversie draait binnen Claude en mag geen verbinding maken met andere websites. Koppelingen werken in de versie op jullie eigen webadres (Netlify).</div>
+     <label>Adres van de koppelservice (nodig voor e-mail en database)<input id="dbUrl" type="url" placeholder="https://jouw-trimmy.netlify.app/api/db?code=…" autocomplete="off"></label>
+     <small>Voor e-mail is alleen dit adres nodig. Zet het vinkje hieronder pas aan als de Aiven-database is ingericht.</small>
+     <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database</label>
+     <div class="acts l"><button class="btn" id="dbNow" type="button">Nu synchroniseren</button></div>
+     <small>Met de database bewaart Trimmy elke soort gegevens in een eigen tabel en kunnen meerdere apparaten samenwerken. Zolang de database uit staat of onbereikbaar is, werkt Trimmy gewoon door op dit apparaat. Geef elke kassa een eigen Kassa-ID voordat je dit aanzet.</small>
+    </div></div>
+
+    <div class="pane panel" data-p="gegevens" hidden><h2>Gegevens en apparaat</h2><p class="lead">Instellingen voor dit apparaat, back-ups en het wissen van gegevens.</p><div class="sbody">
+     <h3>Dit apparaat</h3>
+     <label>Kassa-ID (uniek per apparaat, bepaalt de factuurnummers)<input id="bKassa" maxlength="6" style="max-width:160px"></label>
+     <div class="acts l"><button class="btn p" id="bSave4" type="button">Opslaan</button><span class="mute" id="bMsg4" role="status"></span></div>
+     <h3>Back-up en herstel</h3>
+     <div class="acts l"><button class="btn p" id="bkMake" type="button">Back-up maken</button><button class="btn" id="bkCopy" type="button" hidden>Kopiëren</button><button class="btn" id="bkDl" type="button" hidden>Opslaan als bestand</button></div>
+     <label>Back-up (JSON). Plak hier een eerdere back-up om die te herstellen.<textarea id="bkTxt" rows="5" spellcheck="false"></textarea></label>
+     <div class="acts l"><button class="btn d" id="bkRestore" type="button">Herstellen uit tekst hierboven</button><span id="bkMsg" role="status" class="mute"></span></div>
+     <small>Herstellen vervangt alle gegevens op dit apparaat. Staat de database aan, dan gaat de herstelde stand daarna ook naar Aiven. Een back-up bevat klantgegevens: bewaar hem veilig.</small>
+     <h3>Alles wissen</h3>
+     <p style="margin:0">Wist klanten, honden, afspraken, facturen, artikelen en historie op dit apparaat. In de Aiven-database blijven facturen altijd bewaard.</p>
+     <div class="acts l"><button class="btn d" id="wipeAll" type="button">Alles wissen</button></div>
+    </div></div>
+   </div>
+  </div>
  </section>
 </main>
 <div id="printArea"></div>
+<div id="lock" hidden><div class="box" role="dialog" aria-labelledby="lockH"><div class="logo" style="font-size:22px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:24px;height:24px;color:var(--acc)"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Trimmy</div><h2 id="lockH">Wie werkt er?</h2><div class="ppl" id="lockPpl"></div><label id="lockL" hidden>Inlogcode<input id="lockCode" type="password" inputmode="numeric" autocomplete="off"></label><div class="msg" id="lockMsg"></div><button class="btn p" type="button" id="lockGo" disabled>Inloggen</button></div></div>
 
 <script>
 "use strict";
@@ -496,7 +560,7 @@ function remDlg(){
 /* ---------- gegevens ---------- */
 const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers"];
 const D={};COLS.forEach(c=>D[c]=S.get(c,[]));
-const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",kleur:"#6a3560",mailDirect:false,autoHer:false,autoUur:24,autoStil:true,msgBev:"Hoi {klant}! Hierbij de bevestiging van de afspraak voor {hond}: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
+const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",kleur:"#6a3560",mailDirect:false,autoLock:0,autoHer:false,autoUur:24,autoStil:true,msgBev:"Hoi {klant}! Hierbij de bevestiging van de afspraak voor {hond}: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
 let bed={...BED0,...S.get("bedrijf",{})};
 const saveC=c=>{if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);dbSoon();if(c==="afspraken"||c==="klanten"||c==="bedrijf"||c==="honden")planSoon()};
 const get=(c,id)=>id?D[c].find(x=>x.id===id):null;
@@ -548,12 +612,12 @@ function seed(){
 if(!S.get("init",0)){seed();S.set("init",1)}
 
 /* ---------- navigatie ---------- */
-const TABS=[["agenda","Agenda"],["kassa","Kassa"],["klanten","Klanten"],["facturen","Facturen"],["artikelen","Artikelen"],["historie","Historie"],["inst","Instellingen"]];
+const TABS=[["agenda","Agenda"],["kassa","Kassa"],["klanten","Klanten"],["historie","Historie"],["facturen","Facturen"],["artikelen","Artikelen",1],["inst","Instellingen",1]];
 let tab=S.get("tab","agenda");if(!TABS.some(t=>t[0]===tab))tab="agenda";
-$("#nav").innerHTML=TABS.map(([k,l])=>`<button role="tab" type="button" data-t="${k}">${l}</button>`).join("");
+$("#nav").innerHTML=TABS.map(([k,l,adm],i)=>(adm&&!TABS[i-1][2]?`<span class="navsep adm" aria-hidden="true"></span><span class="navlab adm">Beheer</span>`:"")+`<button role="tab" type="button" data-t="${k}" ${adm?'class="adm"':""}>${l}</button>`).join("");
 $("#nav").onclick=e=>{const b=e.target.closest("button");if(b)go(b.dataset.t)};
-function go(t){tab=t;S.set("tab",t);$$(".view").forEach(v=>v.hidden=v.id!=="v-"+t);$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t));draw();window.scrollTo(0,0)}
-function draw(){({agenda:drawAg,kassa:drawKassa,klanten:drawKl,facturen:drawFac,artikelen:drawArt,historie:drawHis,inst:drawInst})[tab]();$("#demo").hidden=!S.get("demo",0);$("#logoName").textContent="Trimmy"}
+function go(t){if((TABS.find(x=>x[0]===t)||[])[2]&&!isAdmin())t="agenda";tab=t;S.set("tab",t);$$(".view").forEach(v=>v.hidden=v.id!=="v-"+t);$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.t===t));draw();window.scrollTo(0,0)}
+function draw(){navUi();({agenda:drawAg,kassa:drawKassa,klanten:drawKl,facturen:drawFac,artikelen:drawArt,historie:drawHis,inst:drawInst})[tab]();$("#demo").hidden=!S.get("demo",0);$("#logoName").textContent="Trimmy"}
 $("#demoWipe").onclick=e=>arm(e.target,()=>{wipeLocal();S.set("demo",0);draw()},"Klik nogmaals: alles wissen");
 function wipeLocal(){COLS.forEach(c=>{D[c]=[];S.set(c,[])});D.medewerkers=[{id:uid(),naam:"Medewerker 1",kleur:"#8a4a7e"}];saveC("medewerkers");bed={...BED0};saveC("bedrijf");bon=newBon();saveBon()}
 
@@ -718,7 +782,7 @@ function klantDlg(id,cb){
   <div class="g2"><label>Telefoon<input id="kT" type="tel" value="${esc(k.tel)}"></label><label>E-mail<input id="kE" type="email" value="${esc(k.email)}"></label></div>
   <label>Notitie<textarea id="kNo" rows="2">${esc(k.notitie)}</textarea></label>
   <div class="msg" id="kMsg"></div>
-  <div class="acts">${id?`<button class="btn d" type="button" id="kDel" ${heeftF?"disabled title=\"Klant heeft facturen en blijft bewaard\"":""}>Verwijderen</button><span class="sp"></span>`:""}<button class="btn" type="button" id="kX">Annuleren</button><button class="btn p" type="button" id="kOk">Opslaan</button></div>`);
+  <div class="acts">${id&&isAdmin()?`<button class="btn d" type="button" id="kDel" ${heeftF?"disabled title=\"Klant heeft facturen en blijft bewaard\"":""}>Verwijderen</button><span class="sp"></span>`:""}<button class="btn" type="button" id="kX">Annuleren</button><button class="btn p" type="button" id="kOk">Opslaan</button></div>`);
  d.q("#kX").onclick=()=>d.close();
  d.q("#kOk").onclick=()=>{const v={naam:d.q("#kN").value.trim(),straat:d.q("#kS").value.trim(),pc:d.q("#kP").value.trim().toUpperCase(),plaats:d.q("#kPl").value.trim(),tel:d.q("#kT").value.trim(),email:d.q("#kE").value.trim(),notitie:d.q("#kNo").value.trim()};
   if(!v.naam){d.q("#kMsg").textContent="Vul de naam in.";return}
@@ -819,7 +883,7 @@ $("#bPay").onclick=()=>payDlg();
 function payDlg(){
  const t=bonTot(),k=get("klanten",bon.klantId),h=get("honden",bon.hondId),af=get("afspraken",bon.afspraakId);
  const heeftDienst=bon.lines.some(l=>l.type==="dienst");let pm=lastMethode;
- if(!lastDoor&&af)lastDoor=af.mwId;
+ if(accessOn()&&cur())lastDoor=cur().id;else if(!lastDoor&&af)lastDoor=af.mwId;
  const d=modal(`<h2>Afrekenen ${eur(t)}</h2>
   ${k?`<div class="note">${esc(k.naam)}${h?" · "+esc(h.naam):""}</div>`:""}
   <div class="methods">${["PIN","Contant","Op rekening"].map(m=>`<button type="button" data-pm="${m}">${m}</button>`).join("")}</div>
@@ -894,7 +958,7 @@ function restDlg(f){let pm="PIN";const d=modal(`<h2>Restant afrekenen</h2><div c
 
 /* ---------- facturen ---------- */
 let fFil="alle";
-function drawFac(){
+function drawFac(){const adm=isAdmin();$("#fStats").hidden=!adm;$("#fExp").hidden=!adm;
  const day=new Date().toDateString(),pays=D.facturen.flatMap(f=>f.betalingen).filter(p=>new Date(p.ts).toDateString()===day),sum=a=>a.reduce((s,p)=>s+p.bedrag,0);
  const mth=new Date();const mf=D.facturen.filter(f=>{const d=new Date(f.ts);return d.getMonth()===mth.getMonth()&&d.getFullYear()===mth.getFullYear()});
  $("#fStats").innerHTML=`<div class="stat"><b>${eur(sum(pays))}</b><span>Ontvangen vandaag</span></div>`+["PIN","Contant"].map(m=>`<div class="stat"><b>${eur(sum(pays.filter(p=>p.methode===m)))}</b><span>${m} vandaag</span></div>`).join("")+
@@ -1099,15 +1163,17 @@ function behDlg(id){
 }
 
 /* ---------- instellingen ---------- */
-const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgBev:"msgBev",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd",bKleur:"kleur",bAutoUur:"autoUur"};
-function drawInst(){for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;drawLogo();$("#bMailDirect").checked=!!bed.mailDirect;$("#bAutoHer").checked=!!bed.autoHer;$("#bAutoStil").checked=bed.autoStil!==false;$("#bAutoUur").value=String(bed.autoUur||24);planUi();
+const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgBev:"msgBev",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd",bKleur:"kleur",bAutoUur:"autoUur",bAutoLock:"autoLock"};
+function drawInst(){instPane(S.get("instpane","salon"));for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;drawLogo();$("#bMailDirect").checked=!!bed.mailDirect;$("#bAutoHer").checked=!!bed.autoHer;$("#bAutoStil").checked=bed.autoStil!==false;$("#bAutoUur").value=String(bed.autoUur||24);planUi();
  $("#mwSum").textContent=`(${D.medewerkers.length})`;
- $("#mwList").innerHTML=D.medewerkers.map(m=>`<div style="display:flex;gap:8px;align-items:center"><input type="color" value="${m.kleur}" data-mc="${m.id}" aria-label="Kleur" style="width:46px;padding:2px;height:38px"><input value="${esc(m.naam)}" data-mn="${m.id}" aria-label="Naam"><button class="btn s d" type="button" data-md="${m.id}">Verwijderen</button></div>`).join("")||`<div class="mute">Nog geen medewerkers.</div>`;
+ drawTeam();
  $("#dbUrl").value=S.get("dburl","");$("#dbFrame").hidden=STANDALONE;dbUi()}
-function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
+function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit","autoLock"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
  bed.zondag=$("#bZon").checked;bed.mailDirect=$("#bMailDirect").checked;bed.autoHer=$("#bAutoHer").checked;bed.autoStil=$("#bAutoStil").checked;bed.autoUur=+bed.autoUur||24;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgBev","msgHer","msgWij","msgOnd"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
 $("#bSave").onclick=()=>saveBed($("#bMsg"));
-$("#bAutoHer").onchange=()=>{if($("#bAutoHer").checked&&!$("#bMailDirect").checked){$("#bMailDirect").checked=true}};
+$("#bAutoHer").onchange=()=>{if($("#bAutoHer").checked&&!$("#bMailDirect").checked){$("#bMailDirect").checked=true}autoPending()};
+$("#bAutoUur").onchange=autoPending;$("#bAutoStil").onchange=autoPending;
+function autoPending(){const st=$("#autoStat");st.classList.add("w");st.textContent="Nog niet opgeslagen. Klik onderaan dit blok op Opslaan om de wijziging door te voeren."}
 function drawLogo(){const el=$("#logoPv");if(!el)return;el.innerHTML=bed.logo?`<img src="${bed.logo}" alt="Logo" style="max-width:240px;max-height:80px;display:block">`:"Nog geen logo";$("#logoDel").hidden=!bed.logo}
 $("#logoPick").onclick=()=>$("#logoF").click();
 $("#logoDel").onclick=()=>{delete bed.logo;delete bed.logoW;delete bed.logoH;saveC("bedrijf");drawLogo();toast("Logo verwijderd.")};
@@ -1123,10 +1189,35 @@ $("#bMailTest").onclick=async()=>{const m=$("#mailStat");m.classList.remove("w")
  m.textContent="Testmail wordt verstuurd…";
  const demo={klantId:null,hondId:null,datum:ymd(addDays(today(),1)),start:"10:00",duur:60,diensten:[]};
  try{await sendMailApi(bed.mail,"Testmail van Trimmy",mailHtml(demo,"bevestiging","Dit is een testmail. Zo zien bevestigingen en herinneringen er voor je klanten uit."),"Dit is een testmail van Trimmy.");m.textContent="Testmail verstuurd naar "+bed.mail+". Kijk ook in de map Spam."}
- catch(e){m.classList.add("w");m.textContent="Versturen mislukt: "+e.message}};$("#bSave2").onclick=()=>saveBed($("#bMsg2"));
-$("#mwAdd").onclick=()=>{const k=["#8a4a7e","#2f7d6d","#b0662a","#3d5fa8","#8d7a1c","#a8434f"];D.medewerkers.push({id:uid(),naam:"Nieuwe medewerker",kleur:k[D.medewerkers.length%k.length]});saveC("medewerkers");drawInst()};
-$("#mwList").onchange=e=>{const t=e.target.dataset;const m=get("medewerkers",t.mc||t.mn);if(!m)return;if(t.mc)m.kleur=e.target.value;else m.naam=e.target.value.trim()||m.naam;saveC("medewerkers")};
-$("#mwList").onclick=e=>{const id=e.target.dataset.md;if(id)arm(e.target,()=>{D.medewerkers=D.medewerkers.filter(m=>m.id!==id);saveC("medewerkers");drawInst()},"Zeker?")};
+ catch(e){m.classList.add("w");m.textContent="Versturen mislukt: "+e.message}};$("#bSave2").onclick=()=>saveBed($("#bMsg2"));[["#bSave3","#bMsg3"],["#bSave4","#bMsg4"],["#bSave5","#bMsg5"]].forEach(([b,m])=>{$(b).onclick=()=>saveBed($(m))});
+$("#snav").onclick=e=>{const b=e.target.closest("[data-p]");if(b)instPane(b.dataset.p)};
+function instPane(p){if(!$(`.pane[data-p="${p}"]`))p="salon";S.set("instpane",p);$$(".pane").forEach(x=>x.hidden=x.dataset.p!==p);$$("#snav button").forEach(x=>x.setAttribute("aria-current",x.dataset.p===p))}
+$("#mwAdd").onclick=()=>{const k=["#8a4a7e","#2f7d6d","#b0662a","#3d5fa8","#8d7a1c","#a8434f"];D.medewerkers.push({id:uid(),naam:"Nieuwe medewerker",kleur:k[D.medewerkers.length%k.length],rol:"medewerker"});saveC("medewerkers");drawTeam()};
+function drawTeam(){$("#mwSum").textContent=`(${D.medewerkers.length})`;
+ const on=accessOn(),me=cur();
+ $("#accStat").className="note"+(on?"":" w");
+ $("#accStat").textContent=on?`Inloggen staat aan. Je bent ingelogd als ${me?me.naam:"onbekend"}. Medewerkers zonder code kunnen niet inloggen.`:"Iedereen ziet nu alles. Geef een beheerder een inlogcode om Artikelen, Instellingen en de omzetcijfers af te schermen.";
+ $("#mwList").innerHTML=D.medewerkers.map(m=>`<div class="mwrow"><input type="color" value="${esc(m.kleur||"#8a8f8c")}" data-mc="${m.id}" aria-label="Kleur van ${esc(m.naam)}" style="width:46px;padding:2px;height:38px"><input value="${esc(m.naam)}" data-mn="${m.id}" aria-label="Naam"><select data-mr="${m.id}" aria-label="Rol"><option value="medewerker" ${m.rol!=="beheerder"?"selected":""}>Medewerker</option><option value="beheerder" ${m.rol==="beheerder"?"selected":""}>Beheerder</option></select><div class="acts l"><span class="code">${m.pin?"Code ingesteld":"Geen code"}</span><button class="btn s" type="button" data-mp="${m.id}">${m.pin?"Code wijzigen":"Code instellen"}</button>${m.pin?`<button class="btn s" type="button" data-mx="${m.id}">Code wissen</button>`:""}<button class="btn s d" type="button" data-md="${m.id}" ${me&&me.id===m.id?"disabled title=\"Je kunt jezelf niet verwijderen\"":""}>Verwijderen</button></div></div>`).join("")||`<div class="mute">Nog geen medewerkers.</div>`;
+ $("#bAutoLock").value=String(bed.autoLock||0)}
+const adminsWithCode=(ex)=>D.medewerkers.filter(m=>m.id!==ex&&m.rol==="beheerder"&&m.pin);
+$("#mwList").onchange=e=>{const t=e.target.dataset;const m=get("medewerkers",t.mc||t.mn||t.mr);if(!m)return;
+ if(t.mc)m.kleur=e.target.value;else if(t.mn)m.naam=e.target.value.trim()||m.naam;
+ else if(t.mr){if(e.target.value!=="beheerder"&&m.pin&&accessOn()&&!adminsWithCode(m.id).length){e.target.value="beheerder";toast("Er moet minstens één beheerder met een inlogcode zijn.");return}m.rol=e.target.value}
+ saveC("medewerkers");drawTeam();navUi()};
+$("#mwList").onclick=e=>{const d=e.target.dataset;
+ if(d.md){const m=get("medewerkers",d.md);if(m&&m.pin&&m.rol==="beheerder"&&accessOn()&&!adminsWithCode(m.id).length&&D.medewerkers.some(x=>x.pin&&x.id!==m.id)){toast("Dit is de laatste beheerder met een code. Geef eerst iemand anders beheerdersrechten.");return}
+  arm(e.target,()=>{D.medewerkers=D.medewerkers.filter(x=>x.id!==d.md);saveC("medewerkers");drawTeam();navUi()},"Zeker?")}
+ else if(d.mx){const m=get("medewerkers",d.mx);if(m.rol==="beheerder"&&!adminsWithCode(m.id).length&&D.medewerkers.some(x=>x.pin&&x.id!==m.id)){toast("Wis eerst de codes van de medewerkers, of geef iemand anders beheerdersrechten.");return}
+  arm(e.target,()=>{delete m.pin;delete m.salt;saveC("medewerkers");drawTeam();navUi();lockCheck()},"Zeker?")}
+ else if(d.mp)codeDlg(d.mp)};
+function codeDlg(id){const m=get("medewerkers",id);if(!m)return;
+ if(m.rol!=="beheerder"&&!adminsWithCode().length){toast("Stel eerst een inlogcode in voor een beheerder.");return}
+ const d=modal(`<h2>Inlogcode voor ${esc(m.naam)}</h2><label>Nieuwe code (minimaal 4 tekens)<input id="cA" type="password" inputmode="numeric" autocomplete="new-password"></label><label>Herhaal de code<input id="cB" type="password" inputmode="numeric" autocomplete="new-password"></label><div class="msg" id="cM"></div><div class="acts"><button class="btn" type="button" id="cX">Annuleren</button><button class="btn p" type="button" id="cOk">Opslaan</button></div>`);
+ d.q("#cX").onclick=()=>d.close();setTimeout(()=>d.q("#cA").focus(),30);
+ d.q("#cOk").onclick=async()=>{const a=d.q("#cA").value,b=d.q("#cB").value;if(a.length<4){d.q("#cM").textContent="Kies een code van minimaal 4 tekens.";return}if(a!==b){d.q("#cM").textContent="De twee codes zijn niet gelijk.";return}
+  const was=accessOn();m.salt=uid();m.pin=await pinHash(a,m.salt);saveC("medewerkers");d.close();
+  if(!was&&accessOn()){S.set("sessie",{id:m.id,ts:Date.now()});toast(`Inloggen staat nu aan. Je bent ingelogd als ${m.naam}.`)}else toast("Code opgeslagen.");drawTeam();navUi()}}
+
 $("#bkMake").onclick=()=>{const j=JSON.stringify({app:"Trimmy",versie:1,ts:Date.now(),bedrijf:bed,...Object.fromEntries(COLS.map(c=>[c,D[c]]))});$("#bkTxt").value=j;$("#bkCopy").hidden=false;
  $("#bkDl").hidden=false;$("#bkMsg").textContent="Back-up staat in het tekstvak."};
 $("#bkDl").onclick=async()=>{try{const r=await saveFile(`trimmy-backup-${ymd(new Date())}.json`,new Blob([$("#bkTxt").value],{type:"application/json"}));$("#bkMsg").textContent=r==="saved"?"Back-up opgeslagen.":"Niet opgeslagen."}catch(e){$("#bkMsg").textContent=e.message}};
@@ -1219,7 +1310,28 @@ setInterval(()=>{if(bed.autoHer||Object.keys(S.get("plansnap",{})).length)planSy
 setTimeout(()=>{if(bed.autoHer||Object.keys(S.get("plansnap",{})).length)planSync()},4000);
 setInterval(()=>{if(tab==="agenda")drawAg()},120000);
 
-go(tab);dbUi();if(dbOn())dbSync();
+/* ---------- toegang: rollen, inloggen, vergrendelen ---------- */
+async function pinHash(code,salt){const txt=salt+"|"+code;try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(txt));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){return"h:"+hsh(txt)}}
+function accessOn(){return D.medewerkers.some(m=>m.pin&&m.rol==="beheerder")}
+function cur(){if(!accessOn())return null;const s=S.get("sessie",null);return s?get("medewerkers",s.id)||null:null}
+function isAdmin(){if(!accessOn())return true;const m=cur();return!!(m&&m.rol==="beheerder")}
+function navUi(){const adm=isAdmin();$$("#nav .adm").forEach(x=>x.hidden=!adm);
+ const w=$("#who"),m=cur();w.hidden=!m;if(m)w.innerHTML=`<span class="dot" style="background:${esc(m.kleur||"#888")}">${esc((m.naam||"?")[0].toUpperCase())}</span><span><b>${esc(m.naam)}</b><br><small>${m.rol==="beheerder"?"Beheerder":"Medewerker"}</small></span><button class="btn s" type="button" id="lockNow">Vergrendelen</button>`}
+document.addEventListener("click",e=>{if(e.target.id==="lockNow"){S.del("sessie");lockCheck()}});
+let lockSel=null;
+function lockCheck(){const need=accessOn()&&!cur();$("#lock").hidden=!need;if(!need){navUi();return}
+ if(document.querySelector("dialog[open]"))$$("dialog[open]").forEach(d=>d.close());
+ const ppl=D.medewerkers.filter(m=>m.pin);if(!ppl.some(m=>m.id===lockSel))lockSel=ppl.length===1?ppl[0].id:null;
+ $("#lockPpl").innerHTML=ppl.map(m=>`<button type="button" data-u="${m.id}" aria-pressed="${m.id===lockSel}"><span class="dot" style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;background:${esc(m.kleur||"#888")}">${esc(m.naam[0].toUpperCase())}</span>${esc(m.naam)}</button>`).join("");
+ const u=get("medewerkers",lockSel);$("#lockL").hidden=!u;$("#lockGo").disabled=!u;$("#lockMsg").textContent="";$("#lockCode").value="";if(u)setTimeout(()=>$("#lockCode").focus(),30)}
+$("#lockPpl").onclick=e=>{const b=e.target.closest("[data-u]");if(b){lockSel=b.dataset.u;lockCheck()}};
+async function lockTry(){const u=get("medewerkers",lockSel);if(!u)return;const ok=(await pinHash($("#lockCode").value,u.salt||""))===u.pin;
+ if(!ok){$("#lockMsg").textContent="Deze code klopt niet. Probeer het opnieuw.";$("#lockCode").value="";$("#lockCode").focus();return}
+ S.set("sessie",{id:u.id,ts:Date.now()});lastDoor=u.id;S.set("door",u.id);$("#lock").hidden=true;go(isAdmin()?tab:(TABS.find(x=>x[0]===tab)||[])[2]?"agenda":tab)}
+$("#lockGo").onclick=lockTry;$("#lockCode").onkeydown=e=>{if(e.key==="Enter")lockTry()};
+let lastAct=Date.now();["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,()=>{lastAct=Date.now()},true));
+setInterval(()=>{const mins=+bed.autoLock||0;if(mins&&cur()&&Date.now()-lastAct>mins*6e4){S.del("sessie");lockCheck()}},20000);
+go(tab);lockCheck();dbUi();if(dbOn())dbSync();
 </script>
 
 </body>
