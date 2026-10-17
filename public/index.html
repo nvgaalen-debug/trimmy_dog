@@ -1,3 +1,10 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
 <title>Trimmy</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap">
@@ -214,6 +221,20 @@ dialog::backdrop{background:rgba(10,14,12,.55)}
  #printArea .inv{box-shadow:none;padding:0;max-width:none}
  #printArea.bon{width:76mm;font-size:10pt}
 }
+[hidden]{display:none!important}
+.blk{touch-action:none;user-select:none;-webkit-user-select:none}
+.blk.drag-src{opacity:.35}
+.blk .rz{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize}
+.blk .rz::after{content:"";position:absolute;left:50%;bottom:2px;width:18px;height:2px;margin-left:-9px;border-radius:2px;background:var(--mute);opacity:0;transition:opacity .15s}
+.blk:hover .rz::after{opacity:.7}
+.blk.dbl{border:2px solid var(--warn)}
+.blk .flag{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--warn)}
+.ghost{position:absolute;left:2px;right:2px;border:2px dashed var(--acc);border-radius:6px;pointer-events:none;z-index:5;background:color-mix(in srgb,var(--acc) 12%,transparent);font-size:11px;font-weight:700;color:var(--acc);padding:3px 6px}
+.ghost.bad{border-color:var(--warn);color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);padding:10px 14px;border-radius:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:60;width:max-content;max-width:calc(100vw - 32px);font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+#toast button{background:none;border:1px solid color-mix(in srgb,var(--panel) 45%,transparent);color:var(--panel);border-radius:6px;padding:4px 10px;font-weight:600}
+.contact{display:flex;gap:6px;flex-wrap:wrap}
+a.btn{text-decoration:none;color:inherit;display:inline-block}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -234,6 +255,7 @@ dialog::backdrop{background:rgba(10,14,12,.55)}
    <span class="sp"></span>
    <select id="agMw" aria-label="Medewerker"></select>
    <div class="seg" id="agSeg"><button type="button" data-m="dag">Dag</button><button type="button" data-m="week">Week</button></div>
+   <button class="btn" id="agRem" type="button">Herinneringen</button>
    <button class="btn p" id="agNew" type="button">Nieuwe afspraak</button>
   </div>
   <div class="ag-scroll"><div class="ag" id="ag"></div></div>
@@ -244,7 +266,7 @@ dialog::backdrop{background:rgba(10,14,12,.55)}
  <section class="view" id="v-kassa" hidden>
   <div class="kassa">
    <div class="panel">
-    <div class="tools"><input id="kq" type="search" placeholder="Zoek behandeling of product" aria-label="Zoeken"><div class="chips" id="kChips"></div></div>
+    <div class="tools"><div style="display:flex;gap:8px"><input id="kq" type="search" placeholder="Zoek behandeling of product" aria-label="Zoeken" style="flex:1"><button class="btn" id="kVrij" type="button">Vrij bedrag</button></div><div class="chips" id="kChips"></div></div>
     <div class="grid" id="kGrid"></div>
    </div>
    <aside class="panel bon">
@@ -277,7 +299,7 @@ dialog::backdrop{background:rgba(10,14,12,.55)}
 
  <section class="view" id="v-facturen" hidden>
   <div class="stats" id="fStats"></div>
-  <div class="bar"><input id="fq" type="search" placeholder="Zoek op factuurnummer, klant of hond" aria-label="Zoek factuur"><div class="seg" id="fSeg"><button type="button" data-f="alle">Alle</button><button type="button" data-f="open">Openstaand</button><button type="button" data-f="betaald">Betaald</button></div></div>
+  <div class="bar"><input id="fq" type="search" placeholder="Zoek op factuurnummer, klant of hond" aria-label="Zoek factuur"><div class="seg" id="fSeg"><button type="button" data-f="alle">Alle</button><button type="button" data-f="open">Openstaand</button><button type="button" data-f="betaald">Betaald</button></div><button class="btn p" id="fExp" type="button">Export voor accountant</button></div>
   <div class="panel scroll"><table><thead><tr><th>Factuur</th><th>Datum</th><th>Klant en hond</th><th>Omschrijving</th><th>Betaling</th><th class="r">Totaal</th><th>Status</th></tr></thead><tbody id="fBody"></tbody></table></div>
  </section>
 
@@ -310,14 +332,22 @@ dialog::backdrop{background:rgba(10,14,12,.55)}
    <label>Tekst onderaan factuur<input id="bVoet"></label>
    <div class="g2"><label>Kassa-ID (uniek per apparaat)<input id="bKassa" maxlength="6"></label><label>Agenda open van/tot (uur)<span style="display:flex;gap:6px"><input id="bOpen" type="number" min="0" max="23"><input id="bSluit" type="number" min="1" max="24"></span></label></div>
    <label class="chk"><input type="checkbox" id="bZon"> Zondag tonen in de weekagenda</label>
+   <label>Dubbele boeking voor dezelfde medewerker<select id="bDubbel"><option value="waarschuw">Waarschuwen, toch inplannen kan</option><option value="blokkeer">Niet toestaan</option></select></label>
    <div class="acts l"><button class="btn p" id="bSave" type="button">Opslaan</button><span class="mute" id="bMsg" role="status"></span></div>
+  </div></details>
+  <details class="set" id="sMsg"><summary>Berichten aan klanten</summary><div class="sbody">
+   <label>Herinnering voor een afspraak<textarea id="bMsgHer" rows="4"></textarea></label>
+   <label>Afspraak verplaatst<textarea id="bMsgWij" rows="3"></textarea></label>
+   <label>Onderwerp van de e-mail<input id="bMsgOnd"></label>
+   <small>Deze woorden vult Trimmy zelf in: {klant} {hond} {dag} {datum} {tijd} {behandeling} {salon} {salontel} {adres}</small>
+   <div class="acts l"><button class="btn p" id="bSave2" type="button">Opslaan</button><span class="mute" id="bMsg2" role="status"></span></div>
   </div></details>
   <details class="set" id="sMw"><summary>Medewerkers <small id="mwSum"></small></summary><div class="sbody">
    <div id="mwList" style="display:grid;gap:8px"></div>
    <div class="acts l"><button class="btn" id="mwAdd" type="button">Medewerker toevoegen</button></div>
   </div></details>
   <details class="set" id="sBk"><summary>Back-up en herstel</summary><div class="sbody">
-   <div class="acts l"><button class="btn p" id="bkMake" type="button">Back-up maken</button><button class="btn" id="bkCopy" type="button" hidden>Kopiëren</button><a class="btn" id="bkDl" hidden download="trimmy-backup.json">Opslaan als bestand</a></div>
+   <div class="acts l"><button class="btn p" id="bkMake" type="button">Back-up maken</button><button class="btn" id="bkCopy" type="button" hidden>Kopiëren</button><button class="btn" id="bkDl" type="button" hidden>Opslaan als bestand</button></div>
    <label>Back-up (JSON). Plak hier een eerdere back-up om die te herstellen.<textarea id="bkTxt" rows="6" spellcheck="false"></textarea></label>
    <div class="acts l"><button class="btn d" id="bkRestore" type="button">Herstellen uit tekst hierboven</button><span id="bkMsg" role="status" class="mute"></span></div>
    <small>Herstellen vervangt alle gegevens op dit apparaat. Staat de database aan, dan gaat de herstelde stand daarna ook naar Aiven. Een back-up bevat klantgegevens: bewaar hem veilig.</small>
@@ -357,10 +387,59 @@ const STANDALONE=(()=>{try{return window.self===window.top}catch(e){return false
 function arm(btn,fn,txt="Klik nogmaals om te bevestigen"){if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.orig;fn();return}btn.dataset.orig=btn.textContent;btn.dataset.armed=1;btn.textContent=txt;setTimeout(()=>{if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.orig}},4000)}
 function modal(html,cls=""){const d=document.createElement("dialog");if(cls)d.className=cls;d.innerHTML=`<div class="dlg">${html}</div>`;document.body.append(d);d.q=s=>d.querySelector(s);d.addEventListener("close",()=>d.remove());d.showModal();return d}
 
+/* ---------- meldingen, bestanden, berichten ---------- */
+function toast(msg,acts=[],ms=7000){let t=$("#toast");if(!t){t=document.createElement("div");t.id="toast";t.setAttribute("role","status");document.body.append(t)}
+ t.innerHTML=`<span>${esc(msg)}</span>`+acts.map((a,i)=>`<button type="button" data-i="${i}">${esc(a[0])}</button>`).join("");t.hidden=false;
+ t.onclick=e=>{const i=e.target.dataset.i;if(i!=null){t.hidden=true;acts[i][1]()}};clearTimeout(toast.h);toast.h=setTimeout(()=>{t.hidden=true},ms)}
+async function saveFile(name,blob){
+ let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use("downloads"):null}catch(e){dl=null}
+ if(dl){try{await dl.save({filename:name,data:blob});return"saved"}catch(e){if(e&&e.code==="declined")return"declined";if(e&&e.code==="rate_limited")throw new Error("Er staat al een opslagvraag open. Probeer het zo opnieuw.");if(!e||!["unavailable","not_granted","capability_disabled","capability_removed"].includes(e.code))throw new Error("Opslaan mislukt: "+((e&&e.message)||"onbekende fout"))}}
+ if(STANDALONE){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000);return"saved"}
+ throw new Error("Bestanden opslaan kan in deze weergave niet. Gebruik Trimmy op jullie eigen webadres.")}
+const DEAD=["noshow","geannuleerd"];
+function conflicts(x){if(!x||!x.mwId||!x.datum||DEAD.includes(x.status))return[];const s=toMin(x.start),e=s+(+x.duur||30);
+ return D.afspraken.filter(y=>y.id!==x.id&&y.datum===x.datum&&y.mwId===x.mwId&&!DEAD.includes(y.status)&&toMin(y.start)<e&&toMin(y.start)+(+y.duur||30)>s)}
+function confText(x,c){const m=(get("medewerkers",x.mwId)||{}).naam||"Deze medewerker";
+ return`${m} heeft op ${fromYmd(x.datum).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"})} al ${c.map(y=>`${y.start}–${toHM(toMin(y.start)+(+y.duur||30))} (${(get("honden",y.hondId)||{}).naam||"afspraak"})`).join(", ")}.`}
+const waNr=t=>{let n=String(t||"").replace(/[^\d+]/g,"");if(n.startsWith("+"))n=n.slice(1);else if(n.startsWith("00"))n=n.slice(2);else if(n.startsWith("0"))n="31"+n.slice(1);n=n.replace(/\D/g,"");return n.length>=10?n:""};
+const waUrl=(tel,txt)=>`https://wa.me/${waNr(tel)}?text=${encodeURIComponent(txt)}`;
+const mailUrl=(to,sub,body)=>`mailto:${String(to||"").trim()}?subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(body)}`;
+function fillMsg(t,a){const k=get("klanten",a.klantId)||{},h=get("honden",a.hondId)||{},d=a.datum?fromYmd(a.datum):null;
+ const dn=(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).map(x=>x.toLowerCase()).join(" en ");
+ const map={klant:k.naam||"",hond:h.naam||"uw hond",dag:d?d.toLocaleDateString("nl-NL",{weekday:"long"}):"",datum:d?d.toLocaleDateString("nl-NL",{day:"numeric",month:"long"}):"",tijd:a.start||"",behandeling:dn||"een trimbeurt",salon:bed.naam||"",salontel:bed.tel||"",adres:[bed.straat,bed.plaats].filter(Boolean).join(", ")};
+ return String(t||"").replace(/\{(\w+)\}/g,(m,x)=>x in map?map[x]:m)}
+function msgDlg(a,kind){const k=get("klanten",a&&a.klantId);if(!k){toast("Er hoort geen klant bij.");return}
+ const tpl=kind==="herinnering"?(bed.msgHer||BED0.msgHer):kind==="wijziging"?(bed.msgWij||BED0.msgWij):"Hoi {klant},\n\n\nGroet, {salon}";
+ const sub=kind==="vrij"?(bed.naam||"Bericht"):fillMsg(bed.msgOnd||BED0.msgOnd,a),tel=waNr(k.tel);
+ const d=modal(`<h2>${kind==="herinnering"?"Herinnering sturen":kind==="wijziging"?"Klant informeren":"Bericht aan "+esc(k.naam)}</h2>
+  <div class="note">${esc(k.naam)}<br>Telefoon: <b style="user-select:all">${esc(k.tel||"onbekend")}</b><br>E-mail: <b style="user-select:all">${esc(k.email||"onbekend")}</b></div>
+  <label>Bericht<textarea id="mT" rows="6">${esc(fillMsg(tpl,a))}</textarea></label>
+  <div class="acts l"><a class="btn p" id="mWa" target="_blank" rel="noopener" ${tel?"":"hidden"}>Via WhatsApp</a><a class="btn" id="mMa" target="_blank" rel="noopener" ${k.email?"":"hidden"}>Via e-mail</a><button class="btn" type="button" id="mCp">Tekst kopiëren</button></div>
+  ${!tel&&!k.email?`<div class="note w">Bij deze klant staat geen bruikbaar telefoonnummer of e-mailadres. Vul die aan via Klanten.</div>`:""}
+  <small>WhatsApp en je e-mailprogramma openen in een nieuw venster; verstuur het bericht daar.${kind==="herinnering"?" Trimmy zet de afspraak dan op herinnerd.":""}</small>
+  <div class="msg" id="mM"></div><div class="acts"><button class="btn" type="button" id="mX">Sluiten</button></div>`);
+ const upd=()=>{const t=d.q("#mT").value;d.q("#mWa").href=waUrl(k.tel,t);d.q("#mMa").href=mailUrl(k.email,sub,t)};upd();d.q("#mT").oninput=upd;
+ const mark=()=>{if(kind!=="herinnering"||!a.id)return;const r=get("afspraken",a.id);if(r){r.herinnerd=Date.now();saveC("afspraken");setTimeout(draw,300)}};
+ d.q("#mWa").addEventListener("click",mark);d.q("#mMa").addEventListener("click",mark);
+ d.q("#mCp").onclick=()=>{const t=d.q("#mT");navigator.clipboard.writeText(t.value).then(()=>{d.q("#mM").style.color="var(--ok)";d.q("#mM").textContent="Gekopieerd. Plak het in WhatsApp, sms of e-mail.";mark()},()=>{t.select();d.q("#mM").textContent="Tekst geselecteerd. Kopieer met Ctrl+C."})};
+ d.q("#mX").onclick=()=>d.close()}
+function remDlg(){
+ const d=modal(`<h2>Herinneringen</h2><label>Afspraken op<input id="rD" type="date" value="${ymd(addDays(today(),1))}"></label><div id="rL"></div>
+  <small>Met WhatsApp of E-mail staat het bericht klaar met de gegevens van de afspraak. De tekst pas je aan bij Instellingen, Berichten aan klanten.</small>
+  <div class="acts"><button class="btn" type="button" id="rX">Sluiten</button></div>`,"wide");
+ const render=()=>{const ds=d.q("#rD").value,L=D.afspraken.filter(a=>a.datum===ds&&!DEAD.includes(a.status)&&a.status!=="afgerekend").sort((a,b)=>toMin(a.start)-toMin(b.start));
+  d.q("#rL").innerHTML=L.length?`<div class="scroll"><table><tbody>${L.map(a=>{const k=get("klanten",a.klantId)||{},h=get("honden",a.hondId)||{},t=fillMsg(bed.msgHer||BED0.msgHer,a);
+   return`<tr><td style="white-space:nowrap"><b>${a.start}</b></td><td><b>${esc(h.naam||"")}</b> · ${esc(k.naam||"")}<br><small>${esc(k.tel||"geen telefoon")}</small></td><td>${a.herinnerd?`<span class="pill ok">Herinnerd ${fDT(a.herinnerd)}</span>`:`<span class="pill">Nog niet</span>`}</td><td><div class="contact">${waNr(k.tel)?`<a class="btn s p" target="_blank" rel="noopener" data-m="${a.id}" href="${esc(waUrl(k.tel,t))}">WhatsApp</a>`:""}${k.email?`<a class="btn s" target="_blank" rel="noopener" data-m="${a.id}" href="${esc(mailUrl(k.email,fillMsg(bed.msgOnd||BED0.msgOnd,a),t))}">E-mail</a>`:""}<button class="btn s" type="button" data-e="${a.id}">Tekst aanpassen</button></div></td></tr>`}).join("")}</tbody></table></div>`:`<div class="empty">Geen open afspraken op deze dag.</div>`};
+ d.q("#rD").oninput=render;render();
+ d.q("#rL").addEventListener("click",e=>{const m=e.target.closest("[data-m]");if(m){const a=get("afspraken",m.dataset.m);if(a){a.herinnerd=Date.now();saveC("afspraken");setTimeout(()=>{render();draw()},400)}return}
+  const x=e.target.closest("[data-e]");if(x){msgDlg(get("afspraken",x.dataset.e),"herinnering")}});
+ d.addEventListener("focus",render,true);
+ d.q("#rX").onclick=()=>d.close()}
+
 /* ---------- gegevens ---------- */
 const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers"];
 const D={};COLS.forEach(c=>D[c]=S.get(c,[]));
-const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false};
+const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
 let bed={...BED0,...S.get("bedrijf",{})};
 const saveC=c=>{if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);dbSoon()};
 const get=(c,id)=>id?D[c].find(x=>x.id===id):null;
@@ -447,11 +526,12 @@ function drawAg(){
  for(const x of cols){
   const list=D.afspraken.filter(a=>a.datum===x.date&&(x.mw==null||(x.mw==="-"?!get("medewerkers",a.mwId):a.mwId===x.mw)));
   const dicht=fromYmd(x.date).getDay()===0&&!bed.zondag;
-  h+=`<div class="col ${dicht?"dicht":""}" data-date="${x.date}" data-mw="${x.mw&&x.mw!=="-"?x.mw:""}" style="height:${H}px;--hh:${60*PXM}px">`;
+  h+=`<div class="col ${dicht?"dicht":""}" data-date="${x.date}" data-mw="${x.mw==="-"?"none":(x.mw||"")}" style="height:${H}px;--hh:${60*PXM}px">`;
   for(const it of lanes(list)){const a=it.a,s=toMin(a.start),top=Math.max(0,(s-o)*PXM),ht=Math.max(22,(+a.duur||30)*PXM-2);
    const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),w=100/it.n;
    const dn=(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", ");
-   h+=`<button type="button" class="blk ${["noshow","geannuleerd"].includes(a.status)?"x":""} ${a.status==="afgerekend"?"paid":""}" data-af="${a.id}" style="--mw:${mwKleur(a.mwId)};top:${top}px;height:${ht}px;left:calc(${it.L*w}% + 2px);width:calc(${w}% - 4px)" title="${esc(a.start+" "+(hd?hd.naam:"")+" · "+dn)}"><span class="t">${a.start}–${toHM(s+(+a.duur||30))}${a.status!=="gepland"?" · "+esc(statLab(a.status)):""}</span><b>${esc(hd?hd.naam:"Geen hond")}${hd&&hd.ras?` <span class="t">${esc(hd.ras)}</span>`:""}</b>${ht>40?`<span>${esc(kl?kl.naam:"")}</span>`:""}${ht>58&&dn?`<br><span class="t">${esc(dn)}</span>`:""}</button>`}
+   const dbl=conflicts(a).length;
+   h+=`<button type="button" class="blk ${["noshow","geannuleerd"].includes(a.status)?"x":""} ${a.status==="afgerekend"?"paid":""} ${dbl?"dbl":""}" data-af="${a.id}" style="--mw:${mwKleur(a.mwId)};top:${top}px;height:${ht}px;left:calc(${it.L*w}% + 2px);width:calc(${w}% - 4px)" title="${esc(a.start+" "+(hd?hd.naam:"")+" · "+dn)}">${dbl?`<span class="flag">Dubbel</span>`:""}<span class="t">${a.start}–${toHM(s+(+a.duur||30))}${a.status!=="gepland"?" · "+esc(statLab(a.status)):""}</span><b>${esc(hd?hd.naam:"Geen hond")}${hd&&hd.ras?` <span class="t">${esc(hd.ras)}</span>`:""}</b>${ht>40?`<span>${esc(kl?kl.naam:"")}</span>`:""}${ht>58&&dn?`<br><span class="t">${esc(dn)}</span>`:""}${a.status!=="afgerekend"?`<span class="rz" aria-hidden="true"></span>`:""}</button>`}
   if(x.date===tdy&&nowM>o&&nowM<c)h+=`<div class="now" style="top:${(nowM-o)*PXM}px"></div>`;
   h+=`</div>`}
  ag.innerHTML=h;
@@ -460,7 +540,7 @@ function drawAg(){
  const ds=agMode==="dag"?ymd(agD):(days.some(d=>ymd(d)===tdy)?tdy:ymd(days[0]));
  const L=D.afspraken.filter(a=>a.datum===ds&&(!agMw||a.mwId===agMw)).sort((a,b)=>toMin(a.start)-toMin(b.start));
  $("#agList").innerHTML=`<h3>${ds===tdy?"Vandaag":fromYmd(ds).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"})} · ${L.length} afspra${L.length===1?"ak":"ken"}</h3><div class="panel scroll"><table><tbody>${L.length?L.map(a=>{const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),m=get("medewerkers",a.mwId);
-  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(hd?hd.naam:"–")}</b> <span class="mute">${esc(hd?hd.ras:"")}</span><br><small>${esc(kl?kl.naam+(kl.tel?" · "+kl.tel:""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${hd&&(hd.medisch||hd.gedrag)?`<br><small style="color:var(--warn)">${esc([hd.medisch,hd.gedrag].filter(Boolean).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span></td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
+  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(hd?hd.naam:"–")}</b> <span class="mute">${esc(hd?hd.ras:"")}</span><br><small>${esc(kl?kl.naam+(kl.tel?" · "+kl.tel:""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${hd&&(hd.medisch||hd.gedrag)?`<br><small style="color:var(--warn)">${esc([hd.medisch,hd.gedrag].filter(Boolean).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span>${a.herinnerd?` <span class="pill acc">Herinnerd</span>`:""}${conflicts(a).length?` <span class="pill warn">Dubbel</span>`:""}</td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
 }
 $("#agPrev").onclick=()=>{agD=addDays(agD,agMode==="week"?-7:-1);drawAg()};
 $("#agNext").onclick=()=>{agD=addDays(agD,agMode==="week"?7:1);drawAg()};
@@ -468,11 +548,43 @@ $("#agToday").onclick=()=>{agD=today();drawAg()};
 $("#agSeg").onclick=e=>{const m=e.target.dataset.m;if(m){agMode=m;S.set("agmode",m);drawAg()}};
 $("#agMw").onchange=e=>{agMw=e.target.value;S.set("agmw",agMw);drawAg()};
 $("#agNew").onclick=()=>afDlg(null,{datum:ymd(agMode==="dag"?agD:(agDays().some(d=>ymd(d)===ymd(today()))?today():agD)),start:"09:00",mwId:agMw||""});
-$("#ag").onclick=e=>{const b=e.target.closest(".blk");if(b){afDlg(b.dataset.af);return}
+$("#ag").onclick=e=>{const b=e.target.closest(".blk");if(b){if(e.detail===0)afDlg(b.dataset.af);return}
  const col=e.target.closest(".col");if(!col)return;const r=col.getBoundingClientRect();const o=(+bed.open||8)*60;
  const m=Math.max(o,Math.min((+bed.sluit||18)*60-15,o+Math.floor((e.clientY-r.top)/PXM/15)*15));
  afDlg(null,{datum:col.dataset.date,start:toHM(m),mwId:col.dataset.mw||agMw||""})};
 $("#agList").onclick=e=>{const r=e.target.closest("[data-af]");if(r)afDlg(r.dataset.af)};
+$("#agRem").onclick=remDlg;
+/* slepen en duur aanpassen */
+const snap15=m=>Math.round(m/15)*15;let drag=null;
+$("#ag").addEventListener("pointerdown",e=>{const b=e.target.closest(".blk");if(!b||e.button>0)return;const a=get("afspraken",b.dataset.af);if(!a)return;
+ drag={a,b,id:e.pointerId,rz:e.target.classList.contains("rz"),x0:e.clientX,y0:e.clientY,offY:e.clientY-b.getBoundingClientRect().top,moved:false,ghost:null,t:null};
+ try{b.setPointerCapture(e.pointerId)}catch(x){}});
+$("#ag").addEventListener("pointermove",e=>{const g=drag;if(!g||e.pointerId!==g.id)return;
+ if(!g.moved){if(Math.hypot(e.clientX-g.x0,e.clientY-g.y0)<6)return;
+  if(g.a.status==="afgerekend"){drag=null;toast("Deze afspraak is al afgerekend en kan niet meer verschuiven.");return}
+  g.moved=true;g.b.classList.add("drag-src");g.ghost=document.createElement("div");g.ghost.className="ghost"}
+ e.preventDefault();
+ const o=(+bed.open||8)*60,c=Math.max(o+60,(+bed.sluit||18)*60);let col,start,duur=+g.a.duur||30;
+ if(g.rz){col=g.b.closest(".col");const r=col.getBoundingClientRect();start=toMin(g.a.start);duur=Math.max(15,Math.min(c,snap15(o+(e.clientY-r.top)/PXM))-start)}
+ else{const el=document.elementFromPoint(e.clientX,e.clientY);col=(el&&el.closest&&el.closest("#ag .col"))||(g.t?g.t.col:g.b.closest(".col"));const r=col.getBoundingClientRect();start=Math.max(o,Math.min(c-15,snap15(o+(e.clientY-g.offY-r.top)/PXM)))}
+ if(g.ghost.parentNode!==col)col.append(g.ghost);
+ const x={id:g.a.id,datum:col.dataset.date,start:toHM(start),duur,mwId:col.dataset.mw==="none"?"":(col.dataset.mw||g.a.mwId||""),status:g.a.status};
+ g.t={col,x};const cf=conflicts(x).length;
+ g.ghost.style.top=(start-o)*PXM+"px";g.ghost.style.height=Math.max(20,duur*PXM-2)+"px";g.ghost.classList.toggle("bad",!!cf);g.ghost.textContent=`${toHM(start)}–${toHM(start+duur)}${cf?" · dubbel":""}`});
+function dragEnd(e){const g=drag;if(!g||e.pointerId!==g.id)return;drag=null;
+ if(!g.moved){if(e.type==="pointerup")afDlg(g.a.id);return}
+ if(g.ghost)g.ghost.remove();g.b.classList.remove("drag-src");
+ if(e.type!=="pointerup"||!g.t){drawAg();return}
+ const x=g.t.x,a=g.a;if(x.datum===a.datum&&x.start===a.start&&x.duur===(+a.duur||30)&&x.mwId===(a.mwId||"")){drawAg();return}
+ moveAf(a,{datum:x.datum,start:x.start,duur:x.duur,mwId:x.mwId},g.rz)}
+$("#ag").addEventListener("pointerup",dragEnd);$("#ag").addEventListener("pointercancel",dragEnd);
+function moveAf(a,nv,rz){const x={...a,...nv},c=conflicts(x);
+ const apply=()=>{const old={datum:a.datum,start:a.start,duur:a.duur,mwId:a.mwId};Object.assign(a,nv);saveC("afspraken");drawAg();const h=(get("honden",a.hondId)||{}).naam||"Afspraak";
+  toast(rz?`${h}: duur nu ${a.duur} minuten`:`${h} verplaatst naar ${fromYmd(a.datum).toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"short"})} ${a.start}`,[["Ongedaan maken",()=>{Object.assign(a,old);saveC("afspraken");drawAg()}],...(rz?[]:[["Klant informeren",()=>msgDlg(a,"wijziging")]])],10000)};
+ if(!c.length)return apply();
+ if(bed.dubbel==="blokkeer"){drawAg();toast(confText(x,c)+" Dubbele boekingen zijn uitgezet bij Instellingen.");return}
+ const d=modal(`<h2>Dubbele boeking</h2><div class="note w">${esc(confText(x,c))}</div><p style="margin:0">Wil je deze afspraak toch op dit tijdstip zetten?</p><div class="acts"><button class="btn" type="button" id="cX">Annuleren</button><button class="btn p" type="button" id="cOk">Toch verplaatsen</button></div>`);
+ d.q("#cX").onclick=()=>{d.close();drawAg()};d.q("#cOk").onclick=()=>{d.close();apply()}}
 
 /* klant + hond kiezer */
 function khHtml(kId){const k=get("klanten",kId);return`<label>Klant<input id="khK" list="khL" autocomplete="off" value="${k?esc(klLab(k)):""}" placeholder="Typ een naam"></label><datalist id="khL">${D.klanten.slice().sort(by("naam")).map(k=>`<option value="${esc(klLab(k))}">${esc(k.tel||"")}</option>`).join("")}</datalist><label>Hond<select id="khH"></select></label>`}
@@ -499,6 +611,7 @@ function afDlg(id,init={}){
   <label>Notitie<textarea id="afN" rows="2">${esc(a.notitie)}</textarea></label>
   <div class="note" id="afC" hidden></div><div class="msg" id="afMsg"></div>
   <div class="acts">${id?`<button class="btn d" type="button" id="afDel">Verwijderen</button><span class="sp"></span>`:""}
+   ${id&&a.klantId?`<button class="btn" type="button" id="afMsgB">Klant berichten</button>`:""}
    <button class="btn" type="button" id="afX">Annuleren</button>
    ${id&&a.status!=="afgerekend"?`<button class="btn" type="button" id="afPay">Opslaan en afrekenen</button>`:""}
    ${a.factuurId?`<button class="btn" type="button" id="afInv">Factuur bekijken</button>`:""}
@@ -506,12 +619,13 @@ function afDlg(id,init={}){
  const upd=()=>{const k=khKlant(d),h=get("honden",d.q("#khH").value);d.q("#afKk").hidden=!k;
   const w=h?[h.medisch&&"Medisch: "+h.medisch,h.gedrag&&"Gedrag: "+h.gedrag].filter(Boolean):[];d.q("#afHw").hidden=!w.length;d.q("#afHw").textContent=w.join(" · ");conf()};
  const kh=khBind(d,a.hondId,upd);
- function conf(){const ds=d.q("#afD").value,s=toMin(d.q("#afS").value),e=s+num(d.q("#afDu").value),m=d.q("#afM").value;
-  const c=D.afspraken.filter(x=>x.id!==a.id&&x.datum===ds&&m&&x.mwId===m&&!["noshow","geannuleerd"].includes(x.status)&&toMin(x.start)<e&&toMin(x.start)+(+x.duur)>s);
-  d.q("#afC").hidden=!c.length;d.q("#afC").textContent=c.length?`Let op: ${(get("medewerkers",m)||{}).naam} heeft dan al ${c.map(x=>x.start+" "+((get("honden",x.hondId)||{}).naam||"")).join(", ")}.`:""};
+ function conf(){const x={id:a.id,datum:d.q("#afD").value,start:d.q("#afS").value,duur:num(d.q("#afDu").value),mwId:d.q("#afM").value,status:d.q("#afSt").value},c=conflicts(x);
+  d.q("#afC").hidden=!c.length;d.q("#afC").className="note w";d.q("#afC").textContent=c.length?"Dubbele boeking: "+confText(x,c)+(bed.dubbel==="blokkeer"?" Dubbele boekingen zijn niet toegestaan.":""):"";
+  if(d.ok2){d.ok2=0;d.q("#afOk").textContent="Opslaan";d.q("#afMsg").textContent=""}}
  d.querySelectorAll(".chk-list input").forEach(cb=>cb.onchange=()=>{const sel=[...d.querySelectorAll(".chk-list input:checked")].map(x=>get("artikelen",x.value));const t=sel.reduce((s,x)=>s+(+x.duur||0),0);if(t)d.q("#afDu").value=t;conf()});
- ["#afD","#afS","#afDu","#afM"].forEach(s=>d.q(s).addEventListener("input",conf));conf();
+ ["#afD","#afS","#afDu","#afM","#afSt"].forEach(s=>{d.q(s).addEventListener("input",conf);d.q(s).addEventListener("change",conf)});conf();
  d.q("#afX").onclick=()=>d.close();
+ if(d.q("#afMsgB"))d.q("#afMsgB").onclick=()=>msgDlg(get("afspraken",id),"herinnering");
  d.q("#afNk").onclick=()=>klantDlg(null,k=>{kh.set(k,null);hondDlg(null,k.id,h=>kh.set(k,h.id))});
  d.q("#afNh").onclick=()=>{const k=khKlant(d);if(!k){d.q("#afMsg").textContent="Kies eerst een klant.";return}hondDlg(null,k.id,h=>kh.set(k,h.id))};
  d.q("#afKk").onclick=()=>{const k=khKlant(d);if(k){d.close();selKl=k.id;go("klanten")}};
@@ -520,7 +634,10 @@ function afDlg(id,init={}){
   if(!d.q("#afD").value||!d.q("#afS").value)return msg("Vul datum en begintijd in.");
   const du=Math.round(num(d.q("#afDu").value));if(!(du>0))return msg("Vul een duur in minuten in.");
   return{datum:d.q("#afD").value,start:d.q("#afS").value,duur:du,klantId:k.id,hondId:d.q("#khH").value||null,mwId:d.q("#afM").value,diensten:[...d.querySelectorAll(".chk-list input:checked")].map(x=>x.value),status:d.q("#afSt").value,notitie:d.q("#afN").value.trim()}};
- const store=()=>{const v=collect();if(!v)return null;let r;if(id){r=get("afspraken",id);Object.assign(r,v)}else{r={id:uid(),factuurId:null,...v};D.afspraken.push(r)}saveC("afspraken");if(!id){agD=fromYmd(r.datum)}draw();return r};
+ const store=()=>{const v=collect();if(!v)return null;const cf=conflicts({...v,id:a.id});
+  if(cf.length){if(bed.dubbel==="blokkeer"){d.q("#afMsg").textContent="Kies een andere tijd of medewerker: "+confText(v,cf);return null}
+   if(!d.ok2){d.ok2=1;d.q("#afMsg").textContent="Dit is een dubbele boeking. Klik nogmaals om hem toch in te plannen.";d.q("#afOk").textContent="Toch opslaan";if(d.q("#afPay"))d.q("#afPay").textContent="Toch opslaan en afrekenen";return null}}
+  let r;if(id){r=get("afspraken",id);Object.assign(r,v)}else{r={id:uid(),factuurId:null,...v};D.afspraken.push(r)}saveC("afspraken");if(!id){agD=fromYmd(r.datum)}draw();return r};
  d.q("#afOk").onclick=()=>{if(store())d.close()};
  if(d.q("#afPay"))d.q("#afPay").onclick=()=>{const r=store();if(r){d.close();bonFromAf(r)}};
  if(d.q("#afInv"))d.q("#afInv").onclick=()=>{const f=get("facturen",a.factuurId);if(f)invDlg(f)};
@@ -588,7 +705,7 @@ const lineTot=l=>rnd(l.aantal*l.prijs);
 const bonSub=()=>rnd(bon.lines.reduce((s,l)=>s+lineTot(l),0));
 const bonDisc=()=>Math.min(100,Math.max(0,num(bon.korting)));
 const bonTot=()=>rnd(bonSub()*(1-bonDisc()/100));
-function btwSpec(lines,k){const m={};lines.forEach(l=>{const t=l.aantal*l.prijs*(1-k/100);m[l.btw]=(m[l.btw]||0)+t});return Object.keys(m).sort((a,b)=>b-a).map(r=>({pct:+r,grondslag:rnd(m[r]/(1+r/100)),btw:rnd(m[r]-m[r]/(1+r/100))}))}
+function btwSpec(lines,k){const m={};lines.forEach(l=>{const t=l.aantal*l.prijs*(1-k/100);m[l.btw]=(m[l.btw]||0)+t});return Object.keys(m).sort((a,b)=>b-a).map(r=>{const t=rnd(m[r]),g=rnd(m[r]/(1+r/100));return{pct:+r,grondslag:g,btw:rnd(t-g)}})}
 function drawKassa(){
  const arts=D.artikelen.filter(x=>x.actief);
  const cats=["Alles","Behandelingen","Producten",...new Set(arts.map(x=>x.cat).filter(Boolean))];
@@ -607,15 +724,26 @@ function drawBon(){
  const s=bonSub(),t=bonTot();
  $("#bSub").textContent=eur(s);$("#bDiscRow").hidden=!bonDisc();$("#bDisc").textContent="− "+eur(s-t);
  $("#bBtw").innerHTML=btwSpec(bon.lines,bonDisc()).map(b=>`<div class="row mute"><span>Waarvan ${b.pct}% btw</span><span>${eur(b.btw)}</span></div>`).join("");
- $("#bTot").textContent=eur(t);$("#bPay").disabled=!bon.lines.length;
+ $("#bTot").textContent=eur(t);$("#bPay").disabled=!bon.lines.length||t<0;
 }
 $("#kChips").onclick=e=>{const c=e.target.dataset.c;if(c){kCat=c;drawKassa()}};
 $("#kq").oninput=e=>{kTerm=e.target.value.toLowerCase();drawKassa()};
 $("#kGrid").onclick=e=>{const b=e.target.closest(".prod");if(!b)return;const x=get("artikelen",b.dataset.id);const l=bon.lines.find(z=>z.artId===x.id&&z.prijs===x.prijs);if(l)l.aantal++;else bon.lines.push(lineOf(x));saveBon();drawBon()};
 $("#bonLines").onclick=e=>{const t=e.target.dataset;if(t.p!=null)bon.lines[t.p].aantal++;else if(t.m!=null){const l=bon.lines[t.m];l.aantal--;if(l.aantal<=0)bon.lines.splice(t.m,1)}else if(t.r!=null)bon.lines.splice(t.r,1);else return;saveBon();drawBon()};
-$("#bonLines").onchange=e=>{const i=e.target.dataset.pr;if(i!=null){bon.lines[i].prijs=Math.max(0,rnd(num(e.target.value)));saveBon();drawBon()}};
+$("#bonLines").onchange=e=>{const i=e.target.dataset.pr;if(i!=null){const l=bon.lines[i],v=rnd(num(e.target.value));l.prijs=l.vrij?v:Math.max(0,v);saveBon();drawBon()}};
 $("#bonDisc").oninput=e=>{bon.korting=num(e.target.value);saveBon();drawBon()};
 $("#bClr").onclick=()=>{bon=newBon();saveBon();drawBon()};
+$("#kVrij").onclick=()=>{const d=modal(`<h2>Vrij bedrag</h2>
+  <label>Omschrijving<input id="vO" placeholder="Bijvoorbeeld: extra ontklitten, toeslag vlooien"></label>
+  <div class="g2"><label>Bedrag incl. btw per stuk (€)<input id="vB" inputmode="decimal" placeholder="0,00"></label><label>Aantal<input id="vA" type="number" min="1" step="1" value="1"></label></div>
+  <div class="g2"><label>Btw-tarief<select id="vT"><option value="21">21%</option><option value="9">9%</option><option value="0">0% of vrijgesteld</option></select></label><label>Soort<select id="vS"><option value="dienst">Behandeling</option><option value="product">Product</option></select></label></div>
+  <small>Een negatief bedrag (bijvoorbeeld −5,00) werkt als korting op de bon.</small>
+  <div class="msg" id="vM"></div>
+  <div class="acts"><button class="btn" type="button" id="vX">Annuleren</button><button class="btn p" type="button" id="vOk">Toevoegen aan bon</button></div>`);
+ d.q("#vX").onclick=()=>d.close();setTimeout(()=>d.q("#vO").focus(),30);
+ d.q("#vOk").onclick=()=>{const naam=d.q("#vO").value.trim(),pr=rnd(num(d.q("#vB").value)),q=Math.max(1,Math.round(num(d.q("#vA").value)||1));
+  if(!naam){d.q("#vM").textContent="Vul een omschrijving in.";return}if(!pr){d.q("#vM").textContent="Vul een bedrag in, bijvoorbeeld 12,50.";return}
+  bon.lines.push({artId:null,naam,type:d.q("#vS").value,prijs:pr,btw:+d.q("#vT").value,aantal:q,vrij:true});saveBon();d.close();drawBon()}};
 document.addEventListener("click",e=>{const id=e.target.id;
  if(id==="bAfX"){bon.afspraakId=null;saveBon();drawBon()}
  else if(id==="bKx"){bon.klantId=null;bon.hondId=null;saveBon();drawBon()}
@@ -659,7 +787,7 @@ function nextNr(){const y=new Date().getFullYear(),k=(bed.kassa||"K1").toUpperCa
 function finish(pm,beh){
  const now=Date.now(),t=bonTot(),door=(get("medewerkers",lastDoor)||{}).naam||"";
  const f={id:uid(),nr:nextNr(),ts:now,klantId:bon.klantId,hondId:bon.hondId,afspraakId:bon.afspraakId,
-  regels:bon.lines.map(l=>({artId:l.artId,naam:l.naam,type:l.type,aantal:l.aantal,prijs:l.prijs,btw:l.btw,totaal:lineTot(l)})),
+  regels:bon.lines.map(l=>({artId:l.artId,naam:l.naam,type:l.type,aantal:l.aantal,prijs:l.prijs,btw:l.btw,totaal:lineTot(l),...(l.vrij?{vrij:true}:{})})),
   korting:bonDisc(),sub:bonSub(),totaal:t,betalingen:pm==="Op rekening"?[]:[{ts:now,methode:pm,bedrag:t}],betaald:pm==="Op rekening"?0:t,rest:pm==="Op rekening"?t:0,kassa:bed.kassa||"K1",door,vervalt:pm==="Op rekening"?ymd(addDays(today(),+bed.termijn||14)):null};
  D.facturen.push(f);saveC("facturen");
  let vc=false;bon.lines.forEach(l=>{const x=get("artikelen",l.artId);if(x&&x.type==="product"&&x.voorraad!==""&&x.voorraad!=null){x.voorraad=+x.voorraad-l.aantal;vc=true}});if(vc)saveC("artikelen");
@@ -717,6 +845,89 @@ function drawFac(){
   return`<tr class="click" data-f="${f.id}"><td><b>${esc(f.nr)}</b>${f.door?`<br><small>${esc(f.door)}</small>`:""}</td><td style="white-space:nowrap">${fDT(f.ts)}</td><td>${k?`<b>${esc(k.naam)}</b>`:`<span class="mute">Losse verkoop</span>`}${h?`<br><small>${esc(h.naam)}</small>`:""}</td><td>${esc(f.regels.map(r=>r.naam).join(", "))}</td><td>${esc([...new Set(f.betalingen.map(p=>p.methode))].join(", ")||"Op rekening")}</td><td class="r"><b>${eur(f.totaal)}</b></td><td>${f.rest>0?`<span class="pill ${te?"warn":"amber"}">${te?"Te laat":"Open"} ${eur(f.rest)}</span>`:`<span class="pill ok">Betaald</span>`}</td></tr>`}).join(""):`<tr><td colspan="7" class="empty">${D.facturen.length?"Geen facturen gevonden met dit filter.":"Nog geen facturen. Reken een bon af op het tabblad Kassa."}</td></tr>`;
 }
 $("#fq").oninput=drawFac;$("#fSeg").onclick=e=>{if(e.target.dataset.f){fFil=e.target.dataset.f;drawFac()}};
+$("#fExp").onclick=()=>exportDlg();
+/* eigen Excel-generator (xlsx = zip met XML), geen externe bibliotheek nodig */
+const xe=v=>String(v??"").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const colL=j=>{let s="";j++;while(j){const m=(j-1)%26;s=String.fromCharCode(65+m)+s;j=Math.floor((j-1)/26)}return s};
+const CRCT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc32=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRCT[(c^b[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0};
+function zipBlob(files,type){const enc=new TextEncoder(),parts=[],cd=[];let off=0;
+ for(const f of files){const nm=enc.encode(f.name),d=typeof f.data==="string"?enc.encode(f.data):f.data,crc=crc32(d);
+  const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(12,0x21,true);h.setUint32(14,crc,true);h.setUint32(18,d.length,true);h.setUint32(22,d.length,true);h.setUint16(26,nm.length,true);
+  parts.push(new Uint8Array(h.buffer),nm,d);
+  const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,d.length,true);c.setUint32(24,d.length,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);
+  cd.push(new Uint8Array(c.buffer),nm);off+=30+nm.length+d.length}
+ const size=cd.reduce((t,x)=>t+x.length,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,size,true);e.setUint32(16,off,true);
+ return new Blob([...parts,...cd,new Uint8Array(e.buffer)],{type})}
+/* stijlen: 1 bedrag, 2 datum, 3 kop, 4 vet bedrag, 5 vet, 6 geheel getal */
+const XSTYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd\\-mm\\-yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><name val="Calibri"/><family val="2"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF0E4ED"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="4" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+function sheetXml(sh){const rows=sh.rows.map((r,i)=>`<row r="${i+1}">${(r||[]).map((c,j)=>{if(c==null||c.v==null||c.v==="")return"";const ref=colL(j)+(i+1),st=c.s?` s="${c.s}"`:"";
+  if(typeof c.v==="number")return`<c r="${ref}"${st}>${c.f?`<f>${c.f}</f>`:""}<v>${isFinite(c.v)?c.v:0}</v></c>`;
+  return`<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${xe(c.v)}</t></is></c>`}).join("")}</row>`).join("");
+ return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0">${sh.freeze?'<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>':""}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>${sh.cols?`<cols>${sh.cols.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w+2}" customWidth="1"/>`).join("")}</cols>`:""}<sheetData>${rows}</sheetData>${sh.filter?`<autoFilter ref="${sh.filter}"/>`:""}</worksheet>`}
+function xlsxBlob(sheets){const R="http://schemas.openxmlformats.org/officeDocument/2006/relationships",H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+ const abs=r=>r.split(":").map(x=>x.replace(/([A-Z]+)(\d+)/,"$$$1$$$2")).join(":");
+ const dn=sheets.map((x,i)=>x.filter?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xe(x.name)}'!${abs(x.filter)}</definedName>`:"").join("");
+ const files=[
+  {name:"[Content_Types].xml",data:H+`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((x,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`},
+  {name:"_rels/.rels",data:H+`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${R}/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+  {name:"xl/workbook.xml",data:H+`<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${R}"><bookViews><workbookView/></bookViews><sheets>${sheets.map((x,i)=>`<sheet name="${xe(x.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join("")}</sheets>${dn?`<definedNames>${dn}</definedNames>`:""}</workbook>`},
+  {name:"xl/_rels/workbook.xml.rels",data:H+`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((x,i)=>`<Relationship Id="rId${i+1}" Type="${R}/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}<Relationship Id="rId${sheets.length+1}" Type="${R}/styles" Target="styles.xml"/></Relationships>`},
+  {name:"xl/styles.xml",data:XSTYLES},
+  ...sheets.map((x,i)=>({name:`xl/worksheets/sheet${i+1}.xml`,data:sheetXml(x)}))];
+ return zipBlob(files,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+function xTable(name,head,rows,fmt,widths,tot){
+ const out=[head.map(h=>({v:h,s:3})),...rows.map(r=>r.map((v,j)=>typeof v==="number"?{v,s:fmt[j]==="m"?1:fmt[j]==="d"?2:0}:{v}))];
+ if(tot&&rows.length){const n=rows.length,t=head.map(()=>null);t[0]={v:"Totaal",s:5};tot.forEach(j=>{const cl=colL(j);t[j]={v:rnd(rows.reduce((x,r)=>x+(+r[j]||0),0)),f:`SUM(${cl}2:${cl}${n+1})`,s:4}});out.push(t)}
+ return{name,rows:out,cols:widths,freeze:true,filter:rows.length?`A1:${colL(head.length-1)}${rows.length+1}`:null}}
+const xd=s=>{const[y,m,d]=String(s).split("-").map(Number);return(Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/864e5};
+const facInP=(from,to)=>D.facturen.filter(f=>{const s=ymd(new Date(f.ts));return s>=from&&s<=to}).sort((a,b)=>a.ts-b.ts);
+function aggBtw(F){const m={21:{g:0,b:0},9:{g:0,b:0},0:{g:0,b:0}};F.forEach(f=>btwSpec(f.regels,f.korting).forEach(x=>{const k=m[x.pct]||(m[x.pct]={g:0,b:0});k.g=rnd(k.g+x.grondslag);k.b=rnd(k.b+x.btw)}));return m}
+function workbookFor(from,to){
+ const F=facInP(from,to),pays=D.facturen.flatMap(f=>f.betalingen.map(p=>({...p,f}))).filter(p=>{const s=ymd(new Date(p.ts));return s>=from&&s<=to}).sort((a,b)=>a.ts-b.ts);
+ const ag=aggBtw(F),pct=[21,9,0].concat(Object.keys(ag).map(Number).filter(p=>![21,9,0].includes(p)));
+ const soort={Behandelingen:0,Producten:0,"Vrije bedragen":0};F.forEach(f=>f.regels.forEach(r=>{const inc=rnd(r.totaal*(1-(f.korting||0)/100)),k=r.vrij||!r.artId?"Vrije bedragen":r.type==="product"?"Producten":"Behandelingen";soort[k]=rnd(soort[k]+inc)}));
+ const meth={};pays.forEach(p=>{meth[p.methode]=rnd((meth[p.methode]||0)+p.bedrag)});const open=F.filter(f=>f.rest>0);
+ const T=v=>({v}),B=v=>({v,s:5}),Hd=v=>({v,s:3}),Mo=v=>({v:rnd(v),s:1}),MB=v=>({v:rnd(v),s:4}),I=v=>({v,s:6});
+ const S={name:"Samenvatting",cols:[28,18,14,18],rows:[[B("Omzetoverzicht "+(bed.naam||"Trimmy"))],[T("Periode"),T(`${fDate(from)} t/m ${fDate(to)}`)],[T("KvK"),T(bed.kvk||"")],[T("Btw-nummer"),T(bed.btwnr||"")],[T("Aangemaakt"),T(new Date().toLocaleString("nl-NL"))],[],
+  [Hd("Btw-tarief"),Hd("Omzet excl. btw"),Hd("Btw"),Hd("Omzet incl. btw")],...pct.map(p=>[T(p+"%"),Mo(ag[p].g),Mo(ag[p].b),Mo(ag[p].g+ag[p].b)]),
+  [B("Totaal"),MB(pct.reduce((x,p)=>x+ag[p].g,0)),MB(pct.reduce((x,p)=>x+ag[p].b,0)),MB(pct.reduce((x,p)=>x+ag[p].g+ag[p].b,0))],[],
+  [Hd("Omzet naar soort"),Hd("Incl. btw")],...Object.entries(soort).map(([k,v])=>[T(k),Mo(v)]),[],
+  [Hd("Ontvangen in de periode"),Hd("Bedrag")],...(Object.keys(meth).length?Object.entries(meth).map(([k,v])=>[T(k),Mo(v)]):[[T("Geen betalingen"),Mo(0)]]),[B("Totaal ontvangen"),MB(Object.values(meth).reduce((x,v)=>x+v,0))],[],
+  [Hd("Facturen in de periode"),Hd("Aantal"),Hd("Bedrag")],[T("Alle facturen"),I(F.length),Mo(F.reduce((x,f)=>x+f.totaal,0))],[T("Waarvan nog open"),I(open.length),Mo(open.reduce((x,f)=>x+f.rest,0))]]};
+ const fac=xTable("Facturen",["Factuurnummer","Datum","Klant","Plaats","Hond","Medewerker","Kassa","Omzet 21% excl.","Btw 21%","Omzet 9% excl.","Btw 9%","Omzet 0%","Totaal excl. btw","Totaal btw","Totaal incl. btw","Korting %","Betaald","Openstaand","Betaalwijze","Vervaldatum"],
+  F.map(f=>{const k=get("klanten",f.klantId)||{},h=get("honden",f.hondId)||{},sp=btwSpec(f.regels,f.korting),g=p=>sp.find(x=>x.pct===p)||{grondslag:0,btw:0};
+   return[f.nr,xd(ymd(new Date(f.ts))),k.naam||"Losse verkoop",k.plaats||"",h.naam||"",f.door||"",f.kassa||"",g(21).grondslag,g(21).btw,g(9).grondslag,g(9).btw,g(0).grondslag,rnd(sp.reduce((x,y)=>x+y.grondslag,0)),rnd(sp.reduce((x,y)=>x+y.btw,0)),f.totaal,f.korting||0,f.betaald,f.rest,[...new Set(f.betalingen.map(p=>p.methode))].join(", ")||"Op rekening",f.vervalt?xd(f.vervalt):""]}),
+  ["t","d","t","t","t","t","t","m","m","m","m","m","m","m","m","n","m","m","t","d"],[16,11,24,14,12,12,6,14,11,14,11,11,14,12,14,9,12,12,16,12],[7,8,9,10,11,12,13,14,16,17]);
+ const reg=xTable("Factuurregels",["Factuurnummer","Datum","Omschrijving","Soort","Aantal","Prijs incl. btw","Btw %","Korting %","Bedrag incl. btw","Bedrag excl. btw","Btw"],
+  F.flatMap(f=>f.regels.map(r=>{const inc=rnd(r.totaal*(1-(f.korting||0)/100)),gr=rnd(inc/(1+(+r.btw||0)/100));return[f.nr,xd(ymd(new Date(f.ts))),r.naam,r.vrij||!r.artId?"Vrij bedrag":r.type==="product"?"Product":"Behandeling",r.aantal,r.prijs,r.btw,f.korting||0,inc,gr,rnd(inc-gr)]})),
+  ["t","d","t","t","n","m","n","n","m","m","m"],[16,11,32,13,8,14,7,10,15,15,11],[8,9,10]);
+ const bet=xTable("Betalingen",["Datum","Tijd","Factuurnummer","Klant","Betaalwijze","Bedrag"],
+  pays.map(p=>[xd(ymd(new Date(p.ts))),new Date(p.ts).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"}),p.f.nr,(get("klanten",p.f.klantId)||{}).naam||"Losse verkoop",p.methode,p.bedrag]),
+  ["d","t","t","t","t","m"],[11,7,16,24,13,12],[5]);
+ const days={};pays.forEach(p=>{const k=ymd(new Date(p.ts)),o=days[k]||(days[k]={PIN:0,Contant:0,Overboeking:0});o[p.methode]=rnd((o[p.methode]||0)+p.bedrag)});
+ const kas=xTable("Kasboek per dag",["Datum","PIN","Contant","Overboeking","Totaal ontvangen"],Object.keys(days).sort().map(k=>{const o=days[k];return[xd(k),o.PIN||0,o.Contant||0,o.Overboeking||0,rnd(Object.values(o).reduce((x,v)=>x+v,0))]}),
+  ["d","m","m","m","m"],[11,12,12,13,16],[1,2,3,4]);
+ return[S,fac,reg,bet,kas]}
+async function buildXlsx(from,to){return saveFile(`trimmy-facturen-${from}-tm-${to}.xlsx`,xlsxBlob(workbookFor(from,to)))}
+function exportDlg(){const T=today(),y=T.getFullYear(),m=T.getMonth(),q=Math.floor(m/3);
+ const PR=[["vm","Vorige maand",new Date(y,m-1,1),new Date(y,m,0)],["dm","Deze maand",new Date(y,m,1),new Date(y,m+1,0)],["vk","Vorig kwartaal",new Date(y,q*3-3,1),new Date(y,q*3,0)],["dk","Dit kwartaal",new Date(y,q*3,1),new Date(y,q*3+3,0)],["vj","Vorig jaar",new Date(y-1,0,1),new Date(y-1,11,31)],["dj","Dit jaar",new Date(y,0,1),new Date(y,11,31)]];
+ const d=modal(`<h2>Export voor de accountant</h2><div class="chips" id="eP">${PR.map(p=>`<button type="button" class="chip" data-p="${p[0]}">${p[1]}</button>`).join("")}</div>
+  <div class="g2"><label>Van<input id="eF" type="date"></label><label>Tot en met<input id="eT" type="date"></label></div>
+  <div class="note" id="eS"></div>
+  <small>Excel-bestand met de tabbladen Samenvatting (omzet en btw per tarief), Facturen, Factuurregels, Betalingen en Kasboek per dag. Facturen tellen mee op factuurdatum, betalingen op betaaldatum.</small>
+  <div class="msg" id="eM"></div>
+  <div class="acts"><button class="btn" type="button" id="eX">Sluiten</button><button class="btn p" type="button" id="eOk">Excel downloaden</button></div>`);
+ const sum=()=>{const f=d.q("#eF").value,t=d.q("#eT").value;d.querySelectorAll("#eP .chip").forEach(b=>{const p=PR.find(x=>x[0]===b.dataset.p);b.setAttribute("aria-pressed",ymd(p[2])===f&&ymd(p[3])===t)});
+  if(!f||!t||f>t){d.q("#eS").textContent="Kies een geldige periode.";return}
+  const F=facInP(f,t),ag=aggBtw(F),open=F.filter(x=>x.rest>0);
+  d.q("#eS").innerHTML=`<b>${F.length} facturen</b> · omzet incl. btw <b>${eur(F.reduce((s,x)=>s+x.totaal,0))}</b><br>Btw 21%: ${eur(ag[21].b)} · btw 9%: ${eur(ag[9].b)} · omzet 0%: ${eur(ag[0].g)}${open.length?`<br><span style="color:var(--warn)">${open.length} nog open: ${eur(open.reduce((s,x)=>s+x.rest,0))}</span>`:""}`};
+ const setP=k=>{const p=PR.find(x=>x[0]===k);d.q("#eF").value=ymd(p[2]);d.q("#eT").value=ymd(p[3]);sum()};
+ d.q("#eP").onclick=e=>{if(e.target.dataset.p)setP(e.target.dataset.p)};d.q("#eF").oninput=sum;d.q("#eT").oninput=sum;setP("vm");
+ d.q("#eX").onclick=()=>d.close();
+ d.q("#eOk").onclick=async()=>{const f=d.q("#eF").value,t=d.q("#eT").value,b=d.q("#eOk"),M=d.q("#eM");M.style.color="";M.textContent="";
+  if(!f||!t||f>t){M.textContent="Kies een geldige periode.";return}if(!facInP(f,t).length){M.textContent="Er zijn geen facturen in deze periode.";return}
+  b.disabled=true;b.textContent="Bezig…";try{const r=await buildXlsx(f,t);if(r==="saved"){M.style.color="var(--ok)";M.textContent="Excel-bestand opgeslagen."}else M.textContent="Niet opgeslagen."}catch(e){M.textContent=e.message}finally{b.disabled=false;b.textContent="Excel downloaden"}}}
 $("#fBody").onclick=e=>{const r=e.target.closest("[data-f]");if(r)invDlg(get("facturen",r.dataset.f))};
 
 /* ---------- klanten ---------- */
@@ -733,7 +944,7 @@ function drawKl(){
  const kom=D.afspraken.filter(a=>a.klantId===k.id&&a.datum>=tdy&&!["geannuleerd","afgerekend"].includes(a.status)).sort((a,b)=>(a.datum+a.start).localeCompare(b.datum+b.start));
  const fs=D.facturen.filter(f=>f.klantId===k.id),open=fs.reduce((s,f)=>s+f.rest,0),omzet=fs.reduce((s,f)=>s+f.totaal,0);
  const mis=D.afspraken.filter(a=>a.klantId===k.id&&a.status==="noshow").length;
- el.innerHTML=`<div class="det"><div class="hdr"><div><h2>${esc(k.naam)}</h2><div class="mute">${fs.length} facturen · ${eur(omzet)} totaal${open>0?` · <b style="color:var(--warn)">${eur(open)} open</b>`:""}${mis?` · <span style="color:var(--warn)">${mis}× niet gekomen</span>`:""}</div></div><div class="acts"><button class="btn" type="button" data-act="kEdit">Gegevens wijzigen</button><button class="btn p" type="button" data-act="kAf">Afspraak maken</button></div></div>
+ el.innerHTML=`<div class="det"><div class="hdr"><div><h2>${esc(k.naam)}</h2><div class="mute">${fs.length} facturen · ${eur(omzet)} totaal${open>0?` · <b style="color:var(--warn)">${eur(open)} open</b>`:""}${mis?` · <span style="color:var(--warn)">${mis}× niet gekomen</span>`:""}</div></div><div class="acts"><button class="btn" type="button" data-act="kMsg">Bericht sturen</button><button class="btn" type="button" data-act="kEdit">Gegevens wijzigen</button><button class="btn p" type="button" data-act="kAf">Afspraak maken</button></div></div>
  <div class="kv"><div><span>Adres</span>${esc(k.straat||"–")}<br>${esc([k.pc,k.plaats].filter(Boolean).join(" "))}</div><div><span>Telefoon</span>${esc(k.tel||"–")}</div><div><span>E-mail</span>${esc(k.email||"–")}</div>${k.notitie?`<div><span>Notitie</span>${esc(k.notitie)}</div>`:""}</div>
  <div class="sec"><div class="hdr"><h3>Honden</h3><button class="btn s" type="button" data-act="hNew">Hond toevoegen</button></div>
  ${hs.length?`<div class="dogs">${hs.map(h=>{const last=D.behandelingen.filter(b=>b.hondId===h.id).sort((a,b)=>b.datum.localeCompare(a.datum))[0];
@@ -750,7 +961,7 @@ $("#klList").onclick=e=>{const b=e.target.closest("[data-k]");if(b){selKl=b.data
 $("#klDet").onclick=e=>{const b=e.target.closest("[data-act],[data-af],[data-ev]");if(!b)return;
  if(b.dataset.af)return afDlg(b.dataset.af);if(b.dataset.ev)return openEv(b.dataset.ev);
  const a=b.dataset.act,h=b.dataset.h;
- if(a==="kEdit")klantDlg(selKl);else if(a==="kAf")afDlg(null,{klantId:selKl,datum:ymd(today()),start:"09:00"});
+ if(a==="kMsg")msgDlg({klantId:selKl},"vrij");else if(a==="kEdit")klantDlg(selKl);else if(a==="kAf")afDlg(null,{klantId:selKl,datum:ymd(today()),start:"09:00"});
  else if(a==="hNew")hondDlg(null,selKl);else if(a==="hEdit")hondDlg(h,selKl);
  else if(a==="hAf")afDlg(null,{klantId:selKl,hondId:h,datum:ymd(today()),start:"09:00"});
  else if(a==="hHis"){$("#hq").value=get("honden",h).naam;$("#hf").value="";go("historie")}};
@@ -826,18 +1037,20 @@ function behDlg(id){
 }
 
 /* ---------- instellingen ---------- */
-const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit"};
+const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd"};
 function drawInst(){for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;
  $("#mwSum").textContent=`(${D.medewerkers.length})`;
  $("#mwList").innerHTML=D.medewerkers.map(m=>`<div style="display:flex;gap:8px;align-items:center"><input type="color" value="${m.kleur}" data-mc="${m.id}" aria-label="Kleur" style="width:46px;padding:2px;height:38px"><input value="${esc(m.naam)}" data-mn="${m.id}" aria-label="Naam"><button class="btn s d" type="button" data-md="${m.id}">Verwijderen</button></div>`).join("")||`<div class="mute">Nog geen medewerkers.</div>`;
  $("#dbUrl").value=S.get("dburl","");$("#dbFrame").hidden=STANDALONE;dbUi()}
-$("#bSave").onclick=()=>{for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
- bed.zondag=$("#bZon").checked;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;saveC("bedrijf");$("#bMsg").textContent="Opgeslagen.";setTimeout(()=>$("#bMsg").textContent="",2500);drawInst()};
+function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
+ bed.zondag=$("#bZon").checked;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgHer","msgWij","msgOnd"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
+$("#bSave").onclick=()=>saveBed($("#bMsg"));$("#bSave2").onclick=()=>saveBed($("#bMsg2"));
 $("#mwAdd").onclick=()=>{const k=["#8a4a7e","#2f7d6d","#b0662a","#3d5fa8","#8d7a1c","#a8434f"];D.medewerkers.push({id:uid(),naam:"Nieuwe medewerker",kleur:k[D.medewerkers.length%k.length]});saveC("medewerkers");drawInst()};
 $("#mwList").onchange=e=>{const t=e.target.dataset;const m=get("medewerkers",t.mc||t.mn);if(!m)return;if(t.mc)m.kleur=e.target.value;else m.naam=e.target.value.trim()||m.naam;saveC("medewerkers")};
 $("#mwList").onclick=e=>{const id=e.target.dataset.md;if(id)arm(e.target,()=>{D.medewerkers=D.medewerkers.filter(m=>m.id!==id);saveC("medewerkers");drawInst()},"Zeker?")};
 $("#bkMake").onclick=()=>{const j=JSON.stringify({app:"Trimmy",versie:1,ts:Date.now(),bedrijf:bed,...Object.fromEntries(COLS.map(c=>[c,D[c]]))});$("#bkTxt").value=j;$("#bkCopy").hidden=false;
- if(STANDALONE){const a=$("#bkDl");a.hidden=false;a.href=URL.createObjectURL(new Blob([j],{type:"application/json"}));a.download=`trimmy-backup-${ymd(new Date())}.json`}$("#bkMsg").textContent="Back-up staat in het tekstvak."};
+ $("#bkDl").hidden=false;$("#bkMsg").textContent="Back-up staat in het tekstvak."};
+$("#bkDl").onclick=async()=>{try{const r=await saveFile(`trimmy-backup-${ymd(new Date())}.json`,new Blob([$("#bkTxt").value],{type:"application/json"}));$("#bkMsg").textContent=r==="saved"?"Back-up opgeslagen.":"Niet opgeslagen."}catch(e){$("#bkMsg").textContent=e.message}};
 $("#bkCopy").onclick=()=>{const t=$("#bkTxt");navigator.clipboard.writeText(t.value).then(()=>$("#bkMsg").textContent="Gekopieerd.",()=>{t.select();$("#bkMsg").textContent="Geselecteerd. Kopieer met Ctrl+C."})};
 $("#bkRestore").onclick=e=>{let j;try{j=JSON.parse($("#bkTxt").value)}catch(x){$("#bkMsg").textContent="Dit is geen geldige back-up.";return}if(!j||j.app!=="Trimmy"){$("#bkMsg").textContent="Dit is geen Trimmy-back-up.";return}
  arm(e.target,()=>{COLS.forEach(c=>{D[c]=Array.isArray(j[c])?j[c]:[];S.set(c,D[c])});bed={...BED0,...(j.bedrijf||{})};S.set("bedrijf",bed);S.set("demo",0);dbSnap={};dbPersist();dbSoon();$("#bkMsg").textContent="Hersteld.";draw()},"Nogmaals: alles vervangen")};
@@ -891,3 +1104,6 @@ setInterval(()=>{if(tab==="agenda")drawAg()},120000);
 
 go(tab);dbUi();if(dbOn())dbSync();
 </script>
+
+</body>
+</html>
