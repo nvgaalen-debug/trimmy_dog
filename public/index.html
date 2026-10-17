@@ -336,6 +336,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
    <div class="acts l"><button class="btn p" id="bSave" type="button">Opslaan</button><span class="mute" id="bMsg" role="status"></span></div>
   </div></details>
   <details class="set" id="sMsg"><summary>Berichten aan klanten</summary><div class="sbody">
+   <label>Bevestiging van een nieuwe afspraak<textarea id="bMsgBev" rows="4"></textarea></label>
    <label>Herinnering voor een afspraak<textarea id="bMsgHer" rows="4"></textarea></label>
    <label>Afspraak verplaatst<textarea id="bMsgWij" rows="3"></textarea></label>
    <label>Onderwerp van de e-mail<input id="bMsgOnd"></label>
@@ -408,21 +409,28 @@ function fillMsg(t,a){const k=get("klanten",a.klantId)||{},h=get("honden",a.hond
  const dn=(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).map(x=>x.toLowerCase()).join(" en ");
  const map={klant:k.naam||"",hond:h.naam||"uw hond",dag:d?d.toLocaleDateString("nl-NL",{weekday:"long"}):"",datum:d?d.toLocaleDateString("nl-NL",{day:"numeric",month:"long"}):"",tijd:a.start||"",behandeling:dn||"een trimbeurt",salon:bed.naam||"",salontel:bed.tel||"",adres:[bed.straat,bed.plaats].filter(Boolean).join(", ")};
  return String(t||"").replace(/\{(\w+)\}/g,(m,x)=>x in map?map[x]:m)}
+const MSGK=[["bevestiging","Bevestiging"],["herinnering","Herinnering"],["wijziging","Afspraak verplaatst"],["vrij","Eigen bericht"]];
+const msgTpl=k=>k==="bevestiging"?(bed.msgBev||BED0.msgBev):k==="herinnering"?(bed.msgHer||BED0.msgHer):k==="wijziging"?(bed.msgWij||BED0.msgWij):"Hoi {klant},\n\n\nGroet, {salon}";
 function msgDlg(a,kind){const k=get("klanten",a&&a.klantId);if(!k){toast("Er hoort geen klant bij.");return}
- const tpl=kind==="herinnering"?(bed.msgHer||BED0.msgHer):kind==="wijziging"?(bed.msgWij||BED0.msgWij):"Hoi {klant},\n\n\nGroet, {salon}";
- const sub=kind==="vrij"?(bed.naam||"Bericht"):fillMsg(bed.msgOnd||BED0.msgOnd,a),tel=waNr(k.tel);
- const d=modal(`<h2>${kind==="herinnering"?"Herinnering sturen":kind==="wijziging"?"Klant informeren":"Bericht aan "+esc(k.naam)}</h2>
-  <div class="note">${esc(k.naam)}<br>Telefoon: <b style="user-select:all">${esc(k.tel||"onbekend")}</b><br>E-mail: <b style="user-select:all">${esc(k.email||"onbekend")}</b></div>
-  <label>Bericht<textarea id="mT" rows="6">${esc(fillMsg(tpl,a))}</textarea></label>
+ const tel=waNr(k.tel),isAf=!!(a.id&&get("afspraken",a.id));if(!isAf)kind="vrij";
+ const d=modal(`<h2>Bericht aan ${esc(k.naam)}</h2>
+  <div class="note">Telefoon: <b style="user-select:all">${esc(k.tel||"onbekend")}</b><br>E-mail: <b style="user-select:all">${esc(k.email||"onbekend")}</b></div>
+  ${isAf?`<label>Soort bericht<select id="mK">${MSGK.map(([v,l])=>`<option value="${v}" ${v===kind?"selected":""}>${l}</option>`).join("")}</select></label>`:""}
+  <label>Bericht<textarea id="mT" rows="7"></textarea></label>
   <div class="acts l"><a class="btn p" id="mWa" target="_blank" rel="noopener" ${tel?"":"hidden"}>Via WhatsApp</a><a class="btn" id="mMa" target="_blank" rel="noopener" ${k.email?"":"hidden"}>Via e-mail</a><button class="btn" type="button" id="mCp">Tekst kopiëren</button></div>
   ${!tel&&!k.email?`<div class="note w">Bij deze klant staat geen bruikbaar telefoonnummer of e-mailadres. Vul die aan via Klanten.</div>`:""}
-  <small>WhatsApp en je e-mailprogramma openen in een nieuw venster; verstuur het bericht daar.${kind==="herinnering"?" Trimmy zet de afspraak dan op herinnerd.":""}</small>
+  <small id="mH"></small>
   <div class="msg" id="mM"></div><div class="acts"><button class="btn" type="button" id="mX">Sluiten</button></div>`);
- const upd=()=>{const t=d.q("#mT").value;d.q("#mWa").href=waUrl(k.tel,t);d.q("#mMa").href=mailUrl(k.email,sub,t)};upd();d.q("#mT").oninput=upd;
- const mark=()=>{if(kind!=="herinnering"||!a.id)return;const r=get("afspraken",a.id);if(r){r.herinnerd=Date.now();saveC("afspraken");setTimeout(draw,300)}};
+ let sub="";
+ const setKind=k2=>{kind=k2;d.q("#mT").value=fillMsg(msgTpl(kind),a);sub=kind==="vrij"?(bed.naam||"Bericht"):(kind==="bevestiging"?"Bevestiging: ":"")+fillMsg(bed.msgOnd||BED0.msgOnd,a);
+  d.q("#mH").textContent="WhatsApp en je e-mailprogramma openen in een nieuw venster; verstuur het bericht daar."+(kind==="bevestiging"?" Trimmy noteert dat de bevestiging is verstuurd en zet de status op Bevestigd.":kind==="herinnering"?" Trimmy zet de afspraak dan op herinnerd.":"");upd()};
+ const upd=()=>{const t=d.q("#mT").value;d.q("#mWa").href=waUrl(k.tel,t);d.q("#mMa").href=mailUrl(k.email,sub,t)};
+ d.q("#mT").oninput=upd;if(d.q("#mK"))d.q("#mK").onchange=e=>setKind(e.target.value);setKind(kind);
+ const mark=()=>{if(!isAf)return;const r=get("afspraken",a.id);if(!r)return;
+  if(kind==="herinnering")r.herinnerd=Date.now();else if(kind==="bevestiging"){r.bevestigd=Date.now();if(r.status==="gepland")r.status="bevestigd"}else return;saveC("afspraken");setTimeout(draw,300)};
  d.q("#mWa").addEventListener("click",mark);d.q("#mMa").addEventListener("click",mark);
  d.q("#mCp").onclick=()=>{const t=d.q("#mT");navigator.clipboard.writeText(t.value).then(()=>{d.q("#mM").style.color="var(--ok)";d.q("#mM").textContent="Gekopieerd. Plak het in WhatsApp, sms of e-mail.";mark()},()=>{t.select();d.q("#mM").textContent="Tekst geselecteerd. Kopieer met Ctrl+C."})};
- d.q("#mX").onclick=()=>d.close()}
+ d.q("#mX").onclick=()=>d.close();return d}
 function remDlg(){
  const d=modal(`<h2>Herinneringen</h2><label>Afspraken op<input id="rD" type="date" value="${ymd(addDays(today(),1))}"></label><div id="rL"></div>
   <small>Met WhatsApp of E-mail staat het bericht klaar met de gegevens van de afspraak. De tekst pas je aan bij Instellingen, Berichten aan klanten.</small>
@@ -439,7 +447,7 @@ function remDlg(){
 /* ---------- gegevens ---------- */
 const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers"];
 const D={};COLS.forEach(c=>D[c]=S.get(c,[]));
-const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
+const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",msgBev:"Hoi {klant}! Hierbij de bevestiging van de afspraak voor {hond}: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}"};
 let bed={...BED0,...S.get("bedrijf",{})};
 const saveC=c=>{if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);dbSoon()};
 const get=(c,id)=>id?D[c].find(x=>x.id===id):null;
@@ -540,7 +548,7 @@ function drawAg(){
  const ds=agMode==="dag"?ymd(agD):(days.some(d=>ymd(d)===tdy)?tdy:ymd(days[0]));
  const L=D.afspraken.filter(a=>a.datum===ds&&(!agMw||a.mwId===agMw)).sort((a,b)=>toMin(a.start)-toMin(b.start));
  $("#agList").innerHTML=`<h3>${ds===tdy?"Vandaag":fromYmd(ds).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"})} · ${L.length} afspra${L.length===1?"ak":"ken"}</h3><div class="panel scroll"><table><tbody>${L.length?L.map(a=>{const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),m=get("medewerkers",a.mwId);
-  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(hd?hd.naam:"–")}</b> <span class="mute">${esc(hd?hd.ras:"")}</span><br><small>${esc(kl?kl.naam+(kl.tel?" · "+kl.tel:""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${hd&&(hd.medisch||hd.gedrag)?`<br><small style="color:var(--warn)">${esc([hd.medisch,hd.gedrag].filter(Boolean).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span>${a.herinnerd?` <span class="pill acc">Herinnerd</span>`:""}${conflicts(a).length?` <span class="pill warn">Dubbel</span>`:""}</td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
+  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(hd?hd.naam:"–")}</b> <span class="mute">${esc(hd?hd.ras:"")}</span><br><small>${esc(kl?kl.naam+(kl.tel?" · "+kl.tel:""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${hd&&(hd.medisch||hd.gedrag)?`<br><small style="color:var(--warn)">${esc([hd.medisch,hd.gedrag].filter(Boolean).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span>${a.bevestigd&&!a.herinnerd?` <span class="pill acc">Bevestiging verstuurd</span>`:""}${a.herinnerd?` <span class="pill acc">Herinnerd</span>`:""}${conflicts(a).length?` <span class="pill warn">Dubbel</span>`:""}</td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
 }
 $("#agPrev").onclick=()=>{agD=addDays(agD,agMode==="week"?-7:-1);drawAg()};
 $("#agNext").onclick=()=>{agD=addDays(agD,agMode==="week"?7:1);drawAg()};
@@ -609,6 +617,8 @@ function afDlg(id,init={}){
   <div class="g2"><label>Duur (minuten)<input id="afDu" type="number" min="5" step="5" value="${a.duur}"></label><label>Medewerker<select id="afM"><option value="">Geen</option>${D.medewerkers.map(m=>`<option value="${m.id}" ${m.id===a.mwId?"selected":""}>${esc(m.naam)}</option>`).join("")}</select></label></div>
   <label>Status<select id="afSt">${STAT.map(s=>`<option value="${s[0]}" ${s[0]===a.status?"selected":""} ${s[0]==="afgerekend"&&!a.factuurId?"disabled":""}>${s[1]}</option>`).join("")}</select></label>
   <label>Notitie<textarea id="afN" rows="2">${esc(a.notitie)}</textarea></label>
+  <label class="chk"><input type="checkbox" id="afBev" ${!id&&S.get("bevauto",1)?"checked":""}> <span id="afBevL">${id?"Wijziging na opslaan aan de klant doorgeven (WhatsApp of e-mail)":"Na opslaan bevestiging sturen (WhatsApp of e-mail)"}</span></label>
+  ${a.bevestigd?`<small>Bevestiging verstuurd op ${fDT(a.bevestigd)}${a.herinnerd?` · herinnering op ${fDT(a.herinnerd)}`:""}</small>`:a.herinnerd?`<small>Herinnering verstuurd op ${fDT(a.herinnerd)}</small>`:""}
   <div class="note" id="afC" hidden></div><div class="msg" id="afMsg"></div>
   <div class="acts">${id?`<button class="btn d" type="button" id="afDel">Verwijderen</button><span class="sp"></span>`:""}
    ${id&&a.klantId?`<button class="btn" type="button" id="afMsgB">Klant berichten</button>`:""}
@@ -625,7 +635,7 @@ function afDlg(id,init={}){
  d.querySelectorAll(".chk-list input").forEach(cb=>cb.onchange=()=>{const sel=[...d.querySelectorAll(".chk-list input:checked")].map(x=>get("artikelen",x.value));const t=sel.reduce((s,x)=>s+(+x.duur||0),0);if(t)d.q("#afDu").value=t;conf()});
  ["#afD","#afS","#afDu","#afM","#afSt"].forEach(s=>{d.q(s).addEventListener("input",conf);d.q(s).addEventListener("change",conf)});conf();
  d.q("#afX").onclick=()=>d.close();
- if(d.q("#afMsgB"))d.q("#afMsgB").onclick=()=>msgDlg(get("afspraken",id),"herinnering");
+ if(d.q("#afMsgB"))d.q("#afMsgB").onclick=()=>msgDlg(get("afspraken",id),a.bevestigd?"herinnering":"bevestiging");
  d.q("#afNk").onclick=()=>klantDlg(null,k=>{kh.set(k,null);hondDlg(null,k.id,h=>kh.set(k,h.id))});
  d.q("#afNh").onclick=()=>{const k=khKlant(d);if(!k){d.q("#afMsg").textContent="Kies eerst een klant.";return}hondDlg(null,k.id,h=>kh.set(k,h.id))};
  d.q("#afKk").onclick=()=>{const k=khKlant(d);if(k){d.close();selKl=k.id;go("klanten")}};
@@ -638,7 +648,10 @@ function afDlg(id,init={}){
   if(cf.length){if(bed.dubbel==="blokkeer"){d.q("#afMsg").textContent="Kies een andere tijd of medewerker: "+confText(v,cf);return null}
    if(!d.ok2){d.ok2=1;d.q("#afMsg").textContent="Dit is een dubbele boeking. Klik nogmaals om hem toch in te plannen.";d.q("#afOk").textContent="Toch opslaan";if(d.q("#afPay"))d.q("#afPay").textContent="Toch opslaan en afrekenen";return null}}
   let r;if(id){r=get("afspraken",id);Object.assign(r,v)}else{r={id:uid(),factuurId:null,...v};D.afspraken.push(r)}saveC("afspraken");if(!id){agD=fromYmd(r.datum)}draw();return r};
- d.q("#afOk").onclick=()=>{if(store())d.close()};
+ const was=id?{datum:a.datum,start:a.start}:null;
+ d.q("#afOk").onclick=()=>{const bev=d.q("#afBev").checked;if(!id)S.set("bevauto",bev?1:0);const r=store();if(!r)return;d.close();
+  if(bev){if(!get("klanten",r.klantId))return;const moved=was&&(was.datum!==r.datum||was.start!==r.start);msgDlg(r,!id?"bevestiging":moved?"wijziging":"bevestiging")}
+  else if(!id)toast("Afspraak ingepland.",[["Bevestiging sturen",()=>msgDlg(r,"bevestiging")]])};
  if(d.q("#afPay"))d.q("#afPay").onclick=()=>{const r=store();if(r){d.close();bonFromAf(r)}};
  if(d.q("#afInv"))d.q("#afInv").onclick=()=>{const f=get("facturen",a.factuurId);if(f)invDlg(f)};
  if(d.q("#afDel"))d.q("#afDel").onclick=e=>arm(e.target,()=>{D.afspraken=D.afspraken.filter(x=>x.id!==id);saveC("afspraken");d.close();draw()},"Nogmaals: verwijderen");
@@ -1037,13 +1050,13 @@ function behDlg(id){
 }
 
 /* ---------- instellingen ---------- */
-const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd"};
+const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgBev:"msgBev",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd"};
 function drawInst(){for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;
  $("#mwSum").textContent=`(${D.medewerkers.length})`;
  $("#mwList").innerHTML=D.medewerkers.map(m=>`<div style="display:flex;gap:8px;align-items:center"><input type="color" value="${m.kleur}" data-mc="${m.id}" aria-label="Kleur" style="width:46px;padding:2px;height:38px"><input value="${esc(m.naam)}" data-mn="${m.id}" aria-label="Naam"><button class="btn s d" type="button" data-md="${m.id}">Verwijderen</button></div>`).join("")||`<div class="mute">Nog geen medewerkers.</div>`;
  $("#dbUrl").value=S.get("dburl","");$("#dbFrame").hidden=STANDALONE;dbUi()}
 function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
- bed.zondag=$("#bZon").checked;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgHer","msgWij","msgOnd"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
+ bed.zondag=$("#bZon").checked;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgBev","msgHer","msgWij","msgOnd"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
 $("#bSave").onclick=()=>saveBed($("#bMsg"));$("#bSave2").onclick=()=>saveBed($("#bMsg2"));
 $("#mwAdd").onclick=()=>{const k=["#8a4a7e","#2f7d6d","#b0662a","#3d5fa8","#8d7a1c","#a8434f"];D.medewerkers.push({id:uid(),naam:"Nieuwe medewerker",kleur:k[D.medewerkers.length%k.length]});saveC("medewerkers");drawInst()};
 $("#mwList").onchange=e=>{const t=e.target.dataset;const m=get("medewerkers",t.mc||t.mn);if(!m)return;if(t.mc)m.kleur=e.target.value;else m.naam=e.target.value.trim()||m.naam;saveC("medewerkers")};
