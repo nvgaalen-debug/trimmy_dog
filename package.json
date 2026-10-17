@@ -6,6 +6,7 @@
   "description": "Trimmy - kassa, agenda en klantbeheer voor hondentrimsalons, met Aiven MySQL",
   "dependencies": {
     "mysql2": "^3.11.0",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "@netlify/blobs": "^8.1.0"
   }
 }
