@@ -152,9 +152,9 @@
      <div class="note" id="dbStat"></div>
      <div class="note w" id="dbFrame" hidden>Deze voorbeeldversie draait binnen Claude en mag geen verbinding maken met andere websites. Koppelingen werken in de versie op jullie eigen webadres (Netlify).</div>
      <label>Adres van de koppelservice (nodig voor e-mail en database)<input id="dbUrl" type="url" placeholder="https://jouw-trimmy.netlify.app/api/db?code=…" autocomplete="off"></label>
-     <small>Voor e-mail is alleen dit adres nodig. Zet het vinkje hieronder pas aan als de Aiven-database is ingericht.</small>
-     <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database</label>
-     <div class="acts l"><button class="btn" id="dbNow" type="button">Nu synchroniseren</button></div>
+     <small>Voor e-mail is alleen dit adres nodig. Zet het vinkje hieronder pas aan als de Aiven-database is ingericht en <em>Verbinding testen</em> groen is.</small>
+     <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database (PostgreSQL)</label>
+     <div class="acts l"><button class="btn" id="dbTest" type="button">Verbinding testen</button><button class="btn" id="dbNow" type="button">Nu synchroniseren</button><span class="mute" id="dbTestMsg" role="status"></span></div>
      <small>Met de database bewaart Trimmy elke soort gegevens in een eigen tabel en kunnen meerdere apparaten samenwerken. Zolang de database uit staat of onbereikbaar is, werkt Trimmy gewoon door op dit apparaat. Geef elke kassa een eigen Kassa-ID voordat je dit aanzet.</small>
     </div></div>
 
