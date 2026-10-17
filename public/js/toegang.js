@@ -28,5 +28,10 @@ async function lockTry(){const u=get("medewerkers",lockSel);if(!u)return;const o
  if(!ok){$("#lockMsg").textContent="Deze code klopt niet. Probeer het opnieuw.";$("#lockCode").value="";$("#lockCode").focus();return}
  S.set("sessie",{id:u.id,ts:Date.now()});lastDoor=u.id;S.set("door",u.id);$("#lock").hidden=true;go(canTab(tab)?tab:"agenda")}
 $("#lockGo").onclick=lockTry;$("#lockCode").onkeydown=e=>{if(e.key==="Enter")lockTry()};
-let lastAct=Date.now();["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,()=>{lastAct=Date.now()},true));
-setInterval(()=>{const mins=+bed.autoLock||0;if(mins&&cur()&&Date.now()-lastAct>mins*6e4){S.del("sessie");lockCheck()}},20000);
+let lastAct=Date.now();
+/* activiteit gedeeld tussen tabbladen: een stil tabblad mag een actief tabblad niet uitloggen */
+const actNow=()=>{const n=Date.now();if(n-lastAct>5000||!S.get("act",0)){S.set("act",n)}lastAct=n};
+["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,actNow,true));
+/* inloggen/uitloggen in een ander tabblad direct overnemen */
+window.addEventListener("storage",e=>{if(e.key==="tr_sessie"||e.key==="tr_medewerkers"){if(e.key==="tr_medewerkers")D.medewerkers=S.get("medewerkers",D.medewerkers);lockCheck();if(tab==="inst")drawInst()}});
+setInterval(()=>{const mins=+bed.autoLock||0,last=Math.max(lastAct,+S.get("act",0)||0);if(mins&&cur()&&Date.now()-last>mins*6e4){S.del("sessie");lockCheck()}},20000);
