@@ -22,7 +22,7 @@ function lockCheck(){brandUi();const need=accessOn()&&!cur();$("#lock").hidden=!
  if(document.querySelector("dialog[open]"))$$("dialog[open]").forEach(d=>d.close());
  const ppl=D.medewerkers.filter(m=>m.pin);if(!ppl.some(m=>m.id===lockSel))lockSel=ppl.length===1?ppl[0].id:null;
  $("#lockPpl").innerHTML=ppl.map(m=>`<button type="button" data-u="${m.id}" aria-pressed="${m.id===lockSel}"><span class="dot" style="width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;background:${esc(m.kleur||"#888")}">${esc(m.naam[0].toUpperCase())}</span>${esc(m.naam)}</button>`).join("");
- const u=get("medewerkers",lockSel);$("#lockL").hidden=!u;$("#lockGo").disabled=!u;$("#lockMsg").textContent="";$("#lockCode").value="";if(u)setTimeout(()=>$("#lockCode").focus(),30)}
+ const u=get("medewerkers",lockSel);if(u){const c=$("#lockCode");if(u.pinNum)c.setAttribute("inputmode","numeric");else c.removeAttribute("inputmode")}$("#lockL").hidden=!u;$("#lockGo").disabled=!u;$("#lockMsg").textContent="";$("#lockCode").value="";if(u)setTimeout(()=>$("#lockCode").focus(),30)}
 $("#lockPpl").onclick=e=>{const b=e.target.closest("[data-u]");if(b){lockSel=b.dataset.u;lockCheck()}};
 async function lockTry(){const u=get("medewerkers",lockSel);if(!u)return;const ok=(await pinHash($("#lockCode").value,u.salt||""))===u.pin;
  if(!ok){$("#lockMsg").textContent="Deze code klopt niet. Probeer het opnieuw.";$("#lockCode").value="";$("#lockCode").focus();return}

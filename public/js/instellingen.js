@@ -51,10 +51,10 @@ $("#mwList").onclick=e=>{const d=e.target.dataset;
  else if(d.mp)codeDlg(d.mp)};
 function codeDlg(id){const m=get("medewerkers",id);if(!m)return;
  if(m.rol!=="beheerder"&&!adminsWithCode().length){toast("Stel eerst een inlogcode in voor een beheerder.");return}
- const d=modal(`<h2>Inlogcode voor ${esc(m.naam)}</h2><label>Nieuwe code (minimaal 4 tekens)<input id="cA" type="password" inputmode="numeric" autocomplete="new-password"></label><label>Herhaal de code<input id="cB" type="password" inputmode="numeric" autocomplete="new-password"></label><div class="msg" id="cM"></div><div class="acts"><button class="btn" type="button" id="cX">Annuleren</button><button class="btn p" type="button" id="cOk">Opslaan</button></div>`);
+ const d=modal(`<h2>Inlogcode voor ${esc(m.naam)}</h2><label>Nieuwe code of wachtwoord (minimaal 4 tekens)<input id="cA" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"></label><label>Herhaal de code<input id="cB" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"></label><div class="msg" id="cM"></div><div class="acts"><button class="btn" type="button" id="cX">Annuleren</button><button class="btn p" type="button" id="cOk">Opslaan</button></div>`);
  d.q("#cX").onclick=()=>d.close();setTimeout(()=>d.q("#cA").focus(),30);
  d.q("#cOk").onclick=async()=>{const a=d.q("#cA").value,b=d.q("#cB").value;if(a.length<4){d.q("#cM").textContent="Kies een code van minimaal 4 tekens.";return}if(a!==b){d.q("#cM").textContent="De twee codes zijn niet gelijk.";return}
-  const was=accessOn();m.salt=uid();m.pin=await pinHash(a,m.salt);saveC("medewerkers");d.close();
+  const was=accessOn();m.salt=uid();m.pin=await pinHash(a,m.salt);m.pinNum=/^\d+$/.test(a);saveC("medewerkers");d.close();
   if(!was&&accessOn()){S.set("sessie",{id:m.id,ts:Date.now()});toast(`Inloggen staat nu aan. Je bent ingelogd als ${m.naam}.`)}else toast("Code opgeslagen.");drawTeam();navUi()}}
 
 $("#bkMake").onclick=()=>{const j=JSON.stringify({app:"Trimmy",versie:1,ts:Date.now(),bedrijf:bed,...Object.fromEntries(COLS.map(c=>[c,D[c]]))});$("#bkTxt").value=j;$("#bkCopy").hidden=false;
