@@ -169,8 +169,9 @@
      <label>Adres van de koppelservice (nodig voor e-mail en database)<input id="dbUrl" type="url" placeholder="https://jouw-trimmy.netlify.app/api/db?code=…" autocomplete="off"></label>
      <small>Voor e-mail is alleen dit adres nodig. Zet het vinkje hieronder pas aan als de Aiven-database is ingericht en <em>Verbinding testen</em> groen is.</small>
      <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database (PostgreSQL)</label>
-     <div class="acts l"><button class="btn" id="dbTest" type="button">Verbinding testen</button><button class="btn" id="dbNow" type="button">Nu synchroniseren</button><span class="mute" id="dbTestMsg" role="status"></span></div>
+     <div class="acts l"><button class="btn" id="dbTest" type="button">Verbinding testen</button><button class="btn" id="dbNow" type="button">Nu synchroniseren</button><button class="btn" id="dbRefill" type="button">Opnieuw ophalen</button><span class="mute" id="dbTestMsg" role="status"></span></div>
      <small>Met de database bewaart Trimmy elke soort gegevens in een eigen tabel en kunnen meerdere apparaten samenwerken. Zolang de database uit staat of onbereikbaar is, werkt Trimmy gewoon door op dit apparaat. Geef elke kassa een eigen Kassa-ID voordat je dit aanzet.</small>
+     <small><b>Opnieuw ophalen</b> maakt dit apparaat leeg en vult het opnieuw met alles uit de database, inclusief medewerkers en inlogcodes. Handig als een apparaat niet goed is overgenomen. Wat nog niet verstuurd was, gaat verloren.</small>
     </div></div>
 
     <div class="pane panel" data-p="gegevens" hidden><h2>Gegevens en apparaat</h2><p class="lead">Instellingen voor dit apparaat, back-ups en het wissen van gegevens.</p><div class="sbody">

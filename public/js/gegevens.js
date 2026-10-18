@@ -5,6 +5,8 @@ const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen
 const D={};COLS.forEach(c=>D[c]=S.get(c,[]));
 const BED0={naam:"Trimsalon",straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:"Bedankt voor uw bezoek en tot de volgende trimbeurt!",kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",kleur:"#6a3560",mailDirect:false,autoLock:0,perms:{historie:true,facturen:true,prijsBon:true,omzet:false,klantDel:false,artikelen:false,inst:false},autoHer:false,autoUur:24,autoStil:true,msgBev:"Hoi {klant}! Hierbij de bevestiging van de afspraak voor {hond}: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",msgHer:"Hoi {klant}! Even een herinnering: {hond} is {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",msgWij:"Hoi {klant}, de afspraak van {hond} is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",msgOnd:"Afspraak {hond} op {dag} {datum} om {tijd}",beurtWk:8,msgBeurt:"Hoi {klant}! Het is alweer {weken} weken geleden dat {hond} bij ons op de trimtafel lag. Tijd voor een nieuwe beurt? Laat even weten welke dag je het beste uitkomt, of bel ons op {salontel}. Groetjes, {salon}"};
 let bed={...BED0,...S.get("bedrijf",{})};
+/* Kassa-ID hoort bij dit apparaat, niet bij de salon: apart bewaard en niet gesynchroniseerd */
+if(S.get("kassa",null)==null)S.set("kassa",bed.kassa||"K1");bed.kassa=S.get("kassa","K1");
 const saveC=c=>{if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c]);dbSoon();if(c==="afspraken"||c==="klanten"||c==="bedrijf"||c==="honden")planSoon()};
 const get=(c,id)=>id?D[c].find(x=>x.id===id):null;
 const klLab=k=>k.naam+(k.plaats?" · "+k.plaats:"");
@@ -52,7 +54,7 @@ function seed(){
   {id:"b5",datum:d(-110),hondId:"h5",klantId:"k2",afspraakId:null,factuurId:null,diensten:"Volledige trimbeurt, klein",mw:"Sanne",mesje:"Lijf mes 4F, kop met schaar",vacht:"Goed",gedrag:"Rustig",notitie:""},
   {id:"b4",datum:d(-58),hondId:"h5",klantId:"k2",afspraakId:null,factuurId:null,diensten:"Wassen en föhnen, Nagels knippen",mw:"Sanne",mesje:"Snoet met schaar",vacht:"Goed",gedrag:"Rustig",notitie:"Graag niet te kort rond de ogen"}];
  Object.assign(D,{medewerkers:mw,artikelen:art,klanten:kl,honden:ho,afspraken:af,facturen:fa,behandelingen:be});
- bed={...BED0,naam:"Trimsalon Vachtwerk",straat:"Kinkerstraat 120",pc:"1053 ED",plaats:"Amsterdam",tel:"020 1234567",mail:"info@voorbeeld.nl",kvk:"12345678",btwnr:"NL001234567B01",iban:"NL00 BANK 0123 4567 89"};
+ bed={...BED0,kassa:S.get("kassa","K1"),naam:"Trimsalon Vachtwerk",straat:"Kinkerstraat 120",pc:"1053 ED",plaats:"Amsterdam",tel:"020 1234567",mail:"info@voorbeeld.nl",kvk:"12345678",btwnr:"NL001234567B01",iban:"NL00 BANK 0123 4567 89"};
  COLS.forEach(c=>S.set(c,D[c]));S.set("bedrijf",bed);S.set("demo",1);
 }
 if(!S.get("init",0)){seed();S.set("init",1)}

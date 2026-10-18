@@ -6,7 +6,7 @@ function drawInst(){instPane(S.get("instpane","salon"));{const ad=isAdmin();$("#
  $("#mwSum").textContent=`(${D.medewerkers.length})`;
  drawTeam();
  $("#dbUrl").value=S.get("dburl","");$("#dbFrame").hidden=STANDALONE;dbUi()}
-function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit","autoLock","beurtWk"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
+function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit","autoLock","beurtWk"].includes(k))v=+v||BED0[k];if(k==="kassa"){v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";S.set("kassa",v)}bed[k]=v}
  bed.zondag=$("#bZon").checked;bed.mailDirect=$("#bMailDirect").checked;bed.autoHer=$("#bAutoHer").checked;bed.autoStil=$("#bAutoStil").checked;bed.autoUur=+bed.autoUur||24;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgBev","msgHer","msgWij","msgOnd","msgBeurt"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
 $("#bSave").onclick=()=>saveBed($("#bMsg"));
 $("#bAutoHer").onchange=()=>{if($("#bAutoHer").checked&&!$("#bMailDirect").checked){$("#bMailDirect").checked=true}autoPending()};
@@ -62,5 +62,5 @@ $("#bkMake").onclick=()=>{const j=JSON.stringify({app:"Trimmy",versie:1,ts:Date.
 $("#bkDl").onclick=async()=>{try{const r=await saveFile(`trimmy-backup-${ymd(new Date())}.json`,new Blob([$("#bkTxt").value],{type:"application/json"}));$("#bkMsg").textContent=r==="saved"?"Back-up opgeslagen.":"Niet opgeslagen."}catch(e){$("#bkMsg").textContent=e.message}};
 $("#bkCopy").onclick=()=>{const t=$("#bkTxt");navigator.clipboard.writeText(t.value).then(()=>$("#bkMsg").textContent="Gekopieerd.",()=>{t.select();$("#bkMsg").textContent="Geselecteerd. Kopieer met Ctrl+C."})};
 $("#bkRestore").onclick=e=>{let j;try{j=JSON.parse($("#bkTxt").value)}catch(x){$("#bkMsg").textContent="Dit is geen geldige back-up.";return}if(!j||j.app!=="Trimmy"){$("#bkMsg").textContent="Dit is geen Trimmy-back-up.";return}
- arm(e.target,()=>{COLS.forEach(c=>{D[c]=Array.isArray(j[c])?j[c]:[];S.set(c,D[c])});bed={...BED0,...(j.bedrijf||{})};S.set("bedrijf",bed);S.set("demo",0);dbSnap={};dbPersist();dbSoon();$("#bkMsg").textContent="Hersteld.";draw()},"Nogmaals: alles vervangen")};
-$("#wipeAll").onclick=e=>arm(e.target,()=>{wipeLocal();S.set("demo",0);dbSnap={};dbPull={};dbPersist();draw()},"Nogmaals: alles wissen");
+ arm(e.target,()=>{COLS.forEach(c=>{D[c]=Array.isArray(j[c])?j[c]:[];S.set(c,D[c])});bed={...BED0,...(j.bedrijf||{}),kassa:S.get("kassa","K1")};S.set("bedrijf",bed);S.set("demo",0);dbSnap={};dbPersist();dbSoon();$("#bkMsg").textContent="Hersteld.";draw()},"Nogmaals: alles vervangen")};
+$("#wipeAll").onclick=e=>arm(e.target,()=>{if(dbOn()){dbOvernemen();draw();dbSync().then(()=>{lockCheck();draw()});return}wipeLocal();S.set("demo",0);dbSnap={};dbPull={};dbPersist();draw()},"Nogmaals: alles wissen");

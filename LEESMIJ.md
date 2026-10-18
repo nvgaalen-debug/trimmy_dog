@@ -80,6 +80,13 @@ Het bolletje rechtsboven:
 | Rood | Echte fout, bijvoorbeeld een verkeerd wachtwoord of code; zie Instellingen > Koppelingen |
 | Grijs | Database staat uit, alleen dit apparaat |
 
+## Een extra apparaat toevoegen (iPhone, iPad, tweede computer)
+
+1. Open Trimmy op het nieuwe apparaat en installeer hem als app (zie hierboven). Je ziet eerst de voorbeeldgegevens; dat is goed.
+2. *Instellingen > Gegevens en apparaat*: geef dit apparaat een eigen **Kassa-ID** (K2, K3, …) en klik op *Opslaan*. De Kassa-ID hoort bij het apparaat en wordt niet gedeeld.
+3. *Instellingen > Koppelingen*: vul het adres van de koppelservice in, klik op *Verbinding testen* en vink de database aan.
+4. Trimmy ziet dat er al gegevens in de database staan en vraagt of dit apparaat ze **overneemt**. Kies *Overnemen*: de voorbeeldgegevens verdwijnen en alle klanten, afspraken en salongegevens komen binnen. Daarna vraagt Trimmy om de inlogcode als die is ingesteld.
+
 ## Hoe de synchronisatie werkt
 
 - Trimmy werkt altijd eerst op het apparaat zelf, ook als internet of de database even weg is.
