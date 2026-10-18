@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><g transform="translate(0 0) scale(1.0)">
+<rect x="0" y="0" width="200" height="200" rx="52" fill="#6A3560"/>
+<ellipse cx="58" cy="108" rx="22" ry="40" transform="rotate(22 58 108)" fill="#F2A65A"/>
+<ellipse cx="142" cy="108" rx="22" ry="40" transform="rotate(-22 142 108)" fill="#F2A65A"/>
+<circle cx="100" cy="56" r="21" fill="#FFF4E8"/><circle cx="79" cy="66" r="16" fill="#FFF4E8"/><circle cx="121" cy="66" r="16" fill="#FFF4E8"/>
+<circle cx="100" cy="110" r="45" fill="#FFF4E8"/>
+<ellipse cx="100" cy="132" rx="25" ry="19" fill="#FFFFFF"/>
+<circle cx="83" cy="104" r="5.5" fill="#2A1F27"/><circle cx="117" cy="104" r="5.5" fill="#2A1F27"/>
+<circle cx="85" cy="102" r="1.6" fill="#FFFFFF"/><circle cx="119" cy="102" r="1.6" fill="#FFFFFF"/>
+<path d="M91 121 Q100 116 109 121 Q109 128 100 131 Q91 128 91 121Z" fill="#2A1F27"/>
+<path d="M100 131 L100 137 M92 139 Q100 145 108 139" fill="none" stroke="#2A1F27" stroke-width="3" stroke-linecap="round"/>
+<path d="M134 152 l10 -6 l0 12z M134 152 l-10 -6 l0 12z" fill="#F2A65A"/>
+</g></svg>

@@ -6,6 +6,14 @@
 <title>Trimmy</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="app.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#6a3560">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trimmy">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body>
 <header><div class="hbar wrap">
@@ -169,6 +177,10 @@
      <h3>Dit apparaat</h3>
      <label>Kassa-ID (uniek per apparaat, bepaalt de factuurnummers)<input id="bKassa" maxlength="6" style="max-width:160px"></label>
      <div class="acts l"><button class="btn p" id="bSave4" type="button">Opslaan</button><span class="mute" id="bMsg4" role="status"></span></div>
+     <h3>Trimmy als app</h3>
+     <div class="note" id="appStat">Installeer Trimmy op dit apparaat. Je krijgt dan een eigen icoon en Trimmy start ook zonder internet.</div>
+     <div class="acts l"><button class="btn p" id="appInst" type="button" hidden>Trimmy installeren</button></div>
+     <small id="appHow">Chrome of Edge op de computer: klik in de adresbalk op het installatie-icoon (scherm met pijltje), of kies in het menu <em>Opslaan en delen &gt; Pagina installeren als app</em>. iPad en iPhone (Safari): tik op de deelknop en kies <em>Zet op beginscherm</em>. Android (Chrome): menu &gt; <em>App installeren</em>.</small>
      <h3>Back-up en herstel</h3>
      <div class="acts l"><button class="btn p" id="bkMake" type="button">Back-up maken</button><button class="btn" id="bkCopy" type="button" hidden>Kopiëren</button><button class="btn" id="bkDl" type="button" hidden>Opslaan als bestand</button></div>
      <label>Back-up (JSON). Plak hier een eerdere back-up om die te herstellen.<textarea id="bkTxt" rows="5" spellcheck="false"></textarea></label>

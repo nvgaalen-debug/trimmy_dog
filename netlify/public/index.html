@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Trimmy</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#6a3560">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trimmy">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+<header><div class="hbar wrap">
+ <div class="logo" id="hdrLogo"><img id="hdrImg" alt="" hidden style="display:block;max-height:34px;max-width:170px;width:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg><span id="logoName">Trimmy</span></div>
+ <nav role="tablist" id="nav"></nav>
+ <div class="sync" id="syncDot" title="Database"><b></b><span>Alleen dit apparaat</span></div>
+ <div class="who" id="who" hidden></div>
+</div></header>
+<div class="wrap"><div class="banner" id="demo" hidden><span>Je bekijkt <b>voorbeeldgegevens</b>: verzonnen klanten, honden en afspraken om de app te leren kennen.</span><span class="sp"></span><button class="btn s" id="demoWipe" type="button">Voorbeeldgegevens wissen en leeg beginnen</button></div></div>
+
+<main class="wrap">
+ <section class="view" id="v-agenda">
+  <div class="bar">
+   <button class="btn" id="agPrev" type="button" aria-label="Vorige">‹</button>
+   <button class="btn" id="agToday" type="button">Vandaag</button>
+   <button class="btn" id="agNext" type="button" aria-label="Volgende">›</button>
+   <h2 id="agLabel" style="margin-left:6px"></h2>
+   <span class="sp"></span>
+   <select id="agMw" aria-label="Medewerker"></select>
+   <div class="seg" id="agSeg"><button type="button" data-m="dag">Dag</button><button type="button" data-m="week">Week</button></div>
+   <button class="btn" id="agRem" type="button">Herinneringen</button>
+   <button class="btn p" id="agNew" type="button">Nieuwe afspraak</button>
+  </div>
+  <div class="ag-scroll"><div class="ag" id="ag"></div></div>
+  <div class="legend" id="agLeg"></div>
+  <div class="daylist" id="agList"></div>
+ </section>
+
+ <section class="view" id="v-kassa" hidden>
+  <div class="kassa">
+   <div class="panel">
+    <div class="tools"><div style="display:flex;gap:8px"><input id="kq" type="search" placeholder="Zoek behandeling of product" aria-label="Zoeken" style="flex:1"><button class="btn" id="kVrij" type="button">Vrij bedrag</button></div><div class="chips" id="kChips"></div></div>
+    <div class="grid" id="kGrid"></div>
+   </div>
+   <aside class="panel bon">
+    <h2>Bon</h2>
+    <div class="bk" id="bonAf" hidden></div>
+    <div class="bk" id="bonKl"></div>
+    <div class="lines" id="bonLines"></div>
+    <div class="tot">
+     <div class="disc"><label for="bonDisc" style="display:block">Korting (%)</label><input id="bonDisc" type="number" min="0" max="100" value="0"></div>
+     <div class="row"><span>Subtotaal</span><span id="bSub"></span></div>
+     <div class="row" id="bDiscRow"><span>Korting</span><span id="bDisc"></span></div>
+     <div id="bBtw"></div>
+     <div class="row big"><span>Totaal</span><span id="bTot"></span></div>
+     <button class="pay" id="bPay" type="button" disabled>Afrekenen</button>
+     <button class="btn" id="bClr" type="button" style="width:100%;margin-top:8px">Bon leegmaken</button>
+    </div>
+   </aside>
+  </div>
+ </section>
+
+ <section class="view" id="v-klanten" hidden>
+  <div class="seg" id="klMode" style="margin-bottom:12px" role="group" aria-label="Weergave"><button type="button" data-m="alle">Alle klanten</button><button type="button" data-m="beurt">Weer aan de beurt <span class="nb" id="klBn" hidden></span></button></div>
+  <div class="panel" id="beurt" hidden><div class="hdr" style="padding:14px 16px 0;display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:end"><div><h2 style="margin:0">Weer aan de beurt</h2><p class="mute" style="margin:4px 0 0">Honden die volgens hun ritme weer moeten komen en nog geen afspraak hebben.</p></div>
+   <label style="margin:0">Tonen<select id="beurtVw"><option value="0">Nu aan de beurt</option><option value="7">Ook de komende week</option><option value="14">Ook de komende 2 weken</option></select></label></div>
+   <div id="beurtList" style="padding:12px 16px 16px"></div></div>
+  <div class="kl" id="klWrap">
+   <div class="panel">
+    <div class="bar" style="padding:12px;margin:0;border-bottom:1px solid var(--line)"><input id="klq" type="search" placeholder="Zoek klant, hond, plaats of telefoon" aria-label="Zoek klant"><button class="btn p" id="klNew" type="button">Nieuwe klant</button></div>
+    <div class="klist" id="klList"></div>
+   </div>
+   <div class="panel" id="klDet"></div>
+  </div>
+ </section>
+
+ <section class="view" id="v-facturen" hidden>
+  <div class="stats" id="fStats"></div>
+  <div class="bar"><input id="fq" type="search" placeholder="Zoek op factuurnummer, klant of hond" aria-label="Zoek factuur"><div class="seg" id="fSeg"><button type="button" data-f="alle">Alle</button><button type="button" data-f="open">Openstaand</button><button type="button" data-f="betaald">Betaald</button></div><button class="btn p" id="fExp" type="button">Export voor accountant</button></div>
+  <div class="panel scroll"><table><thead><tr><th>Factuur</th><th>Datum</th><th>Klant en hond</th><th>Omschrijving</th><th>Betaling</th><th class="r">Totaal</th><th>Status</th></tr></thead><tbody id="fBody"></tbody></table></div>
+ </section>
+
+ <section class="view" id="v-artikelen" hidden>
+  <div class="bar"><input id="aq" type="search" placeholder="Zoek artikel" aria-label="Zoek artikel"><div class="seg" id="aSeg"><button type="button" data-a="alle">Alles</button><button type="button" data-a="dienst">Behandelingen</button><button type="button" data-a="product">Producten</button></div><button class="btn p" id="aNew" type="button">Nieuw artikel</button></div>
+  <div class="panel scroll"><table><thead><tr><th>Artikel</th><th>Categorie</th><th>Soort</th><th class="r">Prijs incl. btw</th><th class="r">Btw</th><th class="r">Duur / voorraad</th><th>Status</th></tr></thead><tbody id="aBody"></tbody></table></div>
+ </section>
+
+ <section class="view" id="v-historie" hidden>
+  <div class="bar"><input id="hq" type="search" placeholder="Zoek op hond, klant, behandeling of notitie" aria-label="Zoek in historie"><select id="hf" aria-label="Soort"><option value="">Alles</option><option value="beh">Behandelingen</option><option value="fac">Facturen</option><option value="mis">Gemist of geannuleerd</option></select><button class="btn p" id="hNew" type="button">Behandeling vastleggen</button></div>
+  <div class="tl" id="hList"></div>
+ </section>
+
+ <section class="view" id="v-inst" hidden>
+  <div class="inst">
+   <nav class="snav" id="snav" aria-label="Onderdelen van instellingen">
+    <button type="button" data-p="salon">Salon</button>
+    <button type="button" data-p="agenda">Agenda</button>
+    <button type="button" data-p="team">Medewerkers en toegang</button>
+    <button type="button" data-p="berichten">Berichten aan klanten</button>
+    <button type="button" data-p="koppel">Koppelingen</button>
+    <button type="button" data-p="gegevens">Gegevens en apparaat</button>
+   </nav>
+   <div class="spanes">
+    <div class="pane panel" data-p="salon"><h2>Salon</h2><p class="lead">Deze gegevens staan op facturen, kassabonnen en in e-mails aan klanten.</p><div class="sbody">
+     <label>Naam salon<input id="bNaam"></label>
+     <label>Straat en huisnummer<input id="bStraat"></label>
+     <div class="g3"><label>Postcode<input id="bPc" maxlength="8"></label><label>Plaats<input id="bPlaats"></label></div>
+     <div class="g2"><label>Telefoon<input id="bTel" type="tel"></label><label>E-mail<input id="bMail" type="email"></label></div>
+     <div class="g2"><label>KvK-nummer<input id="bKvk"></label><label>Btw-nummer<input id="bBtwnr"></label></div>
+     <div class="g2"><label>IBAN<input id="bIban"></label><label>Betaaltermijn op rekening (dagen)<input id="bTermijn" type="number" min="0" max="90"></label></div>
+     <label>Tekst onderaan factuur<input id="bVoet"></label>
+     <div><div style="font-weight:500;font-size:14px;margin-bottom:6px">Logo (voor e-mails en facturen)</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div id="logoPv" style="min-width:120px;min-height:56px;max-width:260px;border:1px dashed var(--line);border-radius:6px;background:#fff;display:grid;place-items:center;padding:8px;color:#888;font-size:13px"></div>
+      <div class="acts l"><button class="btn s" type="button" id="logoPick">Logo kiezen</button><button class="btn s d" type="button" id="logoDel">Verwijderen</button><input type="file" id="logoF" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div></div>
+      <small>Een liggend logo met transparante of witte achtergrond werkt het best. Trimmy verkleint het automatisch en slaat het meteen op.</small></div>
+     <div class="acts l"><button class="btn p" id="bSave" type="button">Opslaan</button><span class="mute" id="bMsg" role="status"></span></div>
+    </div></div>
+
+    <div class="pane panel" data-p="agenda" hidden><h2>Agenda</h2><p class="lead">Hoe de agenda eruitziet en wat er gebeurt bij een dubbele boeking.</p><div class="sbody">
+     <label>Agenda open van/tot (uur)<span style="display:flex;gap:6px;max-width:220px"><input id="bOpen" type="number" min="0" max="23" aria-label="Open vanaf"><input id="bSluit" type="number" min="1" max="24" aria-label="Open tot"></span></label>
+     <label class="chk"><input type="checkbox" id="bZon"> Zondag tonen in de weekagenda</label>
+     <label>Dubbele boeking voor dezelfde medewerker<select id="bDubbel"><option value="waarschuw">Waarschuwen, toch inplannen kan</option><option value="blokkeer">Niet toestaan</option></select></label>
+     <div class="acts l"><button class="btn p" id="bSave3" type="button">Opslaan</button><span class="mute" id="bMsg3" role="status"></span></div>
+    </div></div>
+
+    <div class="pane panel" data-p="team" hidden><h2>Medewerkers en toegang <small id="mwSum" class="mute"></small></h2><p class="lead">Medewerkers verschijnen in de agenda. Geef ze een inlogcode om te bepalen wie wat mag zien.</p><div class="sbody">
+     <div class="note" id="accStat"></div>
+     <div id="mwList" style="display:grid;gap:8px"></div>
+     <div class="acts l"><button class="btn" id="mwAdd" type="button">Medewerker toevoegen</button></div>
+     <div><h3 style="margin:6px 0 4px">Rechten van medewerkers</h3><small>Vink aan wat medewerkers mogen. Een beheerder mag altijd alles. Wijzigingen gelden direct.</small><div class="scroll" style="margin-top:6px"><table class="rights" id="rights"></table></div></div>
+     <label>Automatisch vergrendelen als er niets gebeurt<select id="bAutoLock"><option value="0">Nooit</option><option value="5">Na 5 minuten</option><option value="15">Na 15 minuten</option><option value="30">Na 30 minuten</option><option value="60">Na 1 uur</option></select></label>
+     <div class="acts l"><button class="btn p" id="bSave5" type="button">Opslaan</button><span class="mute" id="bMsg5" role="status"></span></div>
+     <small>Inloggen houdt nieuwsgierige blikken weg bij omzet en instellingen, maar is geen volledige beveiliging: Trimmy draait in de browser en iemand met technische kennis kan het omzeilen. Kies codes die niet makkelijk te raden zijn. Een vergeten code kan een beheerder opnieuw instellen.</small>
+    </div></div>
+
+    <div class="pane panel" data-p="berichten" hidden><h2>Berichten aan klanten</h2><p class="lead">Teksten voor bevestigingen en herinneringen, automatisch versturen en de opmaak van e-mails.</p><div class="sbody">
+     <h3>Teksten</h3>
+     <label>Bevestiging van een nieuwe afspraak<textarea id="bMsgBev" rows="4"></textarea></label>
+     <label>Herinnering voor een afspraak<textarea id="bMsgHer" rows="4"></textarea></label>
+     <label>Afspraak verplaatst<textarea id="bMsgWij" rows="3"></textarea></label>
+     <label>Onderwerp van de e-mail<input id="bMsgOnd"></label>
+     <label>Weer aan de beurt (hond heeft nog geen nieuwe afspraak)<textarea id="bMsgBeurt" rows="4"></textarea></label>
+     <label>Standaard trim-interval<select id="bBeurtWk" style="max-width:220px"><option value="4">4 weken</option><option value="5">5 weken</option><option value="6">6 weken</option><option value="7">7 weken</option><option value="8">8 weken</option><option value="10">10 weken</option><option value="12">12 weken</option><option value="16">16 weken</option></select></label>
+     <small>Geldt voor honden zonder eigen interval en zonder vast ritme. Na drie bezoeken gebruikt Trimmy het eigen ritme van de hond. Een vast interval per hond stel je in bij Hond wijzigen.</small>
+     <small>Deze woorden vult Trimmy zelf in: {klant} {hond} {dag} {datum} {tijd} {behandeling} {salon} {salontel} {adres}, en bij Weer aan de beurt ook {weken} en {laatst}</small>
+     <h3>Opgemaakte e-mail</h3>
+     <div class="g2"><label>Kleur in e-mails<input id="bKleur" type="color" style="height:40px;padding:3px"></label><span></span></div>
+     <label class="chk"><input type="checkbox" id="bMailDirect"> E-mail direct vanuit Trimmy versturen (via de koppelservice op Netlify)</label>
+     <div class="note" id="mailStat">Staat dit uit, dan kopieer je de opgemaakte e-mail en plak je hem in Outlook of Gmail.</div>
+     <h3>Automatische herinnering</h3>
+     <label class="chk"><input type="checkbox" id="bAutoHer"> Herinnering automatisch per e-mail versturen</label>
+     <div class="g2"><label>Hoe lang vóór de afspraak<select id="bAutoUur"><option value="2">2 uur</option><option value="4">4 uur</option><option value="12">12 uur</option><option value="24">24 uur (een dag van tevoren)</option><option value="48">48 uur</option><option value="72">3 dagen</option></select></label>
+     <label class="chk" style="align-self:end"><input type="checkbox" id="bAutoStil"> Niet versturen tussen 21:00 en 08:00</label></div>
+     <div class="note" id="autoStat">Staat uit.</div>
+     <div id="autoList"></div>
+     <small>De herinneringen worden ingepland op je Netlify-server en daar verstuurd, ook als Trimmy niet openstaat. Hiervoor moet direct versturen aan staan. Klanten zonder e-mailadres krijgen geen automatische herinnering. Een afspraak die later wordt gemaakt dan de ingestelde tijd vooraf, krijgt alleen de bevestiging. Verplaats of annuleer je een afspraak, dan past Trimmy de herinnering aan.</small>
+     <div class="acts l"><button class="btn p" id="bSave2" type="button">Opslaan</button><button class="btn" id="bMailTest" type="button">Testmail naar salonadres</button><span class="mute" id="bMsg2" role="status"></span></div>
+    </div></div>
+
+    <div class="pane panel" data-p="koppel" hidden><h2>Koppelingen <small id="dbSum" class="mute"></small></h2><p class="lead">De koppelservice op Netlify verstuurt e-mail en kan je gegevens in een database bewaren.</p><div class="sbody">
+     <div class="note" id="dbStat"></div>
+     <div class="note w" id="dbFrame" hidden>Deze voorbeeldversie draait binnen Claude en mag geen verbinding maken met andere websites. Koppelingen werken in de versie op jullie eigen webadres (Netlify).</div>
+     <label>Adres van de koppelservice (nodig voor e-mail en database)<input id="dbUrl" type="url" placeholder="https://jouw-trimmy.netlify.app/api/db?code=…" autocomplete="off"></label>
+     <small>Voor e-mail is alleen dit adres nodig. Zet het vinkje hieronder pas aan als de Aiven-database is ingericht en <em>Verbinding testen</em> groen is.</small>
+     <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database (PostgreSQL)</label>
+     <div class="acts l"><button class="btn" id="dbTest" type="button">Verbinding testen</button><button class="btn" id="dbNow" type="button">Nu synchroniseren</button><span class="mute" id="dbTestMsg" role="status"></span></div>
+     <small>Met de database bewaart Trimmy elke soort gegevens in een eigen tabel en kunnen meerdere apparaten samenwerken. Zolang de database uit staat of onbereikbaar is, werkt Trimmy gewoon door op dit apparaat. Geef elke kassa een eigen Kassa-ID voordat je dit aanzet.</small>
+    </div></div>
+
+    <div class="pane panel" data-p="gegevens" hidden><h2>Gegevens en apparaat</h2><p class="lead">Instellingen voor dit apparaat, back-ups en het wissen van gegevens.</p><div class="sbody">
+     <h3>Dit apparaat</h3>
+     <label>Kassa-ID (uniek per apparaat, bepaalt de factuurnummers)<input id="bKassa" maxlength="6" style="max-width:160px"></label>
+     <div class="acts l"><button class="btn p" id="bSave4" type="button">Opslaan</button><span class="mute" id="bMsg4" role="status"></span></div>
+     <h3>Trimmy als app</h3>
+     <div class="note" id="appStat">Installeer Trimmy op dit apparaat. Je krijgt dan een eigen icoon en Trimmy start ook zonder internet.</div>
+     <div class="acts l"><button class="btn p" id="appInst" type="button" hidden>Trimmy installeren</button></div>
+     <small id="appHow">Chrome of Edge op de computer: klik in de adresbalk op het installatie-icoon (scherm met pijltje), of kies in het menu <em>Opslaan en delen &gt; Pagina installeren als app</em>. iPad en iPhone (Safari): tik op de deelknop en kies <em>Zet op beginscherm</em>. Android (Chrome): menu &gt; <em>App installeren</em>.</small>
+     <h3>Back-up en herstel</h3>
+     <div class="acts l"><button class="btn p" id="bkMake" type="button">Back-up maken</button><button class="btn" id="bkCopy" type="button" hidden>Kopiëren</button><button class="btn" id="bkDl" type="button" hidden>Opslaan als bestand</button></div>
+     <label>Back-up (JSON). Plak hier een eerdere back-up om die te herstellen.<textarea id="bkTxt" rows="5" spellcheck="false"></textarea></label>
+     <div class="acts l"><button class="btn d" id="bkRestore" type="button">Herstellen uit tekst hierboven</button><span id="bkMsg" role="status" class="mute"></span></div>
+     <small>Herstellen vervangt alle gegevens op dit apparaat. Staat de database aan, dan gaat de herstelde stand daarna ook naar Aiven. Een back-up bevat klantgegevens: bewaar hem veilig.</small>
+     <h3>Alles wissen</h3>
+     <p style="margin:0">Wist klanten, honden, afspraken, facturen, artikelen en historie op dit apparaat. In de Aiven-database blijven facturen altijd bewaard.</p>
+     <div class="acts l"><button class="btn d" id="wipeAll" type="button">Alles wissen</button></div>
+    </div></div>
+   </div>
+  </div>
+ </section>
+</main>
+<div id="printArea"></div>
+<div id="lock" hidden><div class="box" role="dialog" aria-labelledby="lockH"><img id="lockImg" alt="" hidden style="display:block;max-height:80px;max-width:260px;width:auto;margin:0 auto 4px"><div class="logo" id="lockTrimmy" style="font-size:22px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:24px;height:24px;color:var(--acc)"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>Trimmy</div><h2 id="lockH">Wie werkt er?</h2><div class="ppl" id="lockPpl"></div><label id="lockL" hidden>Inlogcode<input id="lockCode" type="password" inputmode="numeric" autocomplete="off"></label><div class="msg" id="lockMsg"></div><button class="btn p" type="button" id="lockGo" disabled>Inloggen</button></div></div>
+
+<!-- Logica: elk onderdeel in een eigen bestand, in deze volgorde laden -->
+<script src="js/hulp.js"></script>
+<script src="js/berichten.js"></script>
+<script src="js/gegevens.js"></script>
+<script src="js/navigatie.js"></script>
+<script src="js/agenda.js"></script>
+<script src="js/dialogen.js"></script>
+<script src="js/kassa.js"></script>
+<script src="js/factuur.js"></script>
+<script src="js/facturen.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/export.js"></script>
+<script src="js/klanten.js"></script>
+<script src="js/beurt.js"></script>
+<script src="js/artikelen.js"></script>
+<script src="js/historie.js"></script>
+<script src="js/instellingen.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/herinneringen.js"></script>
+<script src="js/toegang.js"></script>
+<script src="js/start.js"></script>
+</body>
+</html>

@@ -67,10 +67,26 @@ Wis eerst de voorbeeldgegevens (knop bovenaan) voordat je de database aanzet, an
 | certificaat | plak het CA-certificaat opnieuw in `AIVEN_CA_CERT`, inclusief BEGIN/END-regels |
 | niet bereikbaar | staat de Aiven-service aan (gratis services pauzeren na een tijd zonder gebruik)? |
 
+## Trimmy als app en zonder internet
+
+Trimmy is te installeren als app (*Instellingen > Gegevens en apparaat > Trimmy als app*, of via het installatie-icoon in de adresbalk; op iPad/iPhone via *Deel > Zet op beginscherm*). De app wordt op het apparaat bewaard en start ook zonder internet. Is er verbinding, dan haalt hij altijd eerst de nieuwste versie op.
+
+Het bolletje rechtsboven:
+
+| Kleur | Betekenis |
+|---|---|
+| Groen | Gesynchroniseerd met Aiven (met tijd) |
+| Oranje | Offline: je werkt door op dit apparaat, wijzigingen gaan mee zodra er weer internet is |
+| Rood | Echte fout, bijvoorbeeld een verkeerd wachtwoord of code; zie Instellingen > Koppelingen |
+| Grijs | Database staat uit, alleen dit apparaat |
+
 ## Hoe de synchronisatie werkt
 
 - Trimmy werkt altijd eerst op het apparaat zelf, ook als internet of de database even weg is.
-- Elke wijziging gaat binnen een paar seconden naar Aiven, en elke minuut haalt Trimmy wijzigingen van andere apparaten op.
+- Elke wijziging gaat binnen een paar seconden naar Aiven.
+- Wijzigingen van andere apparaten haalt Trimmy op in één aanroep voor alle tabellen: elke 30 seconden als de agenda of een venster open staat, anders elke 2 minuten, en na 10 minuten zonder gebruik elke 5 minuten. Ook direct als je Trimmy weer naar voren haalt.
+- Bij het opslaan van een afspraak haalt Trimmy eerst de nieuwste agenda op. Heeft een collega dat tijdstip net geboekt, dan zie je dat meteen. Ben je offline, dan krijg je een seintje om het later te controleren.
+- Netlify Free heeft 125.000 functie-aanroepen per maand. Met twee apparaten de hele dag open blijft Trimmy daar ruim onder (ongeveer 60.000).
 - Facturen worden in de database nooit verwijderd. Andere records krijgen bij verwijderen `deleted = true`.
 - De kolom `data` bevat steeds het volledige record als JSON; de andere kolommen zijn leesbare kopieën om in SQL mee te werken.
 
@@ -101,6 +117,7 @@ GROUP BY h.id, h.naam, k.naam, k.telefoon HAVING MAX(b.datum) IS NULL OR MAX(b.d
 | Schermen | `public/index.html` | Alleen de opbouw van de schermen; geen logica |
 | Opmaak | `public/app.css` | Kleuren, lettertypen, indeling |
 | Logica | `public/js/*.js` | Per onderdeel een bestand, geladen in de volgorde van `index.html` |
+| App en offline | `public/manifest.webmanifest`, `public/sw.js`, `public/icons/` | Installeerbaar als app; bewaart de app op het apparaat zodat hij ook zonder internet start |
 | Beveiligingsregels | `public/_headers` | Scripts alleen uit eigen bestanden, geen frames, gegevens alleen naar de eigen site |
 | Koppelservice | `netlify/functions/*.mjs` | Database (`db.mjs`), e-mail (`mail.mjs`), herinneringen inplannen (`plan.mjs`) en versturen (`herinneringen.mjs`) |
 | Database | `database/schema.sql` | Tabellen voor Aiven PostgreSQL (ter naslag; worden automatisch aangemaakt) |

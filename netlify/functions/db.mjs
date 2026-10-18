@@ -150,6 +150,19 @@ export default async (req) => {
     const r = await db.query("SELECT current_user AS gebruiker, current_database() AS database").catch(() => ({ rows: [{}] }));
     return json(200, { ok: true, schema: SCHEMA, ...r.rows[0], tabellen: Object.keys(TABLES) });
   }
+  if (table === "_alle" && req.method === "GET") {
+    // alle tabellen in één aanroep (scheelt functie-aanroepen op Netlify)
+    try {
+      const since = Math.max(0, Math.floor(Number(url.searchParams.get("since") || 0) || 0));
+      const recent = url.searchParams.get("recent") === "1"; // vangt wijzigingen op die net later zijn vastgelegd
+      const where = recent ? "versie > $1 OR bijgewerkt > now() - interval '30 seconds'" : "versie > $1";
+      const sql = Object.keys(TABLES).map(t => `SELECT '${t}' AS tabel, id, data, deleted, versie FROM ${Q(t)} WHERE ${where}`).join(" UNION ALL ") + " ORDER BY versie LIMIT $2";
+      const { rows } = await db.query(sql, [since, PAGE]);
+      const records = rows.map(r => ({ t: r.tabel, id: r.id, deleted: !!r.deleted, data: r.data }));
+      const max = rows.reduce((m, r) => Math.max(m, Number(r.versie)), since);
+      return json(200, { records, max, more: rows.length === PAGE });
+    } catch (e) { console.error("db _alle", e); return json(500, { error: foutmelding(e) }); }
+  }
   const def = TABLES[table];
   if (!def) return json(404, { error: `onbekende tabel '${table}'` });
 

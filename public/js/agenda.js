@@ -137,14 +137,20 @@ function afDlg(id,init={}){
   const du=Math.round(num(d.q("#afDu").value));if(!(du>0))return msg("Vul een duur in minuten in.");
   return{datum:d.q("#afD").value,start:d.q("#afS").value,duur:du,klantId:k.id,hondId:d.q("#khH").value||null,mwId:d.q("#afM").value,diensten:[...d.querySelectorAll(".chk-list input:checked")].map(x=>x.value),status:d.q("#afSt").value,notitie:d.q("#afN").value.trim()}};
  const store=()=>{const v=collect();if(!v)return null;const cf=conflicts({...v,id:a.id});
-  if(cf.length){if(bed.dubbel==="blokkeer"){d.q("#afMsg").textContent="Kies een andere tijd of medewerker: "+confText(v,cf);return null}
-   if(!d.ok2){d.ok2=1;d.q("#afMsg").textContent="Dit is een dubbele boeking. Klik nogmaals om hem toch in te plannen.";d.q("#afOk").textContent="Toch opslaan";if(d.q("#afPay"))d.q("#afPay").textContent="Toch opslaan en afrekenen";return null}}
+  const net=d.newIds&&cf.some(x=>d.newIds.has(x.id))?"Je collega heeft dit tijdstip zojuist geboekt. ":"";
+  if(cf.length){if(bed.dubbel==="blokkeer"){d.q("#afMsg").textContent=net+"Kies een andere tijd of medewerker: "+confText(v,cf);return null}
+   if(!d.ok2){d.ok2=1;d.q("#afMsg").textContent=net+"Dit is een dubbele boeking. Klik nogmaals om hem toch in te plannen.";d.q("#afOk").textContent="Toch opslaan";if(d.q("#afPay"))d.q("#afPay").textContent="Toch opslaan en afrekenen";return null}}
   let r;if(id){r=get("afspraken",id);Object.assign(r,v)}else{r={id:uid(),factuurId:null,aangemaakt:Date.now(),...v};D.afspraken.push(r)}saveC("afspraken");if(!id){agD=fromYmd(r.datum)}draw();return r};
  const was=id?{datum:a.datum,start:a.start}:null;
- d.q("#afOk").onclick=()=>{const bev=d.q("#afBev").checked;if(!id)S.set("bevauto",bev?1:0);const r=store();if(!r)return;d.close();
+ /* vlak voor opslaan de nieuwste agenda ophalen, zodat een afspraak van een collega meetelt */
+ const fresh=async btn=>{if(!dbOn()||d.fresh==="ok")return;const before=new Set(D.afspraken.map(x=>x.id)),txt=btn.textContent;
+  btn.disabled=true;btn.textContent="Agenda controleren…";d.fresh=await dbFresh(4000);btn.disabled=false;btn.textContent=txt;
+  d.newIds=new Set(D.afspraken.filter(x=>!before.has(x.id)).map(x=>x.id));conf()};
+ const offTip=r=>{if(!dbOn()||d.fresh==="ok"||d.fresh==="uit")return"";const moved=!was||was.datum!==r.datum||was.start!==r.start;return moved?"Je bent offline: controleer straks of dit tijdstip nog vrij is. De afspraak gaat vanzelf mee zodra er weer internet is.":""};
+ d.q("#afOk").onclick=async()=>{const bev=d.q("#afBev").checked;if(!id)S.set("bevauto",bev?1:0);if(!collect())return;await fresh(d.q("#afOk"));const r=store();if(!r)return;d.close();const tip=offTip(r);
   if(bev){if(!get("klanten",r.klantId))return;const moved=was&&(was.datum!==r.datum||was.start!==r.start);msgDlg(r,!id?"bevestiging":moved?"wijziging":"bevestiging")}
-  else if(!id)toast("Afspraak ingepland.",[["Bevestiging sturen",()=>msgDlg(r,"bevestiging")]])};
- if(d.q("#afPay"))d.q("#afPay").onclick=()=>{const r=store();if(r){d.close();bonFromAf(r)}};
+  if(tip)toast(tip,!id&&!bev?[["Bevestiging sturen",()=>msgDlg(r,"bevestiging")]]:[],12000);else if(!id&&!bev)toast("Afspraak ingepland.",[["Bevestiging sturen",()=>msgDlg(r,"bevestiging")]])};
+ if(d.q("#afPay"))d.q("#afPay").onclick=async()=>{if(!collect())return;await fresh(d.q("#afPay"));const r=store();if(r){d.close();bonFromAf(r)}};
  if(d.q("#afInv"))d.q("#afInv").onclick=()=>{const f=get("facturen",a.factuurId);if(f)invDlg(f)};
  if(d.q("#afDel"))d.q("#afDel").onclick=e=>arm(e.target,()=>{D.afspraken=D.afspraken.filter(x=>x.id!==id);saveC("afspraken");d.close();draw()},"Nogmaals: verwijderen");
  upd();
