@@ -24,7 +24,7 @@ async function planSync(){
   const j=await planCall(null);planList=Array.isArray(j.items)?j.items:[];S.set("planlist",planList);
   let ch=false;for(const it of planList){if(it.status!=="verstuurd")continue;const a=get("afspraken",it.id);if(a&&afEpoch(a)===it.afspraakAt&&a.herinnerd!==it.sentAt){a.herinnerd=it.sentAt;a.herinnerdAuto=true;ch=true}}
   planInfo={ts:Date.now(),err:null};if(ch){S.set("afspraken",D.afspraken);dbSoon();draw()}
- }catch(e){planInfo={ts:planInfo.ts,err:STANDALONE?e.message:"inplannen werkt alleen in Trimmy op jullie eigen webadres (Netlify)"}}
+ }catch(e){planInfo={ts:planInfo.ts,err:STANDALONE?(/failed to fetch|networkerror|load failed/i.test(e.message)?"geen verbinding met je Netlify-site (internet weg, computer net uit de slaapstand, of Trimmy geopend via een ander adres dan in Koppelingen staat)":e.message):"inplannen werkt alleen in Trimmy op jullie eigen webadres (Netlify)"}}
  finally{planBusy=false;planUi()}}
 function planUi(){const st=$("#autoStat"),li=$("#autoList");if(!st)return;st.classList.remove("w");li.innerHTML="";
  if(!bed.autoHer){st.textContent="Staat uit.";return}
@@ -37,5 +37,7 @@ function planUi(){const st=$("#autoStat"),li=$("#autoList");if(!st)return;st.cla
  if(komend.length||recent.length)li.innerHTML=`<div class="scroll"><table><thead><tr><th>Moment</th><th>Hond en klant</th><th>Afspraak</th><th>Status</th></tr></thead><tbody>${komend.slice(0,8).map(row).join("")}${recent.map(row).join("")}</tbody></table></div>`;
  void now}
 setInterval(()=>{if(bed.autoHer||Object.keys(S.get("plansnap",{})).length)planSync()},600000);
+window.addEventListener("online",()=>{if(planInfo.err&&(bed.autoHer||Object.keys(S.get("plansnap",{})).length))setTimeout(planSync,3000)});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&planInfo.err&&bed.autoHer)planSync()});
 setTimeout(()=>{if(bed.autoHer||Object.keys(S.get("plansnap",{})).length)planSync()},4000);
 setInterval(()=>{if(tab==="agenda")drawAg()},120000);
