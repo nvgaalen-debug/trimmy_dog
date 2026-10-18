@@ -15,7 +15,7 @@ function drawKl(){
  const kom=D.afspraken.filter(a=>a.klantId===k.id&&a.datum>=tdy&&!["geannuleerd","afgerekend"].includes(a.status)).sort((a,b)=>(a.datum+a.start).localeCompare(b.datum+b.start));
  const fs=D.facturen.filter(f=>f.klantId===k.id),open=fs.reduce((s,f)=>s+f.rest,0),omzet=fs.reduce((s,f)=>s+f.totaal,0);
  const mis=D.afspraken.filter(a=>a.klantId===k.id&&a.status==="noshow").length;
- el.innerHTML=`<div class="det"><div class="hdr"><div><h2>${esc(k.naam)}</h2><div class="mute">${fs.length} facturen · ${eur(omzet)} totaal${open>0?` · <b style="color:var(--warn)">${eur(open)} open</b>`:""}${mis?` · <span style="color:var(--warn)">${mis}× niet gekomen</span>`:""}</div></div><div class="acts"><button class="btn" type="button" data-act="kMsg">Bericht sturen</button><button class="btn" type="button" data-act="kEdit">Gegevens wijzigen</button><button class="btn p" type="button" data-act="kAf">Afspraak maken</button></div></div>
+ el.innerHTML=`<div class="det"><div class="hdr"><div><h2>${esc(k.naam)}</h2><div class="mute">${fs.length} facturen · ${eur(omzet)} totaal${open>0?` · <b style="color:var(--warn)">${eur(open)} open</b>`:""}${mis?` · <span style="color:var(--warn)">${mis}× niet gekomen</span>`:""}</div></div><div class="acts"><button class="btn" type="button" data-act="kMsg">Bericht sturen</button>${(()=>{const n=D.berichten.filter(b=>b.klantId===k.id).length;return n?`<button class="btn" type="button" data-act="kBer">Berichten (${n})</button>`:""})()}${bed.portaal&&k.email?`<button class="btn" type="button" data-act="kPortaal">Klantportaal</button>`:""}<button class="btn" type="button" data-act="kEdit">Gegevens wijzigen</button><button class="btn p" type="button" data-act="kAf">Afspraak maken</button></div></div>
  <div class="kv"><div><span>Adres</span>${esc(k.straat||"–")}<br>${esc([k.pc,k.plaats].filter(Boolean).join(" "))}</div><div><span>Telefoon</span>${esc(k.tel||"–")}</div><div><span>E-mail</span>${esc(k.email||"–")}</div>${k.notitie?`<div><span>Notitie</span>${esc(k.notitie)}</div>`:""}</div>
  <div class="sec"><div class="hdr"><h3>Honden</h3><button class="btn s" type="button" data-act="hNew">Hond toevoegen</button></div>
  ${hs.length?`<div class="dogs">${hs.map(h=>{const last=D.behandelingen.filter(b=>b.hondId===h.id).sort((a,b)=>b.datum.localeCompare(a.datum))[0];
@@ -32,7 +32,7 @@ $("#klList").onclick=e=>{const b=e.target.closest("[data-k]");if(b){selKl=b.data
 $("#klDet").onclick=e=>{const b=e.target.closest("[data-act],[data-af],[data-ev]");if(!b)return;
  if(b.dataset.af)return afDlg(b.dataset.af);if(b.dataset.ev)return openEv(b.dataset.ev);
  const a=b.dataset.act,h=b.dataset.h;
- if(a==="kMsg")msgDlg({klantId:selKl},"vrij");else if(a==="kEdit")klantDlg(selKl);else if(a==="kAf")afDlg(null,{klantId:selKl,datum:ymd(today()),start:"09:00"});
+ if(a==="kMsg")msgDlg({klantId:selKl},"vrij");else if(a==="kBer"){selBer=selKl;go("berichten")}else if(a==="kPortaal"){const h=D.honden.find(x=>x.klantId===selKl&&!x.inactief);msgDlg({klantId:selKl,hondId:h&&h.id},"portaal")}else if(a==="kEdit")klantDlg(selKl);else if(a==="kAf")afDlg(null,{klantId:selKl,datum:ymd(today()),start:"09:00"});
  else if(a==="hNew")hondDlg(null,selKl);else if(a==="hEdit")hondDlg(h,selKl);
  else if(a==="hAf")afDlg(null,{klantId:selKl,hondId:h,datum:ymd(today()),start:"09:00"});
  else if(a==="hHis"){$("#hq").value=get("honden",h).naam;$("#hf").value="";go("historie")}};

@@ -126,7 +126,8 @@ GROUP BY h.id, h.naam, k.naam, k.telefoon HAVING MAX(b.datum) IS NULL OR MAX(b.d
 | Logica | `public/js/*.js` | Per onderdeel een bestand, geladen in de volgorde van `index.html` |
 | App en offline | `public/manifest.webmanifest`, `public/sw.js`, `public/icons/` | Installeerbaar als app; bewaart de app op het apparaat zodat hij ook zonder internet start |
 | Beveiligingsregels | `public/_headers` | Scripts alleen uit eigen bestanden, geen frames, gegevens alleen naar de eigen site |
-| Koppelservice | `netlify/functions/*.mjs` | Database (`db.mjs`), e-mail (`mail.mjs`), herinneringen inplannen (`plan.mjs`) en versturen (`herinneringen.mjs`) |
+| Koppelservice | `netlify/functions/*.mjs` | Database (`db.mjs`), e-mail (`mail.mjs`), herinneringen inplannen (`plan.mjs`) en versturen (`herinneringen.mjs`), klantportaal (`portaal.mjs`) |
+| Klantportaal | `public/portaal.html`, `portaal.js`, `portaal.css` | Losse pagina voor klanten op `/portaal` |
 | Database | `database/schema.sql` | Tabellen voor Aiven PostgreSQL (ter naslag; worden automatisch aangemaakt) |
 | Hulpscripts | `tools/` | `build-preview.py` maakt één voorbeeldbestand voor gebruik binnen Claude; niet nodig op Netlify |
 
@@ -147,6 +148,7 @@ Logica in `public/js/`:
 | `export.js` | Export voor de accountant |
 | `klanten.js` | Klantenlijst en klantkaart |
 | `beurt.js` | Weer aan de beurt: welke honden weer moeten komen |
+| `berichtenbox.js` | Berichten uit het klantportaal lezen en beantwoorden |
 | `artikelen.js` | Artikelen en prijzen |
 | `historie.js` | Historie en behandelingen vastleggen |
 | `instellingen.js` | Instellingen, logo, medewerkers, back-up |
@@ -191,6 +193,30 @@ Bij *Klanten > Weer aan de beurt* staan de honden die volgens hun ritme weer moe
 - **Ritme:** een vast interval per hond (*Hond wijzigen > Trim-interval*). Is dat er niet en is de hond al minstens drie keer geweest, dan rekent Trimmy het eigen ritme van de hond uit. Anders geldt de salonstandaard (*Instellingen > Berichten aan klanten*, standaard 8 weken). Kies *Geen herinnering* voor honden die niet vast komen.
 - **Per hond:** een bericht sturen via WhatsApp of e-mail (tekst instelbaar, met `{weken}` en `{laatst}`), direct inplannen, of *2 weken later* als de klant al heeft laten weten later te komen.
 - Na een bericht onthoudt Trimmy dat, en de hond zakt naar onderen in de lijst. Bij een nieuwe afspraak verdwijnt de hond vanzelf van de lijst.
+
+## Klantportaal
+
+Klanten kunnen op `https://jouw-trimmy.netlify.app/portaal` inloggen en zien daar **alleen hun eigen** gegevens: honden, komende afspraken, historie, facturen (bekijken, printen of als pdf opslaan) en openstaande bedragen. Ze kunnen hun telefoon en adres aanpassen en de salon een bericht sturen.
+
+**Aanzetten**
+1. Database aan (Aiven) en *E-mail direct vanuit Trimmy versturen* aan: de inlogcodes gaan per mail.
+2. *Instellingen > Berichten aan klanten > Klantportaal aanzetten* en opslaan.
+3. Netlify: de site moet openbaar zijn (bij *Private* moeten klanten eerst bij Netlify inloggen). Zet bij voorkeur ook een eigen geheime sleutel: `PORTAAL_SECRET` = een lange willekeurige tekst (secret), en deploy opnieuw.
+4. Nodig klanten uit vanaf de klantkaart met de knop *Klantportaal* (WhatsApp of e-mail). Bij de klant moet het e-mailadres ingevuld zijn.
+
+**Berichten**: nieuwe berichten verschijnen in Trimmy bij *Berichten* (met teller en een seintje); je krijgt ook een mailtje. Antwoord je, dan ziet de klant dat in het portaal en krijgt hij een mailtje. Wijzigt een klant zijn telefoon of adres, dan zie je dat als bericht en staat het direct op de klantkaart.
+
+**Wat de klant wel en niet ziet**
+- Wel: naam, adres, telefoon, e-mail; per hond naam, ras, leeftijd, geslacht, gewicht, vacht, kleur, chip, foto; afspraken (datum, tijd, behandeling); historie (datum, behandeling, mesje/techniek, vachtconditie en de *notitie voor de klant*); facturen en betalingen.
+- Nooit: interne notities, gedrag en medische notities, notities bij afspraken, andere klanten, medewerkers, omzet of instellingen.
+- Bij een behandeling (Historie > Behandeling vastleggen) staan nu twee velden: *Interne notitie* (alleen salon) en *Notitie voor de klant* (zichtbaar in het portaal).
+
+**Beveiliging**
+- Inloggen met een eenmalige code van 6 cijfers per e-mail, 10 minuten geldig, maximaal 5 pogingen; maximaal 3 codes per e-mailadres per kwartier en 10 per internetadres per uur.
+- Het portaal verraadt niet of een e-mailadres bekend is.
+- Codes en sessies staan alleen versleuteld (gehasht) in de database. De sessie is een beveiligde cookie (HttpOnly, Secure, SameSite=Strict) die 60 dagen geldig blijft, tot de klant uitlogt.
+- De server filtert elke opvraging op het e-mailadres van de ingelogde klant. Een klant kan zijn e-mailadres niet zelf wijzigen; dat doe jij in Trimmy (daarmee vervalt ook de toegang via het oude adres).
+- Het portaal heeft geen toegang tot de koppelservice van de app; de `TRIMMY_CODE` staat nergens in het portaal.
 
 ## Automatische herinneringen
 

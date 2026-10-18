@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Klantportaal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="portaal.css">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<meta name="theme-color" content="#6a3560">
+</head>
+<body>
+<header class="top"><div class="wrap">
+ <div class="brand"><img id="logo" alt="" hidden><span id="salonNaam">Klantportaal</span></div>
+ <button class="btn s" id="uit" type="button" hidden>Uitloggen</button>
+</div></header>
+
+<main class="wrap">
+ <p id="laden" class="mute">Even laden…</p>
+
+ <!-- inloggen -->
+ <section id="login" class="card narrow" hidden>
+  <h1>Inloggen</h1>
+  <form id="f1">
+   <p class="mute">Vul het e-mailadres in dat bij de salon bekend is. Je krijgt een code om in te loggen; een wachtwoord is niet nodig.</p>
+   <label>E-mailadres<input id="email" type="email" autocomplete="email" inputmode="email" required></label>
+   <button class="btn p wide" type="submit">Code sturen</button>
+  </form>
+  <form id="f2" hidden>
+   <p id="f2tekst" class="mute"></p>
+   <label>Code uit de e-mail<input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></label>
+   <button class="btn p wide" type="submit">Inloggen</button>
+   <button class="btn link" type="button" id="terug">Ander e-mailadres of nieuwe code</button>
+  </form>
+  <p class="msg" id="lmsg" role="alert"></p>
+ </section>
+
+ <section id="uitStaat" class="card narrow" hidden><h1>Klantportaal</h1><p>Het klantportaal is op dit moment niet beschikbaar. Neem gerust contact op met de salon.</p></section>
+
+ <!-- portaal -->
+ <section id="app" hidden>
+  <h1 id="hoi"></h1>
+  <nav class="tabs" id="tabs" role="tablist">
+   <button type="button" data-t="overzicht" role="tab">Overzicht</button>
+   <button type="button" data-t="historie" role="tab">Historie</button>
+   <button type="button" data-t="facturen" role="tab">Facturen</button>
+   <button type="button" data-t="berichten" role="tab">Berichten</button>
+   <button type="button" data-t="gegevens" role="tab">Mijn gegevens</button>
+  </nav>
+  <div id="v-overzicht" class="view"></div>
+  <div id="v-historie" class="view" hidden></div>
+  <div id="v-facturen" class="view" hidden></div>
+  <div id="v-berichten" class="view" hidden>
+   <div class="card chat"><div id="chat"></div>
+    <form id="fb" class="send"><textarea id="btekst" rows="2" maxlength="2000" placeholder="Typ je bericht aan de salon" required></textarea><button class="btn p" type="submit">Versturen</button></form>
+    <p class="msg" id="bmsg" role="status"></p></div>
+  </div>
+  <div id="v-gegevens" class="view" hidden>
+   <form class="card narrow" id="fg">
+    <h2>Mijn gegevens</h2>
+    <label>Naam<input id="gNaam" disabled></label>
+    <label>E-mailadres<input id="gMail" disabled></label>
+    <small class="mute">Je naam of e-mailadres wijzigen? Stuur de salon een bericht.</small>
+    <label>Telefoon<input id="gTel" type="tel" autocomplete="tel" maxlength="40"></label>
+    <label>Straat en huisnummer<input id="gStraat" autocomplete="street-address" maxlength="200"></label>
+    <div class="g2"><label>Postcode<input id="gPc" autocomplete="postal-code" maxlength="12"></label><label>Plaats<input id="gPlaats" autocomplete="address-level2" maxlength="120"></label></div>
+    <button class="btn p" type="submit">Opslaan</button>
+    <p class="msg" id="gmsg" role="status"></p>
+   </form>
+  </div>
+ </section>
+</main>
+
+<dialog id="fdlg"><div class="dlg"><div id="factuur"></div><div class="acts noprint"><button class="btn" type="button" id="fClose">Sluiten</button><button class="btn p" type="button" id="fPrint">Printen of opslaan als pdf</button></div></div></dialog>
+<script src="portaal.js"></script>
+</body>
+</html>

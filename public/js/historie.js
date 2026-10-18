@@ -28,12 +28,13 @@ function behDlg(id){
   <label>Behandelingen<input id="bDi" value="${esc(b.diensten)}" placeholder="Bijvoorbeeld: volledige trimbeurt"></label>
   <label>Mesje, kam of techniek<input id="bMe" value="${esc(b.mesje)}"></label>
   <div class="g2"><label>Vacht<select id="bVa">${["Goed","Klitten","Sterk vervilt","Huidproblemen","Vlooien gezien"].map(x=>`<option ${x===b.vacht?"selected":""}>${x}</option>`).join("")}</select></label><label>Gedrag<select id="bGe">${["Rustig","Wat onrustig","Lastig","Bijt of hapt"].map(x=>`<option ${x===b.gedrag?"selected":""}>${x}</option>`).join("")}</select></label></div>
-  <label>Notitie<textarea id="bNo" rows="3">${esc(b.notitie)}</textarea></label>${b.factuurId?`<small>Hoort bij factuur ${esc((get("facturen",b.factuurId)||{}).nr||"")}</small>`:""}
+  <label>Interne notitie (alleen voor de salon)<textarea id="bNo" rows="3">${esc(b.notitie)}</textarea></label>
+  <label>Notitie voor de klant (zichtbaar in het klantportaal)<textarea id="bKn" rows="2" placeholder="Bijvoorbeeld: elke dag even borstelen achter de oren">${esc(b.klantNotitie||"")}</textarea></label>${b.factuurId?`<small>Hoort bij factuur ${esc((get("facturen",b.factuurId)||{}).nr||"")}</small>`:""}
   <div class="msg" id="bM"></div>
   <div class="acts">${id?`<button class="btn d" type="button" id="bDel">Verwijderen</button><span class="sp"></span>`:""}<button class="btn" type="button" id="bX">Annuleren</button><button class="btn p" type="button" id="bOk">Opslaan</button></div>`);
  khBind(d,b.hondId);d.q("#bX").onclick=()=>d.close();
  d.q("#bOk").onclick=()=>{const k=khKlant(d),h=d.q("#khH").value;if(!k||!h){d.q("#bM").textContent="Kies een klant en een hond.";return}
-  const v={klantId:k.id,hondId:h,datum:d.q("#bD").value||ymd(today()),mw:d.q("#bMw").value.trim(),diensten:d.q("#bDi").value.trim(),mesje:d.q("#bMe").value.trim(),vacht:d.q("#bVa").value,gedrag:d.q("#bGe").value,notitie:d.q("#bNo").value.trim()};
+  const v={klantId:k.id,hondId:h,datum:d.q("#bD").value||ymd(today()),mw:d.q("#bMw").value.trim(),diensten:d.q("#bDi").value.trim(),mesje:d.q("#bMe").value.trim(),vacht:d.q("#bVa").value,gedrag:d.q("#bGe").value,notitie:d.q("#bNo").value.trim(),klantNotitie:d.q("#bKn").value.trim()};
   if(id)Object.assign(get("behandelingen",id),v);else D.behandelingen.push({id:uid(),afspraakId:null,factuurId:null,...v});saveC("behandelingen");d.close();draw()};
  if(d.q("#bDel"))d.q("#bDel").onclick=e=>arm(e.target,()=>{D.behandelingen=D.behandelingen.filter(x=>x.id!==id);saveC("behandelingen");d.close();draw()},"Nogmaals: verwijderen");
 }

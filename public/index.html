@@ -80,6 +80,12 @@
   </div>
  </section>
 
+ <section class="view" id="v-berichten" hidden>
+  <div class="kl">
+   <div class="panel"><div class="bar" style="padding:12px;margin:0;border-bottom:1px solid var(--line)"><input id="berq" type="search" placeholder="Zoek klant of bericht" aria-label="Zoek bericht"></div><div class="klist" id="berList"></div></div>
+   <div class="panel" id="berDet"></div>
+  </div>
+ </section>
  <section class="view" id="v-facturen" hidden>
   <div class="stats" id="fStats"></div>
   <div class="bar"><input id="fq" type="search" placeholder="Zoek op factuurnummer, klant of hond" aria-label="Zoek factuur"><div class="seg" id="fSeg"><button type="button" data-f="alle">Alle</button><button type="button" data-f="open">Openstaand</button><button type="button" data-f="betaald">Betaald</button></div><button class="btn p" id="fExp" type="button">Export voor accountant</button></div>
@@ -126,6 +132,8 @@
      <label>Agenda open van/tot (uur)<span style="display:flex;gap:6px;max-width:220px"><input id="bOpen" type="number" min="0" max="23" aria-label="Open vanaf"><input id="bSluit" type="number" min="1" max="24" aria-label="Open tot"></span></label>
      <label class="chk"><input type="checkbox" id="bZon"> Zondag tonen in de weekagenda</label>
      <label>Dubbele boeking voor dezelfde medewerker<select id="bDubbel"><option value="waarschuw">Waarschuwen, toch inplannen kan</option><option value="blokkeer">Niet toestaan</option></select></label>
+     <label>Afspraken slepen in de agenda<select id="bSlepen"><option value="vraag">Eerst vragen voordat een afspraak verschuift</option><option value="direct">Direct verschuiven (met Ongedaan maken)</option><option value="uit">Niet slepen, alleen wijzigen via het venster</option></select></label>
+     <small>Op telefoon en tablet houd je een afspraak even ingedrukt voordat je hem kunt slepen. Gewoon vegen scrolt door de agenda.</small>
      <div class="acts l"><button class="btn p" id="bSave3" type="button">Opslaan</button><span class="mute" id="bMsg3" role="status"></span></div>
     </div></div>
 
@@ -151,6 +159,11 @@
      <small>Deze woorden vult Trimmy zelf in: {klant} {hond} {dag} {datum} {tijd} {behandeling} {salon} {salontel} {adres}, en bij Weer aan de beurt ook {weken} en {laatst}</small>
      <h3>Opgemaakte e-mail</h3>
      <div class="g2"><label>Kleur in e-mails<input id="bKleur" type="color" style="height:40px;padding:3px"></label><span></span></div>
+     <h3>Klantportaal</h3>
+     <label class="chk"><input type="checkbox" id="bPortaal"> Klantportaal aanzetten</label>
+     <div class="note" id="portaalStat"></div>
+     <small>Klanten loggen in met hun e-mailadres en een code die ze per mail krijgen. Ze zien alleen hun eigen gegevens, honden, komende afspraken, historie (met de notitie voor de klant) en facturen, en kunnen jou een bericht sturen. Nodig: database aan, direct e-mail versturen aan, en de site op Netlify openbaar (niet Private).</small>
+     <h3>E-mail versturen</h3>
      <label class="chk"><input type="checkbox" id="bMailDirect"> E-mail direct vanuit Trimmy versturen (via de koppelservice op Netlify)</label>
      <div class="note" id="mailStat">Staat dit uit, dan kopieer je de opgemaakte e-mail en plak je hem in Outlook of Gmail.</div>
      <h3>Automatische herinnering</h3>
@@ -212,6 +225,7 @@
 <script src="js/export.js"></script>
 <script src="js/klanten.js"></script>
 <script src="js/beurt.js"></script>
+<script src="js/berichtenbox.js"></script>
 <script src="js/artikelen.js"></script>
 <script src="js/historie.js"></script>
 <script src="js/instellingen.js"></script>

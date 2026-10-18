@@ -62,6 +62,11 @@ const TABLES = {
     map: r => ({ datum: d(r.datum), hond_id: s(r.hondId, 40), klant_id: s(r.klantId, 40), afspraak_id: s(r.afspraakId, 40), factuur_id: s(r.factuurId, 40), medewerker: s(r.mw, 120), behandelingen: s(r.diensten, 65000), mesje_techniek: s(r.mesje), vachtconditie: s(r.vacht, 40), gedrag: s(r.gedrag, 40), notitie: s(r.notitie, 65000) }),
     idx: ["hond_id"],
   },
+  berichten: {
+    ddl: [["klant_id", "VARCHAR(40)"], ["van", "VARCHAR(10)"], ["tekst", "TEXT"], ["gelezen", "BOOLEAN NOT NULL DEFAULT false"], ["tijdstip", "TIMESTAMPTZ"]],
+    map: r => ({ klant_id: s(r.klantId, 40), van: r.van === "salon" ? "salon" : "klant", tekst: s(r.tekst, 4000), gelezen: !!r.gelezen, tijdstip: ts(r.ts) }),
+    idx: ["klant_id"],
+  },
   bedrijf: {
     ddl: [["naam", "VARCHAR(200)"], ["kvk", "VARCHAR(20)"], ["btw_nummer", "VARCHAR(30)"], ["iban", "VARCHAR(40)"]],
     map: r => ({ naam: s(r.naam), kvk: s(r.kvk, 20), btw_nummer: s(r.btwnr, 30), iban: s(r.iban, 40) }),
@@ -85,6 +90,10 @@ export function schemaSql() {
   out.push(`CREATE INDEX IF NOT EXISTS "factuurregels_factuur" ON ${Q("factuurregels")} (factuur_id)`);
   out.push(`CREATE TABLE IF NOT EXISTS ${Q("betalingen")} (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, factuur_id VARCHAR(40) NOT NULL, tijdstip TIMESTAMPTZ, methode VARCHAR(20), bedrag NUMERIC(10,2))`);
   out.push(`CREATE INDEX IF NOT EXISTS "betalingen_factuur" ON ${Q("betalingen")} (factuur_id)`);
+  // klantportaal: eenmalige inlogcodes en sessies (alleen gehasht opgeslagen)
+  out.push(`CREATE TABLE IF NOT EXISTS ${Q("portaal_codes")} (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, email VARCHAR(200) NOT NULL, code_hash VARCHAR(64) NOT NULL, ip VARCHAR(64), pogingen INTEGER NOT NULL DEFAULT 0, verloopt TIMESTAMPTZ NOT NULL, aangemaakt TIMESTAMPTZ NOT NULL DEFAULT now())`);
+  out.push(`CREATE INDEX IF NOT EXISTS "portaal_codes_email" ON ${Q("portaal_codes")} (email)`);
+  out.push(`CREATE TABLE IF NOT EXISTS ${Q("portaal_sessies")} (token_hash VARCHAR(64) PRIMARY KEY, email VARCHAR(200) NOT NULL, verloopt TIMESTAMPTZ NOT NULL, aangemaakt TIMESTAMPTZ NOT NULL DEFAULT now(), laatst TIMESTAMPTZ)`);
   out.push(`CREATE OR REPLACE VIEW ${Q("v_omzet_per_dag")} AS SELECT (b.tijdstip AT TIME ZONE 'Europe/Amsterdam')::date AS dag, b.methode, SUM(b.bedrag) AS ontvangen, COUNT(*) AS aantal FROM ${Q("betalingen")} b JOIN ${Q("facturen")} f ON f.id = b.factuur_id AND NOT f.deleted GROUP BY 1, 2`);
   out.push(`CREATE OR REPLACE VIEW ${Q("v_hond_historie")} AS SELECT h.naam AS hond, h.ras, k.naam AS klant, bh.datum, bh.behandelingen, bh.mesje_techniek, bh.vachtconditie, bh.gedrag, bh.medewerker, bh.notitie FROM ${Q("behandelingen")} bh JOIN ${Q("honden")} h ON h.id = bh.hond_id LEFT JOIN ${Q("klanten")} k ON k.id = h.klant_id WHERE NOT bh.deleted`);
   out.push(`CREATE OR REPLACE VIEW ${Q("v_openstaande_facturen")} AS SELECT f.nummer, f.datum, f.vervaldatum, k.naam AS klant, k.email, f.totaal, f.openstaand FROM ${Q("facturen")} f LEFT JOIN ${Q("klanten")} k ON k.id = f.klant_id WHERE NOT f.deleted AND f.openstaand > 0`);
@@ -92,7 +101,7 @@ export function schemaSql() {
 }
 
 let pool, ready = false;
-function getPool() {
+export function getPool() {
   if (pool) return pool;
   const raw = process.env.DATABASE_URL;
   if (!raw) throw Object.assign(new Error("DATABASE_URL is niet ingesteld op Netlify"), { code: "NOURL" });
@@ -106,7 +115,7 @@ function getPool() {
   });
   return pool;
 }
-async function ensureSchema(db) {
+export async function ensureSchema(db) {
   if (ready) return;
   const c = await db.connect();
   try {
@@ -121,10 +130,38 @@ async function ensureSchema(db) {
   finally { c.release(); }
 }
 
+
+// één record opslaan (ook gebruikt door het klantportaal)
+export async function upsertRow(c, table, id, data, kassa) {
+  const def = TABLES[table];
+  const row = { id, ...def.map(data) };
+  const keys = Object.keys(row), vals = keys.map(k => row[k]);
+  vals.push(JSON.stringify(data), kassa);
+  const ph = keys.map((_, i) => `$${i + 1}`);
+  const di = keys.length + 1, ki = keys.length + 2;
+  const set = keys.filter(k => k !== "id").map(k => `"${k}" = EXCLUDED."${k}"`).concat(["data = EXCLUDED.data", "versie = EXCLUDED.versie", "deleted = false", "kassa = EXCLUDED.kassa", "bijgewerkt = now()"]);
+  await c.query(
+    `INSERT INTO ${Q(table)} (${keys.map(k => `"${k}"`).join(", ")}, data, versie, deleted, kassa) VALUES (${ph.join(", ")}, $${di}::jsonb, nextval('${SEQ}'), false, $${ki}) ON CONFLICT (id) DO UPDATE SET ${set.join(", ")}`,
+    vals);
+  if (table === "facturen") {
+    await c.query(`DELETE FROM ${Q("factuurregels")} WHERE factuur_id = $1`, [id]);
+    await c.query(`DELETE FROM ${Q("betalingen")} WHERE factuur_id = $1`, [id]);
+    const regels = Array.isArray(data.regels) ? data.regels : [];
+    for (let i = 0; i < regels.length; i++) {
+      const r = regels[i] || {};
+      await c.query(`INSERT INTO ${Q("factuurregels")} (factuur_id, regelnr, artikel_id, omschrijving, soort, vrij, aantal, prijs_incl, btw_pct, totaal_incl) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [id, i + 1, s(r.artId, 40), s(r.naam), s(r.type, 10), !!(r.vrij || !r.artId), n(r.aantal), n(r.prijs), n(r.btw), n(r.totaal)]);
+    }
+    const bet = Array.isArray(data.betalingen) ? data.betalingen : [];
+    for (const p of bet) await c.query(`INSERT INTO ${Q("betalingen")} (factuur_id, tijdstip, methode, bedrag) VALUES ($1,$2,$3,$4)`, [id, ts(p && p.ts), s(p && p.methode, 20), n(p && p.bedrag)]);
+  }
+}
+export { SCHEMA, Q, SEQ, TABLES };
+
 const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: cors });
 
-function foutmelding(e, table) {
+export function foutmelding(e, table) {
   const c = e && e.code;
   if (c === "NOURL") return e.message;
   if (c === "28P01") return "de database weigert de inlog; controleer gebruiker en wachtwoord in DATABASE_URL";
@@ -191,29 +228,7 @@ export default async (req) => {
           await c.query(`UPDATE ${Q(table)} SET deleted = true, versie = nextval('${SEQ}'), kassa = $2, bijgewerkt = now() WHERE id = $1`, [id, kassa]);
           continue;
         }
-        const data = rec.data && typeof rec.data === "object" ? rec.data : {};
-        const row = { id, ...def.map(data) };
-        const keys = Object.keys(row), vals = keys.map(k => row[k]);
-        vals.push(JSON.stringify(data), kassa);
-        const ph = keys.map((_, i) => `$${i + 1}`);
-        const di = keys.length + 1, ki = keys.length + 2;
-        const set = keys.filter(k => k !== "id").map(k => `"${k}" = EXCLUDED."${k}"`).concat(["data = EXCLUDED.data", "versie = EXCLUDED.versie", "deleted = false", "kassa = EXCLUDED.kassa", "bijgewerkt = now()"]);
-        await c.query(
-          `INSERT INTO ${Q(table)} (${keys.map(k => `"${k}"`).join(", ")}, data, versie, deleted, kassa) VALUES (${ph.join(", ")}, $${di}::jsonb, nextval('${SEQ}'), false, $${ki}) ON CONFLICT (id) DO UPDATE SET ${set.join(", ")}`,
-          vals);
-
-        if (table === "facturen") {
-          await c.query(`DELETE FROM ${Q("factuurregels")} WHERE factuur_id = $1`, [id]);
-          await c.query(`DELETE FROM ${Q("betalingen")} WHERE factuur_id = $1`, [id]);
-          const regels = Array.isArray(data.regels) ? data.regels : [];
-          for (let i = 0; i < regels.length; i++) {
-            const r = regels[i] || {};
-            await c.query(`INSERT INTO ${Q("factuurregels")} (factuur_id, regelnr, artikel_id, omschrijving, soort, vrij, aantal, prijs_incl, btw_pct, totaal_incl) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-              [id, i + 1, s(r.artId, 40), s(r.naam), s(r.type, 10), !!(r.vrij || !r.artId), n(r.aantal), n(r.prijs), n(r.btw), n(r.totaal)]);
-          }
-          const bet = Array.isArray(data.betalingen) ? data.betalingen : [];
-          for (const p of bet) await c.query(`INSERT INTO ${Q("betalingen")} (factuur_id, tijdstip, methode, bedrag) VALUES ($1,$2,$3,$4)`, [id, ts(p && p.ts), s(p && p.methode, 20), n(p && p.bedrag)]);
-        }
+        await upsertRow(c, table, id, rec.data && typeof rec.data === "object" ? rec.data : {}, kassa);
       }
       await c.query("COMMIT");
     } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; }

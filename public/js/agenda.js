@@ -57,10 +57,17 @@ $("#agRem").onclick=remDlg;
 /* slepen en duur aanpassen */
 const snap15=m=>Math.round(m/15)*15;let drag=null;
 $("#ag").addEventListener("pointerdown",e=>{const b=e.target.closest(".blk");if(!b||e.button>0)return;const a=get("afspraken",b.dataset.af);if(!a)return;
- drag={a,b,id:e.pointerId,rz:e.target.classList.contains("rz"),x0:e.clientX,y0:e.clientY,offY:e.clientY-b.getBoundingClientRect().top,moved:false,ghost:null,t:null};
- try{b.setPointerCapture(e.pointerId)}catch(x){}});
+ const touch=e.pointerType!=="mouse"&&e.pointerType!=="pen";
+ drag={a,b,id:e.pointerId,rz:e.target.classList.contains("rz"),x0:e.clientX,y0:e.clientY,offY:e.clientY-b.getBoundingClientRect().top,moved:false,ghost:null,t:null,touch,armed:!touch&&bed.slepen!=="uit"};
+ /* telefoon/tablet: eerst even ingedrukt houden, anders is het scrollen */
+ if(touch&&bed.slepen!=="uit")drag.timer=setTimeout(()=>{if(!drag||drag.b!==b)return;drag.armed=true;b.classList.add("lift");try{navigator.vibrate&&navigator.vibrate(15)}catch(x){}},450);
+ try{if(!touch)b.setPointerCapture(e.pointerId)}catch(x){}});
+/* zolang er gesleept wordt niet scrollen (iOS) */
+document.addEventListener("touchmove",e=>{if(drag&&drag.armed)e.preventDefault()},{passive:false});
 $("#ag").addEventListener("pointermove",e=>{const g=drag;if(!g||e.pointerId!==g.id)return;
- if(!g.moved){if(Math.hypot(e.clientX-g.x0,e.clientY-g.y0)<6)return;
+ if(!g.moved){const far=Math.hypot(e.clientX-g.x0,e.clientY-g.y0)>=(g.touch?10:6);
+  if(!g.armed){if(far){clearTimeout(g.timer);if(g.touch){drag=null;return}g.dead=true}return}
+  if(!far)return;try{g.b.setPointerCapture(e.pointerId)}catch(x){}
   if(g.a.status==="afgerekend"){drag=null;toast("Deze afspraak is al afgerekend en kan niet meer verschuiven.");return}
   g.moved=true;g.b.classList.add("drag-src");g.ghost=document.createElement("div");g.ghost.className="ghost"}
  e.preventDefault();
@@ -71,21 +78,32 @@ $("#ag").addEventListener("pointermove",e=>{const g=drag;if(!g||e.pointerId!==g.
  const x={id:g.a.id,datum:col.dataset.date,start:toHM(start),duur,mwId:col.dataset.mw==="none"?"":(col.dataset.mw||g.a.mwId||""),status:g.a.status};
  g.t={col,x};const cf=conflicts(x).length;
  g.ghost.style.top=(start-o)*PXM+"px";g.ghost.style.height=Math.max(20,duur*PXM-2)+"px";g.ghost.classList.toggle("bad",!!cf);g.ghost.textContent=`${toHM(start)}–${toHM(start+duur)}${cf?" · dubbel":""}`});
-function dragEnd(e){const g=drag;if(!g||e.pointerId!==g.id)return;drag=null;
- if(!g.moved){if(e.type==="pointerup")afDlg(g.a.id);return}
+function dragEnd(e){const g=drag;if(!g||e.pointerId!==g.id)return;drag=null;clearTimeout(g.timer);g.b.classList.remove("lift");
+ if(!g.moved){if(e.type==="pointerup"&&!g.dead)afDlg(g.a.id);return}
  if(g.ghost)g.ghost.remove();g.b.classList.remove("drag-src");
  if(e.type!=="pointerup"||!g.t){drawAg();return}
  const x=g.t.x,a=g.a;if(x.datum===a.datum&&x.start===a.start&&x.duur===(+a.duur||30)&&x.mwId===(a.mwId||"")){drawAg();return}
  moveAf(a,{datum:x.datum,start:x.start,duur:x.duur,mwId:x.mwId},g.rz)}
 $("#ag").addEventListener("pointerup",dragEnd);$("#ag").addEventListener("pointercancel",dragEnd);
 function moveAf(a,nv,rz){const x={...a,...nv},c=conflicts(x);
+ if(bed.slepen==="direct"&&!c.length)return moveDo(a,nv,rz);
+ if(bed.dubbel==="blokkeer"&&c.length){drawAg();toast(confText(x,c)+" Dubbele boekingen zijn uitgezet bij Instellingen.");return}
+ const h=get("honden",a.hondId)||{},k=get("klanten",a.klantId)||{},mw=id=>(get("medewerkers",id)||{}).naam||"geen medewerker";
+ const dag=(d,t)=>fromYmd(d).toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"short"})+" "+t;
+ const wat=rz?`Duur van <b>${a.duur||30}</b> naar <b>${nv.duur}</b> minuten (${a.start}–${toHM(toMin(a.start)+nv.duur)}).`
+  :`Van <b>${esc(dag(a.datum,a.start))}</b>${a.mwId!==nv.mwId?" bij "+esc(mw(a.mwId)):""}<br>naar <b>${esc(dag(nv.datum,nv.start))}</b>${a.mwId!==nv.mwId?" bij "+esc(mw(nv.mwId)):""}`;
+ const d=modal(`<h2>${rz?"Duur aanpassen?":"Afspraak verplaatsen?"}</h2><p style="margin:0 0 6px"><b>${esc(h.naam||"Afspraak")}</b>${k.naam?` · ${esc(k.naam)}`:""}</p><p style="margin:0">${wat}</p>
+  ${c.length?`<div class="note w">Dubbele boeking: ${esc(confText(x,c))}</div>`:""}
+  ${!rz&&(k.tel||k.email)?`<label class="chk"><input type="checkbox" id="mvMsg" checked> Klant daarna informeren</label>`:""}
+  <div class="acts"><button class="btn" type="button" id="cX">Annuleren</button><button class="btn p" type="button" id="cOk">${rz?"Aanpassen":c.length?"Toch verplaatsen":"Verplaatsen"}</button></div>`);
+ setTimeout(()=>d.q("#cX").focus(),30);
+ d.q("#cX").onclick=()=>{d.close()};d.addEventListener("close",()=>drawAg());
+ d.q("#cOk").onclick=()=>{const tell=d.q("#mvMsg")&&d.q("#mvMsg").checked;d.close();moveDo(a,nv,rz,tell)}}
+function moveDo(a,nv,rz,tell){
  const apply=()=>{const old={datum:a.datum,start:a.start,duur:a.duur,mwId:a.mwId};Object.assign(a,nv);saveC("afspraken");drawAg();const h=(get("honden",a.hondId)||{}).naam||"Afspraak";
+  if(tell){msgDlg(a,"wijziging");return}
   toast(rz?`${h}: duur nu ${a.duur} minuten`:`${h} verplaatst naar ${fromYmd(a.datum).toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"short"})} ${a.start}`,[["Ongedaan maken",()=>{Object.assign(a,old);saveC("afspraken");drawAg()}],...(rz?[]:[["Klant informeren",()=>msgDlg(a,"wijziging")]])],10000)};
- if(!c.length)return apply();
- if(bed.dubbel==="blokkeer"){drawAg();toast(confText(x,c)+" Dubbele boekingen zijn uitgezet bij Instellingen.");return}
- const d=modal(`<h2>Dubbele boeking</h2><div class="note w">${esc(confText(x,c))}</div><p style="margin:0">Wil je deze afspraak toch op dit tijdstip zetten?</p><div class="acts"><button class="btn" type="button" id="cX">Annuleren</button><button class="btn p" type="button" id="cOk">Toch verplaatsen</button></div>`);
- d.q("#cX").onclick=()=>{d.close();drawAg()};d.q("#cOk").onclick=()=>{d.close();apply()}}
-
+ return apply()}
 /* klant + hond kiezer */
 function khHtml(kId){const k=get("klanten",kId);return`<label>Klant<input id="khK" list="khL" autocomplete="off" value="${k?esc(klLab(k)):""}" placeholder="Typ een naam"></label><datalist id="khL">${D.klanten.slice().sort(by("naam")).map(k=>`<option value="${esc(klLab(k))}">${esc(k.tel||"")}</option>`).join("")}</datalist><label>Hond<select id="khH"></select></label>`}
 const khKlant=d=>{const v=d.q("#khK").value.trim().toLowerCase();if(!v)return null;return D.klanten.find(k=>klLab(k).toLowerCase()===v)||D.klanten.find(k=>k.naam.toLowerCase()===v)||null};

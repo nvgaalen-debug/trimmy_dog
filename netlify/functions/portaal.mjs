@@ -1,0 +1,201 @@
+// Trimmy · klantportaal (server)
+// Klanten loggen in met een eenmalige code per e-mail en zien ALLEEN hun eigen gegevens.
+// Routes (alle onder /api/portaal/):
+//   POST code     { email }          -> stuurt een code van 6 cijfers (antwoord is altijd hetzelfde)
+//   POST login    { email, code }    -> zet een sessie-cookie (HttpOnly, Secure, SameSite=Strict)
+//   GET  ik                          -> eigen gegevens, honden, afspraken, historie, facturen, berichten
+//   POST bericht  { tekst }          -> bericht aan de salon
+//   POST gegevens { tel, straat, pc, plaats }
+//   POST uit                         -> uitloggen
+// Beveiliging:
+//   - codes en sessies staan alleen gehasht in de database; code 10 minuten geldig, max. 5 pogingen
+//   - max. 3 codes per e-mailadres per 15 minuten en 10 per IP-adres per uur
+//   - elke opvraging filtert op het e-mailadres van de sessie; er wordt nooit iets van een andere klant gestuurd
+//   - interne velden (notities, gedrag, medisch, medewerkers, inkoop) gaan nooit naar het portaal
+//   - POST alleen met header X-Trimmy-Portaal en JSON (blokkeert formulieren van andere sites)
+// Omgevingsvariabelen: DATABASE_URL, SMTP_*, MAIL_FROM (zelfde als de rest), PORTAAL_SECRET (aanbevolen).
+import crypto from "node:crypto";
+import nodemailer from "nodemailer";
+import { getPool, ensureSchema, upsertRow, foutmelding, Q } from "./db.mjs";
+
+const COOKIE = "tp_sessie";
+const SESSIE_DAGEN = 60;
+const SECRET = process.env.PORTAAL_SECRET || ("trimmy-portaal|" + (process.env.TRIMMY_CODE || ""));
+const H = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer" };
+const json = (status, body, extra = {}) => new Response(JSON.stringify(body), { status, headers: { ...H, ...extra } });
+const sha = (...p) => crypto.createHash("sha256").update(p.join("|")).digest("hex");
+const mailOk = e => /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(e) && e.length <= 200;
+const norm = e => String(e || "").trim().toLowerCase();
+const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const str = (v, max) => String(v ?? "").trim().slice(0, max);
+
+let transport;
+const smtpOk = () => !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.MAIL_FROM);
+function mailer() {
+  if (!transport) { const port = Number(process.env.SMTP_PORT || 587); transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port, secure: port === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } }); }
+  return transport;
+}
+function mailHtml(salon, titel, inhoud) {
+  const c = /^#[0-9a-f]{6}$/i.test(salon.kleur || "") ? salon.kleur : "#6a3560";
+  return `<!doctype html><html lang="nl"><body style="margin:0;background:#f1f3f1;font-family:Arial,Helvetica,sans-serif"><div style="padding:24px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden">
+<tr><td style="background:${c};color:#fff;padding:18px 26px;font-size:19px;font-weight:bold">${esc(salon.naam || "Trimsalon")}</td></tr>
+<tr><td style="padding:24px 26px;color:#1c2220;font-size:15px;line-height:1.55"><h1 style="font-size:20px;margin:0 0 14px">${esc(titel)}</h1>${inhoud}</td></tr></table></div></body></html>`;
+}
+
+function cookieVan(req) { const m = (req.headers.get("cookie") || "").match(new RegExp("(?:^|;\\s*)" + COOKIE + "=([A-Za-z0-9_-]{20,100})")); return m ? m[1] : null; }
+const setCookie = (tok, maxAge) => `${COOKIE}=${tok}; Path=/api/portaal; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+const ipVan = req => (req.headers.get("x-nf-client-connection-ip") || req.headers.get("x-forwarded-for") || "").split(",")[0].trim().slice(0, 64) || "onbekend";
+
+async function salonVan(db) {
+  const r = await db.query(`SELECT data FROM ${Q("bedrijf")} WHERE id = 'bedrijf' AND NOT deleted`);
+  return (r.rows[0] && r.rows[0].data) || {};
+}
+async function sessie(db, req) {
+  const tok = cookieVan(req); if (!tok) return null;
+  const r = await db.query(`SELECT email FROM ${Q("portaal_sessies")} WHERE token_hash = $1 AND verloopt > now()`, [sha(SECRET, "sessie", tok)]);
+  if (!r.rowCount) return null;
+  await db.query(`UPDATE ${Q("portaal_sessies")} SET laatst = now() WHERE token_hash = $1`, [sha(SECRET, "sessie", tok)]);
+  return { email: r.rows[0].email, tok };
+}
+async function klantenVan(db, email) {
+  const r = await db.query(`SELECT id, data FROM ${Q("klanten")} WHERE NOT deleted AND lower(trim(email)) = $1 ORDER BY bijgewerkt`, [email]);
+  return r.rows;
+}
+
+export default async (req) => {
+  const url = new URL(req.url);
+  const actie = url.pathname.replace(/\/+$/, "").split("/").pop();
+  if (req.method === "POST" && (req.headers.get("x-trimmy-portaal") !== "1" || !/application\/json/i.test(req.headers.get("content-type") || "")))
+    return json(403, { error: "ongeldig verzoek" });
+
+  let db;
+  try { db = getPool(); await ensureSchema(db); }
+  catch (e) { console.error("portaal schema", e); return json(503, { error: "Het portaal is even niet bereikbaar. Probeer het later opnieuw." }); }
+
+  try {
+    const salon = await salonVan(db);
+    if (!salon.portaal) return json(403, { error: "Het klantportaal staat uit.", uit: true });
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+
+    /* ---------- code aanvragen ---------- */
+    if (actie === "code" && req.method === "POST") {
+      const email = norm(body.email), ip = ipVan(req), t0 = Date.now();
+      const generiek = () => new Promise(r => setTimeout(r, Math.max(0, 1500 - (Date.now() - t0)))).then(() => json(200, { ok: true, melding: "Als dit e-mailadres bij ons bekend is, ontvang je binnen een minuut een code." }));
+      if (!mailOk(email)) return json(400, { error: "Vul een geldig e-mailadres in." });
+      await db.query(`DELETE FROM ${Q("portaal_codes")} WHERE verloopt < now() - interval '1 day'`);
+      const lim = await db.query(`SELECT (SELECT count(*) FROM ${Q("portaal_codes")} WHERE email = $1 AND aangemaakt > now() - interval '15 minutes') AS per_mail, (SELECT count(*) FROM ${Q("portaal_codes")} WHERE ip = $2 AND aangemaakt > now() - interval '1 hour') AS per_ip`, [email, ip]);
+      if (+lim.rows[0].per_mail >= 3 || +lim.rows[0].per_ip >= 10) return json(429, { error: "Je hebt al een paar codes aangevraagd. Wacht een kwartier en probeer het dan opnieuw." });
+      const kl = await klantenVan(db, email);
+      // ook bij een onbekend adres een (nutteloze) rij, zodat de limieten niet verraden of een adres bestaat
+      const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+      await db.query(`INSERT INTO ${Q("portaal_codes")} (email, code_hash, ip, verloopt) VALUES ($1, $2, $3, now() + interval '10 minutes')`, [email, kl.length ? sha(SECRET, "code", email, code) : "x", ip]);
+      if (kl.length && smtpOk()) {
+        const naam = (kl[0].data && kl[0].data.naam) || "";
+        await mailer().sendMail({
+          from: process.env.MAIL_FROM, to: email, subject: `Je inlogcode: ${code}`,
+          text: `Hoi ${naam},\n\nJe code om in te loggen bij het klantportaal van ${salon.naam || "de trimsalon"} is: ${code}\n\nDe code is 10 minuten geldig. Heb je dit niet aangevraagd? Dan kun je deze mail negeren.`,
+          html: mailHtml(salon, "Je inlogcode", `<p>Hoi ${esc(naam)},</p><p>Je code om in te loggen bij het klantportaal is:</p><p style="font-size:30px;font-weight:bold;letter-spacing:6px;margin:10px 0 16px">${code}</p><p style="color:#6b706d;font-size:13px">De code is 10 minuten geldig. Heb je dit niet aangevraagd? Dan kun je deze mail negeren.</p>`),
+        });
+      }
+      return generiek();
+    }
+
+    /* ---------- inloggen met code ---------- */
+    if (actie === "login" && req.method === "POST") {
+      const email = norm(body.email), code = String(body.code || "").replace(/\D/g, "");
+      const fout = json(401, { error: "Deze code klopt niet of is verlopen. Vraag eventueel een nieuwe code aan." });
+      if (!mailOk(email) || code.length !== 6) return fout;
+      const r = await db.query(`SELECT id, code_hash, pogingen FROM ${Q("portaal_codes")} WHERE email = $1 AND verloopt > now() AND code_hash <> 'x' ORDER BY aangemaakt DESC LIMIT 1`, [email]);
+      if (!r.rowCount) return fout;
+      const row = r.rows[0];
+      if (row.pogingen >= 5) return json(429, { error: "Te veel pogingen. Vraag een nieuwe code aan." });
+      await db.query(`UPDATE ${Q("portaal_codes")} SET pogingen = pogingen + 1 WHERE id = $1`, [row.id]);
+      const a = Buffer.from(row.code_hash), b = Buffer.from(sha(SECRET, "code", email, code));
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return fout;
+      if (!(await klantenVan(db, email)).length) return fout;
+      await db.query(`DELETE FROM ${Q("portaal_codes")} WHERE email = $1`, [email]);
+      await db.query(`DELETE FROM ${Q("portaal_sessies")} WHERE verloopt < now()`);
+      const tok = crypto.randomBytes(32).toString("base64url");
+      await db.query(`INSERT INTO ${Q("portaal_sessies")} (token_hash, email, verloopt) VALUES ($1, $2, now() + interval '${SESSIE_DAGEN} days')`, [sha(SECRET, "sessie", tok), email]);
+      return json(200, { ok: true }, { "Set-Cookie": setCookie(tok, SESSIE_DAGEN * 86400) });
+    }
+
+    /* ---------- vanaf hier alleen met geldige sessie ---------- */
+    const ses = await sessie(db, req);
+    if (!ses) return json(401, { error: "Niet ingelogd.", login: true });
+    const kl = await klantenVan(db, ses.email);
+    if (!kl.length) return json(401, { error: "Niet ingelogd.", login: true }, { "Set-Cookie": setCookie("x".repeat(20), 0) });
+    const ids = kl.map(k => k.id);
+
+    if (actie === "uit" && req.method === "POST") {
+      await db.query(`DELETE FROM ${Q("portaal_sessies")} WHERE token_hash = $1`, [sha(SECRET, "sessie", ses.tok)]);
+      return json(200, { ok: true }, { "Set-Cookie": setCookie("x".repeat(20), 0) });
+    }
+
+    if (actie === "ik" && req.method === "GET") {
+      const q = (t, extra = "") => db.query(`SELECT id, data FROM ${Q(t)} WHERE NOT deleted AND klant_id = ANY($1) ${extra}`, [ids]).then(r => r.rows.map(x => ({ id: x.id, ...x.data })));
+      const [honden, afs, beh, fac, ber] = await Promise.all([q("honden"), q("afspraken", "AND datum >= (now() AT TIME ZONE 'Europe/Amsterdam')::date - 1"), q("behandelingen"), q("facturen"), q("berichten")]);
+      const artIds = [...new Set(afs.flatMap(a => Array.isArray(a.diensten) ? a.diensten : []))];
+      const arts = artIds.length ? (await db.query(`SELECT id, data->>'naam' AS naam FROM ${Q("artikelen")} WHERE id = ANY($1)`, [artIds])).rows : [];
+      const artNaam = Object.fromEntries(arts.map(a => [a.id, a.naam]));
+      const hondNaam = Object.fromEntries(honden.map(h => [h.id, h.naam]));
+      const vandaag = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Amsterdam" });
+      const k0 = kl[0].data || {};
+      // alleen velden die voor de klant bedoeld zijn
+      return json(200, {
+        salon: { naam: salon.naam || "", straat: salon.straat || "", pc: salon.pc || "", plaats: salon.plaats || "", tel: salon.tel || "", mail: salon.mail || "", kvk: salon.kvk || "", btwnr: salon.btwnr || "", iban: salon.iban || "", voet: salon.voet || "", kleur: salon.kleur || "", logo: typeof salon.logo === "string" && salon.logo.length < 400000 ? salon.logo : "" },
+        klant: { naam: k0.naam || "", straat: k0.straat || "", pc: k0.pc || "", plaats: k0.plaats || "", tel: k0.tel || "", email: ses.email },
+        honden: honden.filter(h => !h.inactief).map(h => ({ id: h.id, naam: h.naam || "", ras: h.ras || "", geb: h.geb || "", geslacht: h.geslacht || "", gewicht: h.gewicht ?? "", vacht: h.vacht || "", kleur: h.kleur || "", chip: h.chip || "", foto: typeof h.foto === "string" && h.foto.length < 200000 ? h.foto : "" })),
+        afspraken: afs.filter(a => a.datum >= vandaag && !["geannuleerd", "noshow", "afgerekend"].includes(a.status)).sort((a, b) => (a.datum + a.start).localeCompare(b.datum + b.start))
+          .map(a => ({ datum: a.datum, start: a.start, duur: +a.duur || 30, hond: hondNaam[a.hondId] || "", behandelingen: (a.diensten || []).map(i => artNaam[i]).filter(Boolean), bevestigd: a.status === "bevestigd" })),
+        historie: beh.sort((a, b) => String(b.datum).localeCompare(String(a.datum))).slice(0, 100)
+          .map(b => ({ datum: b.datum, hond: hondNaam[b.hondId] || "", behandelingen: b.diensten || "", mesje: b.mesje || "", vacht: b.vacht || "", notitie: b.klantNotitie || "" })),
+        facturen: fac.sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(f => ({ id: f.id, nr: f.nr, ts: f.ts, vervalt: f.vervalt || "", hond: hondNaam[f.hondId] || "", korting: +f.korting || 0, sub: +f.sub || 0, totaal: +f.totaal || 0, betaald: +f.betaald || 0, rest: +f.rest || 0,
+          regels: (f.regels || []).map(r => ({ naam: r.naam || "", aantal: +r.aantal || 0, prijs: +r.prijs || 0, btw: +r.btw || 0, totaal: +r.totaal || 0 })), betalingen: (f.betalingen || []).map(p => ({ ts: p.ts, methode: p.methode || "", bedrag: +p.bedrag || 0 })) })),
+        berichten: ber.sort((a, b) => (a.ts || 0) - (b.ts || 0)).slice(-200).map(b => ({ id: b.id, van: b.van === "salon" ? "salon" : "klant", tekst: b.tekst || "", ts: b.ts })),
+      });
+    }
+
+    if (actie === "bericht" && req.method === "POST") {
+      const tekst = str(body.tekst, 2000);
+      if (!tekst) return json(400, { error: "Typ eerst een bericht." });
+      const n = await db.query(`SELECT count(*) FROM ${Q("berichten")} WHERE klant_id = ANY($1) AND van = 'klant' AND bijgewerkt > now() - interval '1 day'`, [ids]);
+      if (+n.rows[0].count >= 20) return json(429, { error: "Je hebt vandaag al veel berichten gestuurd. Bel ons gerust als het dringend is." });
+      const id = "pb" + crypto.randomBytes(8).toString("hex");
+      const c = await db.connect();
+      try { await upsertRow(c, "berichten", id, { id, klantId: ids[0], van: "klant", tekst, ts: Date.now(), gelezen: false }, "PORTAAL"); } finally { c.release(); }
+      const naar = salon.mail || process.env.MAIL_REPLY_TO || process.env.SMTP_USER;
+      if (naar && smtpOk()) {
+        const naam = (kl[0].data && kl[0].data.naam) || ses.email;
+        mailer().sendMail({ from: process.env.MAIL_FROM, to: naar, replyTo: ses.email, subject: `Nieuw bericht van ${naam} via het klantportaal`,
+          text: `${naam} (${ses.email}) schreef via het klantportaal:\n\n${tekst}\n\nBeantwoord het bericht in Trimmy bij Berichten.`,
+          html: mailHtml(salon, "Nieuw bericht via het klantportaal", `<p><b>${esc(naam)}</b> (${esc(ses.email)}) schreef:</p><blockquote style="margin:0 0 14px;padding:10px 14px;background:#f4f1f4;border-left:4px solid #6a3560;white-space:pre-wrap">${esc(tekst)}</blockquote><p style="color:#6b706d;font-size:13px">Beantwoord het bericht in Trimmy bij Berichten; de klant ziet je antwoord in het portaal en krijgt een mailtje.</p>`) }).catch(e => console.error("portaal mail salon", e));
+      }
+      return json(200, { ok: true, id });
+    }
+
+    if (actie === "gegevens" && req.method === "POST") {
+      const nieuw = { tel: str(body.tel, 40), straat: str(body.straat, 200), pc: str(body.pc, 12).toUpperCase(), plaats: str(body.plaats, 120) };
+      if (nieuw.tel && !/^[0-9+()\s-]{6,40}$/.test(nieuw.tel)) return json(400, { error: "Dit telefoonnummer lijkt niet te kloppen." });
+      const oud = kl[0].data || {}, lab = { tel: "Telefoon", straat: "Straat en huisnummer", pc: "Postcode", plaats: "Plaats" };
+      const wijz = Object.keys(nieuw).filter(k => (oud[k] || "") !== nieuw[k]);
+      if (!wijz.length) return json(200, { ok: true, gewijzigd: 0 });
+      const c = await db.connect();
+      try {
+        await c.query("BEGIN");
+        for (const k of kl) await upsertRow(c, "klanten", k.id, { ...(k.data || {}), ...nieuw, id: k.id }, "PORTAAL");
+        const id = "pb" + crypto.randomBytes(8).toString("hex");
+        await upsertRow(c, "berichten", id, { id, klantId: ids[0], van: "klant", ts: Date.now(), gelezen: false, tekst: "Ik heb mijn gegevens aangepast in het portaal:\n" + wijz.map(k => `${lab[k]}: ${oud[k] || "–"} → ${nieuw[k] || "–"}`).join("\n") }, "PORTAAL");
+        await c.query("COMMIT");
+      } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; } finally { c.release(); }
+      return json(200, { ok: true, gewijzigd: wijz.length });
+    }
+
+    return json(404, { error: "onbekend" });
+  } catch (e) {
+    console.error("portaal", e);
+    return json(500, { error: "Er ging iets mis. Probeer het later opnieuw." + (process.env.PORTAAL_DEBUG ? " " + foutmelding(e) : "") });
+  }
+};
+
+export const config = { path: "/api/portaal/*" };
