@@ -252,3 +252,9 @@ dialog::backdrop{background:rgba(10,14,12,.55)}
 .contact{display:flex;gap:6px;flex-wrap:wrap}
 a.btn{text-decoration:none;color:inherit;display:inline-block}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* weer aan de beurt */
+.nb{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--warn);color:#fff;font-size:11px;font-weight:700;line-height:1;vertical-align:1px}
+.nb[hidden]{display:none}
+nav button[aria-selected="true"] .nb{background:var(--acc-ink);color:var(--acc)}
+table.beurt td{vertical-align:top}
+@media(max-width:700px){table.beurt thead{display:none}table.beurt tr{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}table.beurt td{border:0;padding:0}table.beurt td:last-child{grid-column:1/-1}}

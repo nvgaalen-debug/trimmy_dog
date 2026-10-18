@@ -42,7 +42,7 @@ function dbUi(){const on=S.get("dbon",0)===1,url=S.get("dburl",""),t=ts=>new Dat
  if($("#dbSum")){$("#dbSum").textContent="("+sum+")";$("#dbStat").textContent=stat;$("#dbStat").classList.toggle("w",cls==="err");$("#dbOn").checked=on}}
 $("#dbUrl").onchange=e=>{S.set("dburl",e.target.value.trim());dbUi();dbSoon()};
 $("#dbOn").onchange=e=>{S.set("dbon",e.target.checked?1:0);dbInfo={};dbUi();if(e.target.checked)dbSync()};
-$("#dbTest").onclick=async()=>{const m=$("#dbTestMsg");S.set("dburl",$("#dbUrl").value.trim());m.textContent="Bezig…";m.style.color="";
+if($("#dbTest"))$("#dbTest").onclick=async()=>{const m=$("#dbTestMsg");S.set("dburl",$("#dbUrl").value.trim());m.textContent="Bezig…";m.style.color="";
  try{const j=await dbCall("status",null,0);m.textContent=`Verbonden met database ${j.database}, schema ${j.schema} (gebruiker ${j.gebruiker}). ${j.tabellen.length} tabellen klaar.`;m.style.color="var(--ok)"}
  catch(e){m.textContent="Mislukt: "+e.message;m.style.color="var(--warn)"}};
 $("#dbNow").onclick=()=>{S.set("dburl",$("#dbUrl").value.trim());if(!dbOn()){dbUi();return}dbSync()};

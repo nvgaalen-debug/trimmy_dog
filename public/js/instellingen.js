@@ -1,13 +1,13 @@
 /* Trimmy · instellingen.js */
 "use strict";
 /* ---------- instellingen ---------- */
-const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgBev:"msgBev",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd",bKleur:"kleur",bAutoUur:"autoUur",bAutoLock:"autoLock"};
+const BF={bNaam:"naam",bStraat:"straat",bPc:"pc",bPlaats:"plaats",bTel:"tel",bMail:"mail",bKvk:"kvk",bBtwnr:"btwnr",bIban:"iban",bTermijn:"termijn",bVoet:"voet",bKassa:"kassa",bOpen:"open",bSluit:"sluit",bDubbel:"dubbel",bMsgBev:"msgBev",bMsgHer:"msgHer",bMsgWij:"msgWij",bMsgOnd:"msgOnd",bMsgBeurt:"msgBeurt",bBeurtWk:"beurtWk",bKleur:"kleur",bAutoUur:"autoUur",bAutoLock:"autoLock"};
 function drawInst(){instPane(S.get("instpane","salon"));{const ad=isAdmin();$("#wipeAll").hidden=!ad;$("#bkRestore").hidden=!ad;}for(const[i,k]of Object.entries(BF))$("#"+i).value=bed[k]??"";$("#bZon").checked=!!bed.zondag;drawLogo();$("#bMailDirect").checked=!!bed.mailDirect;$("#bAutoHer").checked=!!bed.autoHer;$("#bAutoStil").checked=bed.autoStil!==false;$("#bAutoUur").value=String(bed.autoUur||24);planUi();
  $("#mwSum").textContent=`(${D.medewerkers.length})`;
  drawTeam();
  $("#dbUrl").value=S.get("dburl","");$("#dbFrame").hidden=STANDALONE;dbUi()}
-function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit","autoLock"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
- bed.zondag=$("#bZon").checked;bed.mailDirect=$("#bMailDirect").checked;bed.autoHer=$("#bAutoHer").checked;bed.autoStil=$("#bAutoStil").checked;bed.autoUur=+bed.autoUur||24;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgBev","msgHer","msgWij","msgOnd"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
+function saveBed(mEl){for(const[i,k]of Object.entries(BF)){let v=$("#"+i).value.trim();if(["termijn","open","sluit","autoLock","beurtWk"].includes(k))v=+v||BED0[k];if(k==="kassa")v=(v||"K1").toUpperCase().replace(/[^A-Z0-9]/g,"")||"K1";bed[k]=v}
+ bed.zondag=$("#bZon").checked;bed.mailDirect=$("#bMailDirect").checked;bed.autoHer=$("#bAutoHer").checked;bed.autoStil=$("#bAutoStil").checked;bed.autoUur=+bed.autoUur||24;if(+bed.sluit<=+bed.open)bed.sluit=+bed.open+1;["msgBev","msgHer","msgWij","msgOnd","msgBeurt"].forEach(k=>{if(!bed[k])bed[k]=BED0[k]});saveC("bedrijf");mEl.textContent="Opgeslagen.";setTimeout(()=>{mEl.textContent=""},2500);drawInst()}
 $("#bSave").onclick=()=>saveBed($("#bMsg"));
 $("#bAutoHer").onchange=()=>{if($("#bAutoHer").checked&&!$("#bMailDirect").checked){$("#bMailDirect").checked=true}autoPending()};
 $("#bAutoUur").onchange=autoPending;$("#bAutoStil").onchange=autoPending;
@@ -29,7 +29,7 @@ $("#bMailTest").onclick=async()=>{const m=$("#mailStat");m.classList.remove("w")
  try{await sendMailApi(bed.mail,"Testmail van Trimmy",mailHtml(demo,"bevestiging","Dit is een testmail. Zo zien bevestigingen en herinneringen er voor je klanten uit."),"Dit is een testmail van Trimmy.");m.textContent="Testmail verstuurd naar "+bed.mail+". Kijk ook in de map Spam."}
  catch(e){m.classList.add("w");m.textContent="Versturen mislukt: "+e.message}};$("#bSave2").onclick=()=>saveBed($("#bMsg2"));[["#bSave3","#bMsg3"],["#bSave4","#bMsg4"],["#bSave5","#bMsg5"]].forEach(([b,m])=>{$(b).onclick=()=>saveBed($(m))});
 $("#snav").onclick=e=>{const b=e.target.closest("[data-p]");if(b)instPane(b.dataset.p)};
-function instPane(p){if(!$(`.pane[data-p="${p}"]`)||(p==="team"&&!isAdmin()))p="salon";S.set("instpane",p);$$(".pane").forEach(x=>x.hidden=x.dataset.p!==p);$$("#snav button").forEach(x=>x.setAttribute("aria-current",x.dataset.p===p))}
+function instPane(p){if(p==="team"&&!isAdmin()){lockCheck();if(accessOn()&&!cur()){S.set("instpane","team");return}toast("Medewerkers en toegang is alleen voor een beheerder.")}if(!$(`.pane[data-p="${p}"]`)||(p==="team"&&!isAdmin()))p="salon";S.set("instpane",p);$$(".pane").forEach(x=>x.hidden=x.dataset.p!==p);$$("#snav button").forEach(x=>x.setAttribute("aria-current",x.dataset.p===p))}
 $("#mwAdd").onclick=()=>{const k=["#8a4a7e","#2f7d6d","#b0662a","#3d5fa8","#8d7a1c","#a8434f"];D.medewerkers.push({id:uid(),naam:"Nieuwe medewerker",kleur:k[D.medewerkers.length%k.length],rol:"medewerker"});saveC("medewerkers");drawTeam()};
 function drawTeam(){$("#mwSum").textContent=`(${D.medewerkers.length})`;
  const on=accessOn(),me=cur();

@@ -59,7 +59,11 @@
  </section>
 
  <section class="view" id="v-klanten" hidden>
-  <div class="kl">
+  <div class="seg" id="klMode" style="margin-bottom:12px" role="group" aria-label="Weergave"><button type="button" data-m="alle">Alle klanten</button><button type="button" data-m="beurt">Weer aan de beurt <span class="nb" id="klBn" hidden></span></button></div>
+  <div class="panel" id="beurt" hidden><div class="hdr" style="padding:14px 16px 0;display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:end"><div><h2 style="margin:0">Weer aan de beurt</h2><p class="mute" style="margin:4px 0 0">Honden die volgens hun ritme weer moeten komen en nog geen afspraak hebben.</p></div>
+   <label style="margin:0">Tonen<select id="beurtVw"><option value="0">Nu aan de beurt</option><option value="7">Ook de komende week</option><option value="14">Ook de komende 2 weken</option></select></label></div>
+   <div id="beurtList" style="padding:12px 16px 16px"></div></div>
+  <div class="kl" id="klWrap">
    <div class="panel">
     <div class="bar" style="padding:12px;margin:0;border-bottom:1px solid var(--line)"><input id="klq" type="search" placeholder="Zoek klant, hond, plaats of telefoon" aria-label="Zoek klant"><button class="btn p" id="klNew" type="button">Nieuwe klant</button></div>
     <div class="klist" id="klList"></div>
@@ -133,7 +137,10 @@
      <label>Herinnering voor een afspraak<textarea id="bMsgHer" rows="4"></textarea></label>
      <label>Afspraak verplaatst<textarea id="bMsgWij" rows="3"></textarea></label>
      <label>Onderwerp van de e-mail<input id="bMsgOnd"></label>
-     <small>Deze woorden vult Trimmy zelf in: {klant} {hond} {dag} {datum} {tijd} {behandeling} {salon} {salontel} {adres}</small>
+     <label>Weer aan de beurt (hond heeft nog geen nieuwe afspraak)<textarea id="bMsgBeurt" rows="4"></textarea></label>
+     <label>Standaard trim-interval<select id="bBeurtWk" style="max-width:220px"><option value="4">4 weken</option><option value="5">5 weken</option><option value="6">6 weken</option><option value="7">7 weken</option><option value="8">8 weken</option><option value="10">10 weken</option><option value="12">12 weken</option><option value="16">16 weken</option></select></label>
+     <small>Geldt voor honden zonder eigen interval en zonder vast ritme. Na drie bezoeken gebruikt Trimmy het eigen ritme van de hond. Een vast interval per hond stel je in bij Hond wijzigen.</small>
+     <small>Deze woorden vult Trimmy zelf in: {klant} {hond} {dag} {datum} {tijd} {behandeling} {salon} {salontel} {adres}, en bij Weer aan de beurt ook {weken} en {laatst}</small>
      <h3>Opgemaakte e-mail</h3>
      <div class="g2"><label>Kleur in e-mails<input id="bKleur" type="color" style="height:40px;padding:3px"></label><span></span></div>
      <label class="chk"><input type="checkbox" id="bMailDirect"> E-mail direct vanuit Trimmy versturen (via de koppelservice op Netlify)</label>
@@ -191,6 +198,7 @@
 <script src="js/excel.js"></script>
 <script src="js/export.js"></script>
 <script src="js/klanten.js"></script>
+<script src="js/beurt.js"></script>
 <script src="js/artikelen.js"></script>
 <script src="js/historie.js"></script>
 <script src="js/instellingen.js"></script>

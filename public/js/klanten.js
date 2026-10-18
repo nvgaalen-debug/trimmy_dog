@@ -3,6 +3,7 @@
 /* ---------- klanten ---------- */
 let selKl=null;
 function drawKl(){
+ drawBeurt();if(klMode==='beurt')return;
  const q=$("#klq").value.trim().toLowerCase();
  const L=D.klanten.slice().sort(by("naam")).filter(k=>{if(!q)return true;const hs=D.honden.filter(h=>h.klantId===k.id).map(h=>h.naam+" "+h.ras);return[k.naam,k.plaats,k.tel,k.email,...hs].join(" ").toLowerCase().includes(q)});
  if(!selKl||!get("klanten",selKl))selKl=L[0]?L[0].id:null;
@@ -20,7 +21,7 @@ function drawKl(){
  ${hs.length?`<div class="dogs">${hs.map(h=>{const last=D.behandelingen.filter(b=>b.hondId===h.id).sort((a,b)=>b.datum.localeCompare(a.datum))[0];
   return`<div class="dog ${h.inactief?"inact":""}"><div class="av" style="${h.foto?`background-image:url(${h.foto})`:""}">${h.foto?"":esc(h.naam[0]||"?")}</div><div><b style="font:700 17px var(--f-d)">${esc(h.naam)}</b>${h.inactief?` <span class="pill">Niet actief</span>`:""}<div class="meta">${esc([h.ras,leeftijd(h.geb),h.geslacht&&(h.geslacht+(h.gecast?", gecastreerd":""))].filter(Boolean).join(" · "))}</div></div>
   <div class="meta">${esc([h.gewicht!==""&&h.gewicht!=null?nm(h.gewicht)+" kg":"",h.vacht,h.kleur].filter(Boolean).join(" · "))}${h.chip?`<br>Chip ${esc(h.chip)}`:""}</div>
-  <div class="meta">${last?`Laatst: ${fDate(last.datum)}${last.mesje?" · "+esc(last.mesje):""}`:"Nog geen behandelingen"}</div>
+  <div class="meta">${last?`Laatst: ${fDate(last.datum)}${last.mesje?" · "+esc(last.mesje):""}`:"Nog geen behandelingen"}${(()=>{const x=beurtInfo(h);return x?`<br>${x.komt?"Volgende afspraak staat":x.dagen<=0?`<b style="color:var(--warn)">Weer aan de beurt</b> (${wanneer(x)})`:`Weer aan de beurt rond ${fDate(x.due)}`}`:""})()}</div>
   ${h.medisch?`<div class="note w">Medisch: ${esc(h.medisch)}</div>`:""}${h.gedrag?`<div class="note${/angst|bijt|hap|lastig|niet/i.test(h.gedrag)?" w":""}">Gedrag: ${esc(h.gedrag)}</div>`:""}${h.notitie?`<div class="note">${esc(h.notitie)}</div>`:""}
   <div class="acts"><button class="btn s" type="button" data-act="hEdit" data-h="${h.id}">Wijzigen</button><button class="btn s" type="button" data-act="hAf" data-h="${h.id}">Afspraak</button><button class="btn s" type="button" data-act="hHis" data-h="${h.id}">Historie</button></div></div>`}).join("")}</div>`:`<div class="empty" style="padding:12px">Nog geen honden. Voeg de eerste hond toe.</div>`}</div>
  <div class="sec"><h3>Komende afspraken</h3>${kom.length?`<div class="scroll"><table><tbody>${kom.map(a=>`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap">${fDate(a.datum)} ${a.start}</td><td>${esc((get("honden",a.hondId)||{}).naam||"")}</td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}</td><td><span class="pill ${statCls(a.status)}">${statLab(a.status)}</span></td></tr>`).join("")}</tbody></table></div>`:`<div class="mute">Geen komende afspraken.</div>`}</div>

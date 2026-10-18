@@ -34,6 +34,7 @@ function hondDlg(id,klantId,cb){
   <div class="g2"><label>Kleur<input id="hK" value="${esc(h.kleur)}"></label><label>Chipnummer<input id="hCh" inputmode="numeric" maxlength="15" value="${esc(h.chip)}"></label></div>
   <label>Gedrag tijdens het trimmen<input id="hGd" value="${esc(h.gedrag)}" placeholder="Bijvoorbeeld: angstig bij de föhn"></label>
   <label>Medisch en allergieën<input id="hM" value="${esc(h.medisch)}"></label>
+  <label>Trim-interval (voor Weer aan de beurt)<select id="hIv"><option value="">Automatisch (eigen ritme of salonstandaard)</option>${[3,4,5,6,7,8,9,10,12,16,20,26].map(w=>`<option value="${w}" ${String(h.interval)===String(w)?"selected":""}>Elke ${w} weken</option>`).join("")}<option value="0" ${String(h.interval)==="0"?"selected":""}>Geen herinnering</option></select></label>
   <label>Vaste wensen en coupe<textarea id="hNo" rows="2">${esc(h.notitie)}</textarea></label>
   ${id?`<label class="chk"><input type="checkbox" id="hI" ${h.inactief?"checked":""}> Niet meer actief (verhuisd of overleden)</label>`:""}
   <div class="msg" id="hMsg"></div>
@@ -42,7 +43,7 @@ function hondDlg(id,klantId,cb){
  d.q("#hFp").onclick=()=>d.q("#hF").click();d.q("#hFx").onclick=()=>{foto="";av()};
  d.q("#hF").onchange=e=>{const f=e.target.files[0];if(!f)return;const img=new Image();const u=URL.createObjectURL(f);img.onload=()=>{const s=240,c=document.createElement("canvas"),r=Math.min(1,s/Math.min(img.width,img.height));c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext("2d").drawImage(img,0,0,c.width,c.height);foto=c.toDataURL("image/jpeg",.8);URL.revokeObjectURL(u);av()};img.src=u};
  d.q("#hN").oninput=av;d.q("#hX").onclick=()=>d.close();
- d.q("#hOk").onclick=()=>{const v={naam:d.q("#hN").value.trim(),ras:d.q("#hR").value.trim(),geb:d.q("#hG").value,geslacht:d.q("#hS").value,gecast:d.q("#hC").checked,gewicht:d.q("#hW").value.trim()?num(d.q("#hW").value):"",vacht:d.q("#hV").value,kleur:d.q("#hK").value.trim(),chip:d.q("#hCh").value.replace(/\s/g,""),gedrag:d.q("#hGd").value.trim(),medisch:d.q("#hM").value.trim(),notitie:d.q("#hNo").value.trim(),foto,inactief:id?d.q("#hI").checked:false};
+ d.q("#hOk").onclick=()=>{const v={naam:d.q("#hN").value.trim(),ras:d.q("#hR").value.trim(),geb:d.q("#hG").value,geslacht:d.q("#hS").value,gecast:d.q("#hC").checked,gewicht:d.q("#hW").value.trim()?num(d.q("#hW").value):"",vacht:d.q("#hV").value,kleur:d.q("#hK").value.trim(),chip:d.q("#hCh").value.replace(/\s/g,""),gedrag:d.q("#hGd").value.trim(),medisch:d.q("#hM").value.trim(),notitie:d.q("#hNo").value.trim(),foto,inactief:id?d.q("#hI").checked:false,interval:d.q("#hIv").value===""?"":+d.q("#hIv").value};
   if(!v.naam){d.q("#hMsg").textContent="Vul de naam van de hond in.";return}
   if(v.chip&&!/^\d{15}$/.test(v.chip)){d.q("#hMsg").textContent="Een chipnummer bestaat uit 15 cijfers.";return}
   let r;if(id){r=get("honden",id);Object.assign(r,v)}else{r={id:uid(),klantId,...v};D.honden.push(r)}saveC("honden");d.close();draw();cb&&cb(r)};

@@ -122,6 +122,7 @@ Logica in `public/js/`:
 | `excel.js` | Excel-bestand maken (zonder externe bibliotheek) |
 | `export.js` | Export voor de accountant |
 | `klanten.js` | Klantenlijst en klantkaart |
+| `beurt.js` | Weer aan de beurt: welke honden weer moeten komen |
 | `artikelen.js` | Artikelen en prijzen |
 | `historie.js` | Historie en behandelingen vastleggen |
 | `instellingen.js` | Instellingen, logo, medewerkers, back-up |
@@ -158,6 +159,14 @@ Direct versturen vanuit Trimmy gaat via `netlify/functions/mail.mjs` en een gewo
 Zet daarna in Trimmy bij *Instellingen > Berichten aan klanten* het vinkje *E-mail direct vanuit Trimmy versturen* aan en klik op *Testmail naar salonadres*.
 
 Let op: bij Microsoft 365 staat SMTP-inloggen vaak standaard uit. Een mailbox van je hostingpartij of Brevo (gratis tot 300 mails per dag) werkt dan meestal makkelijker. Bij een eigen domein helpen SPF- en DKIM-records om niet in de spam te belanden.
+
+## Weer aan de beurt
+
+Bij *Klanten > Weer aan de beurt* staan de honden die volgens hun ritme weer moeten komen en nog geen afspraak hebben. Het menu Klanten toont hoeveel het er zijn.
+
+- **Ritme:** een vast interval per hond (*Hond wijzigen > Trim-interval*). Is dat er niet en is de hond al minstens drie keer geweest, dan rekent Trimmy het eigen ritme van de hond uit. Anders geldt de salonstandaard (*Instellingen > Berichten aan klanten*, standaard 8 weken). Kies *Geen herinnering* voor honden die niet vast komen.
+- **Per hond:** een bericht sturen via WhatsApp of e-mail (tekst instelbaar, met `{weken}` en `{laatst}`), direct inplannen, of *2 weken later* als de klant al heeft laten weten later te komen.
+- Na een bericht onthoudt Trimmy dat, en de hond zakt naar onderen in de lijst. Bij een nieuwe afspraak verdwijnt de hond vanzelf van de lijst.
 
 ## Automatische herinneringen
 
