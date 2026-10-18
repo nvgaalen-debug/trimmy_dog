@@ -53,6 +53,22 @@ function seed(){
   {id:"b3",datum:d(-70),hondId:"h3",klantId:"k2",afspraakId:null,factuurId:null,diensten:"Plukken ruwhaar",mw:"Joris",mesje:"Plukmes fijn",vacht:"Goed",gedrag:"Lastig",notitie:"Achterpoten in twee rondes gedaan"},
   {id:"b5",datum:d(-110),hondId:"h5",klantId:"k2",afspraakId:null,factuurId:null,diensten:"Volledige trimbeurt, klein",mw:"Sanne",mesje:"Lijf mes 4F, kop met schaar",vacht:"Goed",gedrag:"Rustig",notitie:""},
   {id:"b4",datum:d(-58),hondId:"h5",klantId:"k2",afspraakId:null,factuurId:null,diensten:"Wassen en föhnen, Nagels knippen",mw:"Sanne",mesje:"Snoet met schaar",vacht:"Goed",gedrag:"Rustig",notitie:"Graag niet te kort rond de ogen"}];
+ /* voorbeeldhistorie: een jaar aan bezoeken, zodat het dashboard iets laat zien */
+ {let r=7;const rnd01=()=>((r=Math.imul(r^(r>>>15),2246822507)+0x9e3779b9>>>0)%10000)/10000;
+  const vn=["Van Dijk","Smit","Visser","Mulder","De Boer","Bos","Vos","Peters","Hendriks","Dekker","Brouwer","De Graaf","Kok","Meijer"],hn=["Max","Luna","Sam","Bella","Teddy","Noor","Dex","Fien","Joep","Saar","Bram","Lot","Rex","Puk"],
+   rassen=[["Labradoodle","a5",120],["Shih Tzu","a4",90],["Maltezer","a4",90],["Golden Retriever","a3",75],["Cocker Spaniël","a5",120],["Westie","a7",60],["Schnauzer","a7",60],["Toypoedel","a4",90],["Bichon Frisé","a4",90],["Border Terriër","a7",60]];
+  let nr=2;const fNr=t=>{const yy=new Date(t).getFullYear();nr++;return`${yy}-K1-${String(nr).padStart(4,"0")}`};
+  const sl=["09:00","10:30","11:00","13:00","14:30","15:00"];
+  for(let i=0;i<14;i++){const kid="kd"+i,hid="hd"+i,ras=rassen[i%rassen.length],iv=[42,49,56,63,70][i%5],st=-365+Math.floor(rnd01()*(i<9?40:250));
+   kl.push({id:kid,naam:"Fam. "+vn[i],straat:"",pc:"",plaats:"Amsterdam",tel:"06 "+(40000000+i*1234567),email:"",notitie:""});
+   ho.push({id:hid,klantId:kid,naam:hn[i],ras:ras[0],geb:ymd(addDays(T,-900-i*97)),geslacht:i%2?"Teef":"Reu",gecast:true,gewicht:"",vacht:"",kleur:"",chip:"",gedrag:"",medisch:"",notitie:"",foto:"",inactief:false});
+   for(let n=st;n<-1;n+=iv+Math.floor(rnd01()*15)-5){const dd=addDays(T,n);if(dd.getDay()===0)continue;const mwI=rnd01()<.55?"mw1":"mw2",x=rnd01(),aid="ad"+i+"_"+(n+400),dat=ymd(dd);
+    if(x<.05){af.push({id:aid,datum:dat,start:sl[Math.floor(rnd01()*6)],duur:ras[2],klantId:kid,hondId:hid,mwId:mwI,diensten:[ras[1]],status:"noshow",notitie:"",factuurId:null});continue}
+    if(x<.09){af.push({id:aid,datum:dat,start:sl[Math.floor(rnd01()*6)],duur:ras[2],klantId:kid,hondId:hid,mwId:mwI,diensten:[ras[1]],status:"geannuleerd",notitie:"",factuurId:null});continue}
+    const extra=rnd01()<.35?["a9"]:rnd01()<.2?["a8"]:[],t=dd.getTime()+12*3600e3,fid="fd"+i+"_"+(n+400),rg=[reg(ras[1]),...extra.map(e=>reg(e))];if(rnd01()<.15)rg.push(reg(["p1","p2","p5"][Math.floor(rnd01()*3)]));
+    af.push({id:aid,datum:dat,start:sl[Math.floor(rnd01()*6)],duur:ras[2]+extra.length*10,klantId:kid,hondId:hid,mwId:mwI,diensten:[ras[1],...extra],status:"afgerekend",notitie:"",factuurId:fid});
+    const f=mkF(fid,fNr(t),t,kid,hid,aid,rg,[]);f.betalingen=[{ts:t,methode:rnd01()<.7?"PIN":"Contant",bedrag:f.totaal}];f.betaald=f.totaal;f.rest=0;f.door=mwI==="mw1"?"Sanne":"Joris";fa.push(f)}
+   if(i%4!==3){const fd=addDays(T,3+Math.floor(rnd01()*30));if(fd.getDay()!==0)af.push({id:"adf"+i,datum:ymd(fd),start:sl[Math.floor(rnd01()*6)],duur:ras[2],klantId:kid,hondId:hid,mwId:rnd01()<.5?"mw1":"mw2",diensten:[ras[1]],status:"gepland",notitie:"",factuurId:null})}}}
  Object.assign(D,{medewerkers:mw,artikelen:art,klanten:kl,honden:ho,afspraken:af,facturen:fa,behandelingen:be});
  bed={...BED0,kassa:S.get("kassa","K1"),naam:"Trimsalon Vachtwerk",straat:"Kinkerstraat 120",pc:"1053 ED",plaats:"Amsterdam",tel:"020 1234567",mail:"info@voorbeeld.nl",kvk:"12345678",btwnr:"NL001234567B01",iban:"NL00 BANK 0123 4567 89"};
  COLS.forEach(c=>S.set(c,D[c]));S.set("bedrijf",bed);S.set("demo",1);

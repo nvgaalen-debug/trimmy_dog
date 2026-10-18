@@ -5,9 +5,9 @@ async function pinHash(code,salt){const txt=salt+"|"+code;try{const b=await cryp
 function accessOn(){return D.medewerkers.some(m=>m.pin&&m.rol==="beheerder")}
 function cur(){if(!accessOn())return null;const s=S.get("sessie",null);return s?get("medewerkers",s.id)||null:null}
 function isAdmin(){if(!accessOn())return true;const m=cur();return!!(m&&m.rol==="beheerder")}
-const PERMS=[["historie","Historie bekijken"],["facturen","Facturen bekijken en restant afrekenen"],["prijsBon","Prijs en korting op de bon aanpassen, vrij bedrag invoeren"],["omzet","Omzetcijfers en export voor de accountant"],["klantDel","Klanten verwijderen"],["artikelen","Artikelen en prijzen beheren"],["inst","Instellingen (zonder medewerkers en toegang)"]];
+const PERMS=[["historie","Historie bekijken"],["facturen","Facturen bekijken en restant afrekenen"],["prijsBon","Prijs en korting op de bon aanpassen, vrij bedrag invoeren"],["omzet","Dashboard, omzetcijfers en export voor de accountant"],["klantDel","Klanten verwijderen"],["artikelen","Artikelen en prijzen beheren"],["inst","Instellingen (zonder medewerkers en toegang)"]];
 function can(k){if(isAdmin())return true;const p={...BED0.perms,...(bed.perms||{})};return!!p[k]}
-const TABPERM={historie:"historie",facturen:"facturen",artikelen:"artikelen",inst:"inst"};
+const TABPERM={historie:"historie",facturen:"facturen",artikelen:"artikelen",inst:"inst",dashboard:"omzet"};
 const canTab=t=>!TABPERM[t]||can(TABPERM[t]);
 function drawRights(){const p={...BED0.perms,...(bed.perms||{})};
  $("#rights").innerHTML=`<thead><tr><th>Onderdeel</th><th>Medewerker</th><th>Beheerder</th></tr></thead><tbody><tr><td>Agenda, kassa en klanten</td><td>Altijd</td><td>Ja</td></tr>`+PERMS.map(([k,l])=>`<tr><td><label for="perm-${k}" style="font-weight:400;display:inline">${esc(l)}</label></td><td><input type="checkbox" id="perm-${k}" data-perm="${k}" ${p[k]?"checked":""} style="width:auto"></td><td>Ja</td></tr>`).join("")+`<tr><td>Medewerkers, rollen en rechten</td><td>Nooit</td><td>Ja</td></tr></tbody>`}

@@ -86,6 +86,22 @@
    <div class="panel" id="berDet"></div>
   </div>
  </section>
+ <section class="view" id="v-dashboard" hidden>
+  <div id="dashBody">
+  <div class="bar dfil"><label>Periode<select id="dbPer"><option value="12m">Laatste 12 maanden</option><option value="jaar">Dit jaar</option><option value="vorig">Vorig jaar</option></select></label><label>Medewerker<select id="dbMw"></select></label><div class="chips" id="dbChips" aria-live="polite"></div></div>
+  <div class="tiles" id="dbTiles"></div>
+  <div class="panel ddet" id="dbDet" hidden></div>
+  <div class="dgridc">
+   <div class="panel vcard wide" id="dOmzet"><div class="hd"><div><h3>Omzet per maand</h3><small class="mute"></small></div><button class="btn s" type="button" data-tbl="dOmzet" aria-pressed="false">Tabel</button></div><div class="lg"></div><div class="plot"></div></div>
+   <div class="panel vcard" id="dBeh"><div class="hd"><div><h3>Populairste behandelingen</h3><small class="mute">klik om het dashboard hierop te filteren</small></div><div class="seg"><button type="button" data-m="omzet">Omzet</button><button type="button" data-m="aantal">Aantal</button></div></div><div class="plot"></div><div class="vfoot"><button class="btn s" type="button" data-tbl="dBeh" aria-pressed="false">Tabel</button></div></div>
+   <div class="panel vcard" id="dAf"><div class="hd"><div><h3>Afspraken per maand</h3><small class="mute"></small></div><button class="btn s" type="button" data-tbl="dAf" aria-pressed="false">Tabel</button></div><div class="plot"></div></div>
+   <div class="panel vcard" id="dKl"><div class="hd"><div><h3>Nieuwe en terugkerende klanten</h3><small class="mute"></small></div><button class="btn s" type="button" data-tbl="dKl" aria-pressed="false">Tabel</button></div><div class="lg"><span class="key s1"></span>Terugkerend <span class="key s2"></span>Nieuw</div><div class="plot"></div></div>
+   <div class="panel vcard" id="dWd"><div class="hd"><div><h3>Drukte per weekdag</h3><small class="mute">bezetting in de gekozen periode</small></div><button class="btn s" type="button" data-tbl="dWd" aria-pressed="false">Tabel</button></div><div class="plot"></div></div>
+   <div class="panel vcard" id="dMw"><div class="hd"><div><h3>Omzet per medewerker</h3><small class="mute">klik om op een medewerker te filteren</small></div><button class="btn s" type="button" data-tbl="dMw" aria-pressed="false">Tabel</button></div><div class="plot"></div></div>
+   <div class="panel vcard wide" id="dOpv"><div class="hd"><div><h3>Klanten om op te volgen</h3><small class="mute"></small></div></div><div class="plot"></div></div>
+  </div>
+  </div>
+ </section>
  <section class="view" id="v-facturen" hidden>
   <div class="stats" id="fStats"></div>
   <div class="bar"><input id="fq" type="search" placeholder="Zoek op factuurnummer, klant of hond" aria-label="Zoek factuur"><div class="seg" id="fSeg"><button type="button" data-f="alle">Alle</button><button type="button" data-f="open">Openstaand</button><button type="button" data-f="betaald">Betaald</button></div><button class="btn p" id="fExp" type="button">Export voor accountant</button></div>
@@ -226,6 +242,7 @@
 <script src="js/klanten.js"></script>
 <script src="js/beurt.js"></script>
 <script src="js/berichtenbox.js"></script>
+<script src="js/dashboard.js"></script>
 <script src="js/artikelen.js"></script>
 <script src="js/historie.js"></script>
 <script src="js/instellingen.js"></script>

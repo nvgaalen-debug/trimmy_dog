@@ -16,6 +16,8 @@ function klantDlg(id,cb){
  d.q("#kOk").onclick=()=>{const v={naam:d.q("#kN").value.trim(),straat:d.q("#kS").value.trim(),pc:d.q("#kP").value.trim().toUpperCase(),plaats:d.q("#kPl").value.trim(),tel:d.q("#kT").value.trim(),email:d.q("#kE").value.trim(),notitie:d.q("#kNo").value.trim()};
   if(!v.naam){d.q("#kMsg").textContent="Vul de naam in.";return}
   if(v.email&&!/^\S+@\S+\.\S+$/.test(v.email)){d.q("#kMsg").textContent="Dit e-mailadres lijkt niet te kloppen.";return}
+  {const zelfde=v.email?D.klanten.filter(x=>x.id!==id&&String(x.email||"").trim().toLowerCase()===v.email.toLowerCase()):[];
+   if(zelfde.length&&d.mailOk!==v.email.toLowerCase()){d.mailOk=v.email.toLowerCase();d.q("#kMsg").textContent=`Let op: dit e-mailadres hoort ook bij ${zelfde.map(x=>x.naam).join(", ")}. Wie met dit adres inlogt op het klantportaal, kan al deze klanten bekijken. Klik nogmaals op Opslaan als dat de bedoeling is (bijvoorbeeld een gezin).`;return}}
   let r;if(id){r=get("klanten",id);Object.assign(r,v)}else{r={id:uid(),...v};D.klanten.push(r)}saveC("klanten");d.close();draw();cb&&cb(r)};
  if(d.q("#kDel"))d.q("#kDel").onclick=e=>arm(e.target,()=>{D.klanten=D.klanten.filter(x=>x.id!==id);D.honden=D.honden.filter(h=>h.klantId!==id);D.afspraken=D.afspraken.filter(a=>a.klantId!==id||a.datum<ymd(today()));["klanten","honden","afspraken"].forEach(saveC);if(selKl===id)selKl=null;d.close();draw()},"Nogmaals: klant en honden verwijderen");
  setTimeout(()=>d.q("#kN").focus(),30);

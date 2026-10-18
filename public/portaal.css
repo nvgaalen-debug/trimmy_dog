@@ -63,5 +63,6 @@ dialog::backdrop{background:rgb(0 0 0/.45)}
 .inv h2{margin:0}.inv .kop{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .inv .tot td{border:0;padding:3px 6px}.inv .tot tr:last-child td{font-weight:800;font-size:17px}
 .empty{color:var(--mute);padding:6px 0}
+.wie{padding:12px 16px}.wie label{margin:0}.wie select{display:block;width:100%;margin-top:6px;font:600 16px var(--f-b);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 @media(max-width:560px){h1{font-size:23px}.g2{grid-template-columns:1fr}.hide-s{display:none}}
 @media print{body{background:#fff;color:#000}header,main,.noprint{display:none!important}dialog{position:static;display:block;width:100%;max-width:none;box-shadow:none}dialog::backdrop{display:none}}

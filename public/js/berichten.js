@@ -86,6 +86,7 @@ function remDlg(){
    return`<tr><td style="white-space:nowrap"><b>${a.start}</b></td><td><b>${esc(h.naam||"")}</b> · ${esc(k.naam||"")}<br><small>${esc(k.tel||"geen telefoon")}</small></td><td>${a.herinnerd?`<span class="pill ok">Herinnerd ${fDT(a.herinnerd)}</span>`:`<span class="pill">Nog niet</span>`}</td><td><div class="contact">${waNr(k.tel)?`<a class="btn s p" target="_blank" rel="noopener" data-m="${a.id}" href="${esc(waUrl(k.tel,t))}">WhatsApp</a>`:""}<button class="btn s" type="button" data-e="${a.id}">${k.email?"E-mail of aanpassen":"Tekst aanpassen"}</button></div></td></tr>`}).join("")}</tbody></table></div>`:`<div class="empty">Geen open afspraken op deze dag.</div>`};
  d.q("#rD").oninput=render;render();
  d.q("#rL").addEventListener("click",e=>{const m=e.target.closest("[data-m]");if(m){const a=get("afspraken",m.dataset.m);if(a){a.herinnerd=Date.now();saveC("afspraken");setTimeout(()=>{render();draw()},400)}return}
-  const x=e.target.closest("[data-e]");if(x){msgDlg(get("afspraken",x.dataset.e),"herinnering")}});
- d.addEventListener("focus",render,true);
+  const x=e.target.closest("[data-e]");if(x){msgDlg(get("afspraken",x.dataset.e),"herinnering");const d2=[...document.querySelectorAll("dialog[open]")].pop();if(d2&&d2!==d)d2.addEventListener("close",()=>setTimeout(render,350))}});
+ /* bijwerken als je terugkomt uit WhatsApp of je mailprogramma (niet bij elke klik: dan verdwijnt de knop onder je muis) */
+ const terug=()=>{if(d.open)render()};window.addEventListener("focus",terug);d.addEventListener("close",()=>window.removeEventListener("focus",terug));
  d.q("#rX").onclick=()=>d.close()}

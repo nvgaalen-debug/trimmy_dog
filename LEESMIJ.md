@@ -149,6 +149,7 @@ Logica in `public/js/`:
 | `klanten.js` | Klantenlijst en klantkaart |
 | `beurt.js` | Weer aan de beurt: welke honden weer moeten komen |
 | `berichtenbox.js` | Berichten uit het klantportaal lezen en beantwoorden |
+| `dashboard.js` | KPI-dashboard met interactieve grafieken (Beheer) |
 | `artikelen.js` | Artikelen en prijzen |
 | `historie.js` | Historie en behandelingen vastleggen |
 | `instellingen.js` | Instellingen, logo, medewerkers, back-up |
@@ -194,6 +195,17 @@ Bij *Klanten > Weer aan de beurt* staan de honden die volgens hun ritme weer moe
 - **Per hond:** een bericht sturen via WhatsApp of e-mail (tekst instelbaar, met `{weken}` en `{laatst}`), direct inplannen, of *2 weken later* als de klant al heeft laten weten later te komen.
 - Na een bericht onthoudt Trimmy dat, en de hond zakt naar onderen in de lijst. Bij een nieuwe afspraak verdwijnt de hond vanzelf van de lijst.
 
+## Dashboard
+
+*Beheer > Dashboard* laat zien hoe de salon draait. Alleen voor de beheerder, of voor medewerkers met het recht *Dashboard, omzetcijfers en export*.
+
+- **Tegels**: omzet, afspraken en nieuwe klanten deze maand (vergeleken met dezelfde dagen vorige maand), bezetting, hoeveel bezoeken binnen het eigen ritme van de hond vallen, en hoeveel honden opgevolgd moeten worden. Klik op een tegel voor de bijbehorende grafiek.
+- **Grafieken**: omzet per maand (met het jaar ervoor als stippellijn zodra daar genoeg gegevens voor zijn), afspraken per maand, nieuwe en terugkerende klanten, populairste behandelingen (omzet of aantal), drukte per weekdag en omzet per medewerker.
+- **Interactief**: beweeg over een grafiek voor de precieze waarden; klik op een maand voor de details van die maand (met knoppen naar de agenda en facturen); klik op een behandeling of medewerker om het hele dashboard daarop te filteren. Filters staan als knopjes bovenaan en gaan weg met het kruisje. Periode: laatste 12 maanden, dit jaar of vorig jaar.
+- Elke grafiek heeft een knop *Tabel* met de cijfers.
+- Bezetting = ingeplande minuten gedeeld door openingsuren × aantal medewerkers × werkdagen (zondag telt alleen mee als die aan staat).
+- Alles wordt berekend uit de gegevens die al op het apparaat staan; er gaat niets extra's over internet.
+
 ## Klantportaal
 
 Klanten kunnen op `https://jouw-trimmy.netlify.app/portaal` inloggen en zien daar **alleen hun eigen** gegevens: honden, komende afspraken, historie, facturen (bekijken, printen of als pdf opslaan) en openstaande bedragen. Ze kunnen hun telefoon en adres aanpassen en de salon een bericht sturen.
@@ -215,7 +227,7 @@ Klanten kunnen op `https://jouw-trimmy.netlify.app/portaal` inloggen en zien daa
 - Inloggen met een eenmalige code van 6 cijfers per e-mail, 10 minuten geldig, maximaal 5 pogingen; maximaal 3 codes per e-mailadres per kwartier en 10 per internetadres per uur.
 - Het portaal verraadt niet of een e-mailadres bekend is.
 - Codes en sessies staan alleen versleuteld (gehasht) in de database. De sessie is een beveiligde cookie (HttpOnly, Secure, SameSite=Strict) die 60 dagen geldig blijft, tot de klant uitlogt.
-- De server filtert elke opvraging op het e-mailadres van de ingelogde klant. Een klant kan zijn e-mailadres niet zelf wijzigen; dat doe jij in Trimmy (daarmee vervalt ook de toegang via het oude adres).
+- De server filtert elke opvraging op het e-mailadres van de ingelogde klant. Horen meerdere klanten bij hetzelfde e-mailadres (bijvoorbeeld een gezin), dan kiest de klant bovenaan welke klant hij bekijkt; gegevens, honden, afspraken, facturen en berichten gaan dan alleen over die klant. Trimmy waarschuwt als je een e-mailadres invult dat al bij een andere klant staat. Een klant kan zijn e-mailadres niet zelf wijzigen; dat doe jij in Trimmy (daarmee vervalt ook de toegang via het oude adres).
 - Het portaal heeft geen toegang tot de koppelservice van de app; de `TRIMMY_CODE` staat nergens in het portaal.
 
 ## Automatische herinneringen

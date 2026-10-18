@@ -18,7 +18,8 @@ async function api(pad, body) {
   return j;
 }
 
-let data = null, tab = "overzicht", poll = null, lastSeen = 0;
+let data = null, tab = "overzicht", poll = null, lastSeen = 0, selK = "";
+try { selK = localStorage.getItem("tp_klant") || ""; } catch (e) {}
 try { lastSeen = +localStorage.getItem("tp_gezien") || 0; } catch (e) {}
 const show = id => ["laden", "login", "uitStaat", "app"].forEach(x => { $("#" + x).hidden = x !== id; });
 
@@ -31,7 +32,8 @@ function salonKop(s) {
 
 async function laad(stil) {
   try {
-    data = await api("ik");
+    data = await api("ik" + (selK ? "?k=" + encodeURIComponent(selK) : ""));
+    selK = data.kSel; try { localStorage.setItem("tp_klant", selK); } catch (e) {}
     salonKop(data.salon); show("app"); $("#uit").hidden = false; teken();
   } catch (e) {
     if (e.uit) { show("uitStaat"); return; }
@@ -64,6 +66,8 @@ function teken() {
   const nm = String(data.klant.naam || "").trim(), w = nm.split(/\s+/);
   $("#hoi").textContent = "Hoi " + (w.length > 1 && !/^(fam(ilie)?\.?|dhr\.?|mevr\.?|mw\.?|de|van)$/i.test(w[0]) ? w[0] : nm) + "!";
   const nieuw = data.berichten.filter(b => b.van === "salon" && (+b.ts || 0) > lastSeen).length;
+  const wie = $("#wie");
+  if (data.klanten.length > 1) { wie.hidden = false; $("#wieSel").innerHTML = data.klanten.map(k => `<option value="${esc(k.id)}" ${k.id === data.kSel ? "selected" : ""}>${esc(k.naam)}</option>`).join(""); } else wie.hidden = true;
   $$("#tabs button").forEach(b => { b.setAttribute("aria-selected", b.dataset.t === tab); if (b.dataset.t === "berichten") b.innerHTML = "Berichten" + (nieuw && tab !== "berichten" ? ` <span class="nb">${nieuw}</span>` : ""); });
   $$(".view").forEach(v => { v.hidden = v.id !== "v-" + tab; });
   ({ overzicht: tOverzicht, historie: tHistorie, facturen: tFacturen, berichten: tBerichten, gegevens: tGegevens })[tab]();
@@ -112,7 +116,7 @@ function tBerichten() {
 }
 $("#fb").onsubmit = async e => {
   e.preventDefault(); const t = $("#btekst").value.trim(); if (!t) return; const btn = $("#fb button"); btn.disabled = true; $("#bmsg").textContent = ""; $("#bmsg").className = "msg";
-  try { await api("bericht", { tekst: t }); $("#btekst").value = ""; await laad(true); $("#bmsg").className = "msg ok"; $("#bmsg").textContent = "Verstuurd. De salon krijgt een melding."; }
+  try { await api("bericht", { tekst: t, k: selK }); $("#btekst").value = ""; await laad(true); $("#bmsg").className = "msg ok"; $("#bmsg").textContent = "Verstuurd. De salon krijgt een melding."; }
   catch (x) { if (x.login) return laad(); $("#bmsg").textContent = x.message; }
   finally { btn.disabled = false; }
 };
@@ -123,11 +127,12 @@ function tGegevens() {
 }
 $("#fg").onsubmit = async e => {
   e.preventDefault(); const btn = $("#fg button"); btn.disabled = true; $("#gmsg").className = "msg"; $("#gmsg").textContent = "";
-  try { const j = await api("gegevens", { tel: $("#gTel").value, straat: $("#gStraat").value, pc: $("#gPc").value, plaats: $("#gPlaats").value });
+  try { const j = await api("gegevens", { k: selK, tel: $("#gTel").value, straat: $("#gStraat").value, pc: $("#gPc").value, plaats: $("#gPlaats").value });
     await laad(true); $("#gmsg").className = "msg ok"; $("#gmsg").textContent = j.gewijzigd ? "Opgeslagen. De salon ziet je nieuwe gegevens." : "Er was niets gewijzigd."; }
   catch (x) { if (x.login) return laad(); $("#gmsg").textContent = x.message; }
   finally { btn.disabled = false; }
 };
 
+$("#wieSel").onchange = e => { selK = e.target.value; tab = "overzicht"; laad(); };
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && data) laad(true); });
 laad();

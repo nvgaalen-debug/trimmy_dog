@@ -58,7 +58,7 @@ async function sessie(db, req) {
   return { email: r.rows[0].email, tok };
 }
 async function klantenVan(db, email) {
-  const r = await db.query(`SELECT id, data FROM ${Q("klanten")} WHERE NOT deleted AND lower(trim(email)) = $1 ORDER BY bijgewerkt`, [email]);
+  const r = await db.query(`SELECT id, data FROM ${Q("klanten")} WHERE NOT deleted AND lower(trim(email)) = $1 ORDER BY lower(data->>'naam'), id`, [email]);
   return r.rows;
 }
 
@@ -90,7 +90,7 @@ export default async (req) => {
       const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
       await db.query(`INSERT INTO ${Q("portaal_codes")} (email, code_hash, ip, verloopt) VALUES ($1, $2, $3, now() + interval '10 minutes')`, [email, kl.length ? sha(SECRET, "code", email, code) : "x", ip]);
       if (kl.length && smtpOk()) {
-        const naam = (kl[0].data && kl[0].data.naam) || "";
+        const naam = kl.length === 1 ? ((kl[0].data && kl[0].data.naam) || "") : "";
         await mailer().sendMail({
           from: process.env.MAIL_FROM, to: email, subject: `Je inlogcode: ${code}`,
           text: `Hoi ${naam},\n\nJe code om in te loggen bij het klantportaal van ${salon.naam || "de trimsalon"} is: ${code}\n\nDe code is 10 minuten geldig. Heb je dit niet aangevraagd? Dan kun je deze mail negeren.`,
@@ -126,6 +126,10 @@ export default async (req) => {
     const kl = await klantenVan(db, ses.email);
     if (!kl.length) return json(401, { error: "Niet ingelogd.", login: true }, { "Set-Cookie": setCookie("x".repeat(20), 0) });
     const ids = kl.map(k => k.id);
+    // deelt een e-mailadres meerdere klanten (bv. een gezin), dan kiest de klant welke hij bekijkt; alles gaat over die ene klant
+    const gevraagd = String((req.method === "POST" ? body.k : url.searchParams.get("k")) || "");
+    const sel = ids.includes(gevraagd) ? gevraagd : ids[0];
+    const kSel = kl.find(k => k.id === sel);
 
     if (actie === "uit" && req.method === "POST") {
       await db.query(`DELETE FROM ${Q("portaal_sessies")} WHERE token_hash = $1`, [sha(SECRET, "sessie", ses.tok)]);
@@ -133,17 +137,18 @@ export default async (req) => {
     }
 
     if (actie === "ik" && req.method === "GET") {
-      const q = (t, extra = "") => db.query(`SELECT id, data FROM ${Q(t)} WHERE NOT deleted AND klant_id = ANY($1) ${extra}`, [ids]).then(r => r.rows.map(x => ({ id: x.id, ...x.data })));
+      const q = (t, extra = "") => db.query(`SELECT id, data FROM ${Q(t)} WHERE NOT deleted AND klant_id = $1 ${extra}`, [sel]).then(r => r.rows.map(x => ({ id: x.id, ...x.data })));
       const [honden, afs, beh, fac, ber] = await Promise.all([q("honden"), q("afspraken", "AND datum >= (now() AT TIME ZONE 'Europe/Amsterdam')::date - 1"), q("behandelingen"), q("facturen"), q("berichten")]);
       const artIds = [...new Set(afs.flatMap(a => Array.isArray(a.diensten) ? a.diensten : []))];
       const arts = artIds.length ? (await db.query(`SELECT id, data->>'naam' AS naam FROM ${Q("artikelen")} WHERE id = ANY($1)`, [artIds])).rows : [];
       const artNaam = Object.fromEntries(arts.map(a => [a.id, a.naam]));
       const hondNaam = Object.fromEntries(honden.map(h => [h.id, h.naam]));
       const vandaag = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Amsterdam" });
-      const k0 = kl[0].data || {};
+      const k0 = kSel.data || {};
       // alleen velden die voor de klant bedoeld zijn
       return json(200, {
         salon: { naam: salon.naam || "", straat: salon.straat || "", pc: salon.pc || "", plaats: salon.plaats || "", tel: salon.tel || "", mail: salon.mail || "", kvk: salon.kvk || "", btwnr: salon.btwnr || "", iban: salon.iban || "", voet: salon.voet || "", kleur: salon.kleur || "", logo: typeof salon.logo === "string" && salon.logo.length < 400000 ? salon.logo : "" },
+        klanten: kl.map(k => ({ id: k.id, naam: (k.data && k.data.naam) || "Klant" })), kSel: sel,
         klant: { naam: k0.naam || "", straat: k0.straat || "", pc: k0.pc || "", plaats: k0.plaats || "", tel: k0.tel || "", email: ses.email },
         honden: honden.filter(h => !h.inactief).map(h => ({ id: h.id, naam: h.naam || "", ras: h.ras || "", geb: h.geb || "", geslacht: h.geslacht || "", gewicht: h.gewicht ?? "", vacht: h.vacht || "", kleur: h.kleur || "", chip: h.chip || "", foto: typeof h.foto === "string" && h.foto.length < 200000 ? h.foto : "" })),
         afspraken: afs.filter(a => a.datum >= vandaag && !["geannuleerd", "noshow", "afgerekend"].includes(a.status)).sort((a, b) => (a.datum + a.start).localeCompare(b.datum + b.start))
@@ -163,10 +168,10 @@ export default async (req) => {
       if (+n.rows[0].count >= 20) return json(429, { error: "Je hebt vandaag al veel berichten gestuurd. Bel ons gerust als het dringend is." });
       const id = "pb" + crypto.randomBytes(8).toString("hex");
       const c = await db.connect();
-      try { await upsertRow(c, "berichten", id, { id, klantId: ids[0], van: "klant", tekst, ts: Date.now(), gelezen: false }, "PORTAAL"); } finally { c.release(); }
+      try { await upsertRow(c, "berichten", id, { id, klantId: sel, van: "klant", tekst, ts: Date.now(), gelezen: false }, "PORTAAL"); } finally { c.release(); }
       const naar = salon.mail || process.env.MAIL_REPLY_TO || process.env.SMTP_USER;
       if (naar && smtpOk()) {
-        const naam = (kl[0].data && kl[0].data.naam) || ses.email;
+        const naam = (kSel.data && kSel.data.naam) || ses.email;
         mailer().sendMail({ from: process.env.MAIL_FROM, to: naar, replyTo: ses.email, subject: `Nieuw bericht van ${naam} via het klantportaal`,
           text: `${naam} (${ses.email}) schreef via het klantportaal:\n\n${tekst}\n\nBeantwoord het bericht in Trimmy bij Berichten.`,
           html: mailHtml(salon, "Nieuw bericht via het klantportaal", `<p><b>${esc(naam)}</b> (${esc(ses.email)}) schreef:</p><blockquote style="margin:0 0 14px;padding:10px 14px;background:#f4f1f4;border-left:4px solid #6a3560;white-space:pre-wrap">${esc(tekst)}</blockquote><p style="color:#6b706d;font-size:13px">Beantwoord het bericht in Trimmy bij Berichten; de klant ziet je antwoord in het portaal en krijgt een mailtje.</p>`) }).catch(e => console.error("portaal mail salon", e));
@@ -177,15 +182,15 @@ export default async (req) => {
     if (actie === "gegevens" && req.method === "POST") {
       const nieuw = { tel: str(body.tel, 40), straat: str(body.straat, 200), pc: str(body.pc, 12).toUpperCase(), plaats: str(body.plaats, 120) };
       if (nieuw.tel && !/^[0-9+()\s-]{6,40}$/.test(nieuw.tel)) return json(400, { error: "Dit telefoonnummer lijkt niet te kloppen." });
-      const oud = kl[0].data || {}, lab = { tel: "Telefoon", straat: "Straat en huisnummer", pc: "Postcode", plaats: "Plaats" };
+      const oud = kSel.data || {}, lab = { tel: "Telefoon", straat: "Straat en huisnummer", pc: "Postcode", plaats: "Plaats" };
       const wijz = Object.keys(nieuw).filter(k => (oud[k] || "") !== nieuw[k]);
       if (!wijz.length) return json(200, { ok: true, gewijzigd: 0 });
       const c = await db.connect();
       try {
         await c.query("BEGIN");
-        for (const k of kl) await upsertRow(c, "klanten", k.id, { ...(k.data || {}), ...nieuw, id: k.id }, "PORTAAL");
+        await upsertRow(c, "klanten", sel, { ...oud, ...nieuw, id: sel }, "PORTAAL");
         const id = "pb" + crypto.randomBytes(8).toString("hex");
-        await upsertRow(c, "berichten", id, { id, klantId: ids[0], van: "klant", ts: Date.now(), gelezen: false, tekst: "Ik heb mijn gegevens aangepast in het portaal:\n" + wijz.map(k => `${lab[k]}: ${oud[k] || "–"} → ${nieuw[k] || "–"}`).join("\n") }, "PORTAAL");
+        await upsertRow(c, "berichten", id, { id, klantId: sel, van: "klant", ts: Date.now(), gelezen: false, tekst: "Ik heb mijn gegevens aangepast in het portaal:\n" + wijz.map(k => `${lab[k]}: ${oud[k] || "–"} → ${nieuw[k] || "–"}`).join("\n") }, "PORTAAL");
         await c.query("COMMIT");
       } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; } finally { c.release(); }
       return json(200, { ok: true, gewijzigd: wijz.length });
