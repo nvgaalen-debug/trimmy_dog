@@ -19,11 +19,11 @@ function beurtInfo(h){if(!h||h.inactief)return null;const vast=h.interval===0||h
  const msg=h.beurtMsg&&h.beurtMsg>=fromYmd(last).getTime()+864e5?h.beurtMsg:0;
  const dagen=Math.round((due-tdy)/864e5),sinds=Math.max(0,Math.round((tdy-fromYmd(last))/WK));
  return{h,last,wk,bron,due:ymd(due),dagen,sinds,komt,msg}}
-function beurtLijst(vooruit=7){const tdy=ymd(today());return D.honden.map(beurtInfo).filter(x=>x&&!x.komt&&x.dagen<=vooruit&&!(x.h.beurtLater&&x.h.beurtLater>tdy)&&get("klanten",x.h.klantId))
+function beurtLijst(vooruit=7){const tdy=ymd(today());return D.honden.filter(h=>SJ.object?!h.auto:h.auto).map(beurtInfo).filter(x=>x&&!x.komt&&x.dagen<=vooruit&&!(x.h.beurtLater&&x.h.beurtLater>tdy)&&get("klanten",x.h.klantId))
  .sort((a,b)=>(a.msg?1:0)-(b.msg?1:0)||a.dagen-b.dagen)}
 /* teller op het menu */
 function beurtBadge(){const b=$('#nav button[data-t="klanten"]');if(!b)return;const n=beurtLijst(0).filter(x=>!x.msg||Date.now()-x.msg>14*864e5).length;
- let s=b.querySelector(".nb");if(!n){if(s)s.remove();return}if(!s){s=document.createElement("span");s.className="nb";b.append(s)}s.textContent=n;s.title=n+(n===1?" hond is":" honden zijn")+" weer aan de beurt"}
+ let s=b.querySelector(".nb");if(!n){if(s)s.remove();return}if(!s){s=document.createElement("span");s.className="nb";b.append(s)}s.textContent=n;s.title=SJ.object?n+(n===1?" "+W.hond+" is":" "+W.honden+" zijn")+" "+W.aanDeBeurt:n+" "+(n===1?"klant":"klanten")+": "+W.aanDeBeurt}
 let klMode=S.get("klmode","alle"),beurtVooruit=S.get("beurtvooruit",7);
 function klModeUi(){const n=beurtLijst(beurtVooruit).length;$("#klBn").textContent=n||"";$("#klBn").hidden=!n;
  $$("#klMode button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.m===klMode));$("#klWrap").hidden=klMode!=="alle";$("#beurt").hidden=klMode!=="beurt"}
@@ -31,10 +31,10 @@ function wanneer(x){const d=x.dagen;return d<-1?`${-d} dagen te laat`:d===-1?"si
 function drawBeurt(){klModeUi();if(klMode!=="beurt")return;
  const L=beurtLijst(beurtVooruit),el=$("#beurtList");
  $("#beurtVw").value=String(beurtVooruit);
- if(!L.length){el.innerHTML=`<div class="empty">Er is ${beurtVooruit?"de komende "+(beurtVooruit===7?"week":beurtVooruit+" dagen"):"nu"} geen hond aan de beurt zonder afspraak. Mooi zo!</div>`;return}
+ if(!L.length){el.innerHTML=`<div class="empty">Er is ${beurtVooruit?"de komende "+(beurtVooruit===7?"week":beurtVooruit+" dagen"):"nu"} ${SJ.object?"geen "+W.hond+" aan de beurt":"niemand aan de beurt om op te vullen"} zonder afspraak. Mooi zo!</div>`;return}
  const bronL={vast:"vast interval",ritme:"eigen ritme",standaard:"standaard"};
- el.innerHTML=`<div class="scroll"><table class="beurt"><thead><tr><th>Hond</th><th>Klant</th><th>Laatst geweest</th><th>Aan de beurt</th><th></th></tr></thead><tbody>${L.map(x=>{const h=x.h,k=get("klanten",h.klantId)||{},tel=waNr(k.tel);
-  return`<tr data-h="${h.id}"><td><b>${esc(h.naam)}</b><br><small class="mute">${esc(h.ras||"")}</small></td>
+ el.innerHTML=`<div class="scroll"><table class="beurt"><thead><tr>${SJ.object?"<th>"+W.Hond+"</th>":""}<th>Klant</th><th>Laatst geweest</th><th>Aan de beurt</th><th></th></tr></thead><tbody>${L.map(x=>{const h=x.h,k=get("klanten",h.klantId)||{},tel=waNr(k.tel);
+  return`<tr data-h="${h.id}">${SJ.object?`<td><b>${esc(h.naam)}</b><br><small class="mute">${esc(h.ras||"")}</small></td>`:""}
   <td>${esc(k.naam||"")}<br><small class="mute">${esc(k.tel||k.email||"geen telefoon of e-mail")}</small></td>
   <td>${fDate(x.last)}<br><small class="mute">${x.sinds} weken geleden</small></td>
   <td><span class="pill ${x.dagen<0?"warn":x.dagen===0?"amber":""}">${wanneer(x)}</span><br><small class="mute">elke ${x.wk} weken · ${bronL[x.bron]}</small>${x.msg?`<br><small style="color:var(--ok)">Bericht gestuurd ${fDate(ymd(new Date(x.msg)))}</small>`:""}</td>

@@ -25,7 +25,7 @@ function drawStart(){const nu=new Date(),tdy=ymd(today()),uur=nu.getHours(),m=cu
  /* pas meetellen als de afspraak voorbij is (eindtijd verstreken), niet zodra hij begint */
  const afTeRekenen=allesVandaag.filter(a=>a.status!=="afgerekend"&&toMin(a.start)+(+a.duur||30)<=nuMin);
  const volgende=D.afspraken.filter(a=>a.datum>tdy&&levend(a)&&vanWie(a)).sort((a,b)=>(a.datum+a.start).localeCompare(b.datum+b.start))[0];
- const hn=a=>(get("honden",a.hondId)||{}).naam||"",kn=a=>(get("klanten",a.klantId)||{}).naam||"";
+ const hn=a=>onderwerp(a.hondId,a.klantId),kn=a=>SJ.object?(get("klanten",a.klantId)||{}).naam||"":(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", ");
  const beurt=beurtLijst(0).length,nieuw=berOngelezen().length,open=D.facturen.filter(f=>(+f.rest||0)>0.004),openSom=open.reduce((s,f)=>s+(+f.rest||0),0);
  const mnd=tdy.slice(0,7),omzetMnd=D.facturen.filter(f=>f.ts&&ymd(new Date(f.ts)).slice(0,7)===mnd).reduce((s,f)=>s+(+f.totaal||0),0);
  const behMnd=D.behandelingen.filter(b=>(b.datum||"").slice(0,7)===mnd).length;
@@ -33,9 +33,9 @@ function drawStart(){const nu=new Date(),tdy=ymd(today()),uur=nu.getHours(),m=cu
  const T=[
   ["agenda","Agenda",vandaag.length?`${vandaag.length} afspra${vandaag.length===1?"ak":"ken"} ${wieMw?(m&&wieId===m.id?"voor jou":"voor "+wieMw.naam):"vandaag"}`:wieMw?(m&&wieId===m.id?"Vandaag geen afspraken voor jou":"Vandaag vrij voor "+wieMw.naam):"Vandaag vrij",nogTeKomen[0]?`Volgende: ${nogTeKomen[0].start} ${hn(nogTeKomen[0])}`:volgende?`Volgende: ${new Date(volgende.datum+"T12:00").toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"short"})} ${volgende.start}`:"Geen afspraken gepland",0],
   ["kassa","Kassa","Afrekenen",afTeRekenen.length===1?`${hn(afTeRekenen[0])||"1 afspraak"} (${afTeRekenen[0].start}) nog afrekenen`:afTeRekenen.length?`${afTeRekenen.length} afspraken nog afrekenen`:"Niets open van vandaag",afTeRekenen.length],
-  ["klanten","Klanten",`${D.klanten.filter(k=>!k.opgeruimd).length} klanten`,beurt?`${beurt} ${beurt===1?"hond":"honden"} weer aan de beurt`:"Niemand achterstallig",beurt],
+  ["klanten","Klanten",`${D.klanten.filter(k=>!k.opgeruimd).length} klanten`,beurt?(SJ.object?`${beurt} ${beurt===1?W.hond:W.honden} ${W.aanDeBeurt}`:`${beurt} ${beurt===1?"klant":"klanten"}: ${W.aanDeBeurt}`):"Niemand achterstallig",beurt],
   berZicht&&["berichten","Berichten",nieuw?`${nieuw} nieuw`:"Geen nieuwe",nieuw?"Uit het klantportaal":"Alles gelezen",nieuw],
-  ["historie","Historie","Trimhistorie",`${behMnd} behandeling${behMnd===1?"":"en"} deze maand`,0],
+  ["historie","Historie",W.historie,`${behMnd} behandeling${behMnd===1?"":"en"} deze maand`,0],
   ["facturen","Facturen",open.length?`${open.length} openstaand`:"Alles betaald",open.length?eur(openSom)+" nog te ontvangen":`${D.facturen.length} facturen`,open.length],
   ["dashboard","Dashboard",eur(omzetMnd).replace(/,00$/,""),"Omzet deze maand",0],
   ["artikelen","Artikelen",`${D.artikelen.length} artikelen`,"Behandelingen en producten",0],
@@ -56,5 +56,5 @@ $("#startBody").addEventListener("change",e=>{if(e.target.id==="startWie"){S.set
 $("#startBody").addEventListener("click",e=>{const w=e.target.closest("[data-wie]");if(w){S.set("startwie",w.dataset.wie);drawStart();return}const g=e.target.closest("[data-go]"),a=e.target.closest("[data-af]"),q=e.target.closest("[data-q]");
  if(g){go(g.dataset.go);return}if(a){afDlg(a.dataset.af);return}
  if(q){if(q.dataset.q==="af"){const n=new Date(),mm=Math.ceil((n.getHours()*60+n.getMinutes())/15)*15;afDlg(null,{datum:ymd(today()),start:toHM(Math.min(Math.max(mm,salonTijd()[0]),salonTijd()[1]-30))})}
-  else{go("klanten");klantDlg(null,k=>{selKl=k.id;drawKl();hondDlg(null,k.id)})}}});
+  else{go("klanten");klantDlg(null,k=>{selKl=k.id;drawKl();if(SJ.object)hondDlg(null,k.id)})}}});
 setInterval(()=>{if(tab==="start"&&!document.querySelector("dialog[open]")&&document.visibilityState==="visible")drawStart()},60000);

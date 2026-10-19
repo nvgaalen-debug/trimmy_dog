@@ -2,9 +2,11 @@
 "use strict";
 /* ---------- toegang: rollen, inloggen, vergrendelen ---------- */
 async function pinHash(code,salt){const txt=salt+"|"+code;try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(txt));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){return"h:"+hsh(txt)}}
-function accessOn(){return D.medewerkers.some(m=>m.pin&&m.rol==="beheerder")}
-function cur(){if(!accessOn())return null;const s=S.get("sessie",null);return s?get("medewerkers",s.id)||null:null}
-function isAdmin(){if(!accessOn())return true;const m=cur();return!!(m&&m.rol==="beheerder")}
+/* apparaat gekoppeld met de eigen login van een medewerker: die medewerker is altijd ingelogd, zonder pincode */
+function devMw(){const p=S.get("platform",null),g=p&&p.gebruiker;if(g&&g.rol==="support")return{id:"",naam:"Support",rol:"beheerder",kleur:"#8a8f8c",support:g.support};if(!g||g.rol!=="medewerker")return null;const m=get("medewerkers",g.medewerkerId);return m?{...m,rol:"medewerker"}:{id:g.medewerkerId||"",naam:g.naam||g.email||"Medewerker",rol:"medewerker",kleur:"#8a8f8c"}}
+function accessOn(){return!!devMw()||D.medewerkers.some(m=>m.pin&&m.rol==="beheerder")}
+function cur(){const dm=devMw();if(dm)return dm;if(!accessOn())return null;const s=S.get("sessie",null);return s?get("medewerkers",s.id)||null:null}
+function isAdmin(){const dm=devMw();if(dm)return dm.rol==="beheerder";if(!accessOn())return true;const m=cur();return!!(m&&m.rol==="beheerder")}
 const PERMS=[["historie","Historie bekijken"],["facturen","Facturen bekijken en restant afrekenen"],["prijsBon","Prijs en korting op de bon aanpassen, vrij bedrag invoeren"],["omzet","Dashboard, omzetcijfers en export voor de accountant"],["klantDel","Klanten verwijderen"],["artikelen","Artikelen en prijzen beheren"],["inst","Instellingen (zonder medewerkers en toegang)"]];
 function can(k){if(isAdmin())return true;const p={...BED0.perms,...(bed.perms||{})};return!!p[k]}
 const TABPERM={historie:"historie",facturen:"facturen",artikelen:"artikelen",inst:"inst",dashboard:"omzet"};
@@ -17,7 +19,7 @@ document.addEventListener("click",e=>{if(e.target.id==="lockNow"){S.del("sessie"
 let lockSel=null;
 function brandUi(){const L=bed.logo||"";const hi=$("#hdrImg"),li=$("#lockImg");
  hi.hidden=!L;li.hidden=!L;if(L){hi.src=L;hi.alt=bed.naam||"Logo";li.src=L;li.alt=bed.naam||"Logo"}
- $$("#hdrLogo>svg,#logoName").forEach(x=>x.toggleAttribute("hidden",!!L));$("#lockTrimmy").hidden=!!L;$("#hdrLogo").title=L?(bed.naam||"")+" · Trimmy":"Trimmy"}
+ $$("#hdrLogo>svg,#logoName").forEach(x=>x.toggleAttribute("hidden",!!L));$("#lockTrimmy").hidden=!!L;$("#hdrLogo").title=L?(bed.naam||"")+" · "+SJ.app+"":""+SJ.app+""}
 function lockCheck(){brandUi();const need=accessOn()&&!cur();$("#lock").hidden=!need;if(!need){navUi();return}
  if(document.querySelector("dialog[open]"))$$("dialog[open]").forEach(d=>d.close());
  const ppl=D.medewerkers.filter(m=>m.pin);if(!ppl.some(m=>m.id===lockSel))lockSel=ppl.length===1?ppl[0].id:null;
@@ -36,10 +38,10 @@ const actNow=()=>{const n=Date.now();lastAct=n;if(n-actWrite>5000){actWrite=n;S.
 let pmT=0;document.addEventListener("pointermove",()=>{const n=Date.now();if(n-pmT>15000){pmT=n;actNow()}},{passive:true});
 /* een minuut van tevoren waarschuwen, zodat je niet midden in je werk wordt uitgelogd */
 let lockWarned=false;
-function lockWarnOff(){if(!lockWarned)return;lockWarned=false;const t=$("#toast");if(t&&t.textContent.startsWith("Trimmy vergrendelt over"))t.hidden=true}
+function lockWarnOff(){if(!lockWarned)return;lockWarned=false;const t=$("#toast");if(t&&t.textContent.startsWith(""+SJ.app+" vergrendelt over"))t.hidden=true}
 function lockTick(){const mins=+bed.autoLock||0;if(!mins||!cur())return;const left=mins*6e4-(Date.now()-Math.max(lastAct,+S.get("act",0)||0));
- if(left<=0){lockWarned=false;S.del("sessie");lockCheck();toast("Trimmy is vergrendeld na "+mins+" minuten zonder activiteit. Je kunt dit wijzigen bij Instellingen, Medewerkers en toegang.");return}
- if(left<=6e4&&!lockWarned&&document.visibilityState==="visible"){lockWarned=true;toast("Trimmy vergrendelt over een minuut omdat er niets gebeurt.",[["Ingelogd blijven",actNow]],6e4)}}
+ if(left<=0){lockWarned=false;S.del("sessie");lockCheck();toast(""+SJ.app+" is vergrendeld na "+mins+" minuten zonder activiteit. Je kunt dit wijzigen bij Instellingen, Medewerkers en toegang.");return}
+ if(left<=6e4&&!lockWarned&&document.visibilityState==="visible"){lockWarned=true;toast(""+SJ.app+" vergrendelt over een minuut omdat er niets gebeurt.",[["Ingelogd blijven",actNow]],6e4)}}
 setInterval(lockTick,10000);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")lockTick()});
 /* inloggen/uitloggen in een ander tabblad direct overnemen */
 window.addEventListener("storage",e=>{if(e.key==="tr_sessie"||e.key==="tr_medewerkers"){if(e.key==="tr_medewerkers")D.medewerkers=S.get("medewerkers",D.medewerkers);lockCheck();if(tab==="inst")drawInst()}});

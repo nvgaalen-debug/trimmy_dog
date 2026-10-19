@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Wachtwoord kiezen</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="portaal.css">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+</head>
+<body>
+<main class="wrap">
+ <section class="card narrow" style="margin:40px auto">
+  <h1 id="wT">Even laden…</h1>
+  <p id="wIntro" class="mute"></p>
+  <form id="wF" hidden>
+   <label>E-mailadres<input id="wE" type="email" autocomplete="username" readonly></label>
+   <label>Nieuw wachtwoord<input id="wW1" type="password" autocomplete="new-password" minlength="10" required></label>
+   <label>Nogmaals<input id="wW2" type="password" autocomplete="new-password" minlength="10" required></label>
+   <small class="mute">Minstens 10 tekens. Een zin van een paar woorden is sterk en makkelijk te onthouden.</small>
+   <button class="btn p wide" type="submit" style="margin-top:12px">Opslaan en inloggen</button>
+  </form>
+  <p class="msg" id="wM" role="alert"></p>
+  <p id="wNaar" hidden><a class="btn p" href="/">Naar de app</a></p>
+ </section>
+</main>
+<script src="welkom.js"></script>
+</body>
+</html>

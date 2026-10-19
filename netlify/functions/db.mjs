@@ -11,20 +11,15 @@
 // De tabellen worden bij de eerste verbinding automatisch aangemaakt in het schema.
 import pg from "pg";
 
-// De app stuurt de code in de header X-Trimmy-Code (niet in het adres, zodat hij niet in logs of geschiedenis belandt).
-// ?code= in het adres werkt nog als terugval voor oudere versies van de app.
-import { timingSafeEqual, createHash } from "node:crypto";
-function codeOk(req, url) {
-  const want = process.env.TRIMMY_CODE; if (!want) return false;
-  const got = req.headers.get("x-trimmy-code") || url.searchParams.get("code") || "";
-  const h = x => createHash("sha256").update(String(x)).digest();
-  return timingSafeEqual(h(got), h(want));
-}
+import { DEF_SCHEMA, SCHEMA_OK, tenant, salonInfo } from "../lib/platform.mjs";
+import { createHash } from "node:crypto";
 
-
-const SCHEMA = /^[a-z_][a-z0-9_]{0,40}$/.test(process.env.DB_SCHEMA || "") ? process.env.DB_SCHEMA : "trimmy";
-const Q = n => `"${SCHEMA}"."${n}"`;
-const SEQ = `"${SCHEMA}"."sync_versie"`;
+// Elke salon heeft een eigen schema. Zonder platform (oude manier) is dat DB_SCHEMA of "trimmy".
+const SCHEMA = DEF_SCHEMA;
+const qs = schema => n => `"${schema}"."${n}"`;
+const seqVan = schema => `"${schema}"."sync_versie"`;
+const Q = qs(SCHEMA);
+const SEQ = seqVan(SCHEMA);
 
 const d = v => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);          // datum
 const tm = v => (typeof v === "string" && /^\d{1,2}:\d{2}$/.test(v) ? v : null);            // tijd
@@ -94,7 +89,8 @@ const sqlLit = v => v == null ? "NULL" : typeof v === "number" ? String(v) : typ
 function leegSet(table) { let leeg = {}; try { leeg = TABLES[table].map({}) || {}; } catch (e) { leeg = {}; } return Object.entries(leeg).map(([k, v]) => `"${k}" = ${sqlLit(v)}`); }
 
 // ---------- schema ----------
-export function schemaSql() {
+export function schemaSql(schema = SCHEMA) {
+  const Q = qs(schema), SEQ = seqVan(schema);
   const out = [`CREATE SEQUENCE IF NOT EXISTS ${SEQ}`];
   for (const [t, def] of Object.entries(TABLES)) {
     const cols = def.ddl.map(([c, ty]) => `"${c}" ${ty}`).join(", ");
@@ -119,7 +115,7 @@ export function schemaSql() {
   return out;
 }
 
-let pool, ready = false;
+let pool;
 export function getPool() {
   if (pool) return pool;
   const raw = process.env.DATABASE_URL;
@@ -136,35 +132,37 @@ export function getPool() {
 }
 // Het schema alleen (opnieuw) aanleggen als het veranderd is: één snelle controle per koude start
 // in plaats van tientallen opdrachten. De versie is een hash van alle schema-opdrachten.
-let schemaVersie = null;
-const versieVan = () => schemaVersie || (schemaVersie = createHash("sha256").update(schemaSql().join(";\n")).digest("hex").slice(0, 32));
-export async function ensureSchema(db) {
-  if (ready) return;
-  const want = versieVan();
+const versies = new Map(), klaar = new Set();
+const versieVan = schema => { if (!versies.has(schema)) versies.set(schema, createHash("sha256").update(schemaSql(schema).join(";\n")).digest("hex").slice(0, 32)); return versies.get(schema); };
+export async function ensureSchema(db, schema = SCHEMA) {
+  if (!SCHEMA_OK(schema)) throw Object.assign(new Error("ongeldige schemanaam"), { code: "SCHEMA" });
+  if (klaar.has(schema)) return;
+  const Q = qs(schema), want = versieVan(schema);
   const c = await db.connect();
   try {
     const nu = await c.query(`SELECT versie FROM ${Q("_schema")} LIMIT 1`).catch(() => null);
-    if (nu && nu.rows[0] && nu.rows[0].versie === want) { ready = true; return; }
+    if (nu && nu.rows[0] && nu.rows[0].versie === want) { klaar.add(schema); return; }
     await c.query("BEGIN");
-    await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["trimmy-schema:" + SCHEMA]);
-    const ex = await c.query("SELECT 1 FROM pg_namespace WHERE nspname = $1", [SCHEMA]);
-    if (!ex.rowCount) await c.query(`CREATE SCHEMA "${SCHEMA}"`);
+    await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["trimmy-schema:" + schema]);
+    const ex = await c.query("SELECT 1 FROM pg_namespace WHERE nspname = $1", [schema]);
+    if (!ex.rowCount) await c.query(`CREATE SCHEMA "${schema}"`);
     await c.query(`CREATE TABLE IF NOT EXISTS ${Q("_schema")} (versie VARCHAR(64) NOT NULL, bijgewerkt TIMESTAMPTZ NOT NULL DEFAULT now())`);
     const nog = await c.query(`SELECT versie FROM ${Q("_schema")} LIMIT 1`);   // een andere start kan het net gedaan hebben
     if (!(nog.rows[0] && nog.rows[0].versie === want)) {
-      for (const sql of schemaSql()) await c.query(sql);
+      for (const sql of schemaSql(schema)) await c.query(sql);
       await c.query(`DELETE FROM ${Q("_schema")}`);
       await c.query(`INSERT INTO ${Q("_schema")} (versie) VALUES ($1)`, [want]);
     }
     await c.query("COMMIT");
-    ready = true;
+    klaar.add(schema);
   } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; }
   finally { c.release(); }
 }
 
 
 // één record opslaan (ook gebruikt door het klantportaal)
-export async function upsertRow(c, table, id, data, kassa) {
+export async function upsertRow(c, table, id, data, kassa, schema = SCHEMA) {
+  const Q = qs(schema), SEQ = seqVan(schema);
   const def = TABLES[table];
   const row = { id, ...def.map(data) };
   const keys = Object.keys(row), vals = keys.map(k => row[k]);
@@ -188,9 +186,9 @@ export async function upsertRow(c, table, id, data, kassa) {
     for (const p of bet) await c.query(`INSERT INTO ${Q("betalingen")} (factuur_id, tijdstip, methode, bedrag) VALUES ($1,$2,$3,$4)`, [id, ts(p && p.ts), s(p && p.methode, 20), n(p && p.bedrag)]);
   }
 }
-export { SCHEMA, Q, SEQ, TABLES };
+export { SCHEMA, Q, SEQ, TABLES, qs };
 
-const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Trimmy-Code", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
+const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Trimmy-Code, X-Trimmy-App", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: cors });
 
 export function foutmelding(e, table) {
@@ -208,16 +206,25 @@ export function foutmelding(e, table) {
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const url = new URL(req.url);
-  if (!codeOk(req, url)) return json(401, { error: "onjuiste of ontbrekende code in het adres" });
   const table = url.pathname.split("/").filter(Boolean).pop();
+  // geen code en geen apparaat-cookie: meteen weigeren (zonder database)
+  if (!process.env.TRIMMY_CODE && !/(?:^|;\s*)tr_app=/.test(req.headers.get("cookie") || "")) return json(401, { error: "niet ingelogd", login: true });
+  if (req.method === "POST" && !req.headers.get("x-trimmy-code") && !new URL(req.url).searchParams.get("code") && req.headers.get("x-trimmy-app") !== "1") return json(403, { error: "ongeldig verzoek" });
 
-  let db;
-  try { db = getPool(); await ensureSchema(db); }
+  let db, t;
+  try {
+    db = getPool();
+    t = await tenant(req, url, db);
+    if (!t) return json(401, { error: "niet ingelogd of onjuiste code", login: true });
+    if (t.fout) return json(t.status || 403, { error: t.fout, geblokkeerd: !!t.geblokkeerd });
+    await ensureSchema(db, t.schema);
+  }
   catch (e) { console.error("schema", e); return json(500, { error: foutmelding(e) }); }
+  const schema = t.schema, Q = qs(schema), SEQ = seqVan(schema);
 
   if (table === "status") {
     const r = await db.query("SELECT current_user AS gebruiker, current_database() AS database").catch(() => ({ rows: [{}] }));
-    return json(200, { ok: true, schema: SCHEMA, ...r.rows[0], tabellen: Object.keys(TABLES) });
+    return json(200, { ok: true, schema, ...r.rows[0], tabellen: Object.keys(TABLES), ...(t.salon ? { salon: salonInfo(t.salon) } : {}) });
   }
   if (table === "_alle" && req.method === "GET") {
     // alle tabellen in één aanroep (scheelt functie-aanroepen op Netlify)
@@ -244,6 +251,9 @@ export default async (req) => {
       return json(200, { records, max, more: rows.length === PAGE });
     }
     if (req.method !== "POST") return json(405, { error: "alleen GET en POST" });
+    // medewerkers met een eigen login mogen medewerkers, rollen en pincodes niet wijzigen (alleen de eigenaar)
+    if (t.rol === "support" && t.support !== "volledig") return json(403, { error: "Supportmodus: alleen meekijken, wijzigingen worden niet opgeslagen." });
+    if (t.rol === "medewerker" && table === "medewerkers") return json(403, { error: "Alleen de eigenaar kan medewerkers wijzigen." });
 
     const body = await req.json().catch(() => null);
     if (!body || !Array.isArray(body.records)) return json(400, { error: "verwacht { records: [...] }" });
@@ -260,7 +270,7 @@ export default async (req) => {
           await c.query(`UPDATE ${Q(table)} SET ${[...leegSet(table), "data = jsonb_build_object('id', id)"].join(", ")}, deleted = true, versie = nextval('${SEQ}'), kassa = $2, bijgewerkt = now() WHERE id = $1`, [id, kassa]);
           continue;
         }
-        await upsertRow(c, table, id, rec.data && typeof rec.data === "object" ? rec.data : {}, kassa);
+        await upsertRow(c, table, id, rec.data && typeof rec.data === "object" ? rec.data : {}, kassa, schema);
       }
       await c.query("COMMIT");
     } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; }

@@ -8,10 +8,13 @@ const dbOn=()=>S.get("dbon",0)===1&&!!S.get("dburl","");
 function stable(o){return JSON.stringify(o,(k,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v)}
 const hsh=s=>{let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0,c;i<s.length;i++){c=s.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return(4294967296*(2097151&h2)+(h1>>>0)).toString(36)};
 function dbLocal(c){const m=new Map();if(c==="bedrijf"){const{kassa,...b}=bed;m.set("bedrijf",b)}else D[c].forEach(x=>m.set(String(x.id),x));return m}
-function dbApply(c,id,data,del){if(c==="bedrijf"){if(!del){const{kassa,...rest}=data||{};bed={...BED0,...rest,kassa:S.get("kassa",bed.kassa||"K1")}}return}const a=D[c],i=a.findIndex(x=>String(x.id)===id);if(del){if(i>=0)a.splice(i,1)}else if(i<0)a.push(data);else a[i]=data}
+function dbApply(c,id,data,del){if(c==="bedrijf"){if(!del){const{kassa,...rest}=data||{};bed={...BED0,...rest,kassa:S.get("kassa",bed.kassa||"K1")};if(bed.sjabloon&&bed.sjabloon!==SJ.id&&SJABLONEN[bed.sjabloon]&&!dbApply.herlaad){dbApply.herlaad=1;S.set("sjabloon",bed.sjabloon);S.set("bedrijf",bed);setTimeout(()=>location.reload(),400)}}return}const a=D[c],i=a.findIndex(x=>String(x.id)===id);if(del){if(i>=0)a.splice(i,1)}else if(i<0)a.push(data);else a[i]=data}
 function dbUrl(c){let u;try{u=new URL(S.get("dburl",""))}catch(e){throw new Error("het adres van de koppelservice is geen geldig webadres")}u.pathname=u.pathname.replace(/\/+$/,"")+"/"+c;return u.toString()}
 async function dbCall(c,body,since,extra=""){const u=dbUrl(c);const r=body?await apiFetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}):await apiFetch(u+(u.includes("?")?"&":"?")+"since="+since+extra,{cache:"no-store"});
- const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||"status "+r.status);e.status=r.status;throw e}return j}
+ const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||"status "+r.status);e.status=r.status;
+  /* account: niet meer ingelogd of salon geblokkeerd → opnieuw controleren */
+  if(typeof platOn==="function"&&platOn()&&(r.status===401||j.geblokkeerd)&&!dbCall.check){dbCall.check=1;setTimeout(()=>{dbCall.check=0;platStart()},50)}
+  throw e}return j}
 function dbSoon(){if(!dbOn())return;clearTimeout(dbSoon.t);dbSoon.t=setTimeout(dbSync,2000)}
 /* één binnengekomen record verwerken; lokale wijzigingen die nog niet verstuurd zijn gaan voor */
 function dbTake(c,r,loc,snap){const id=String(r.id),l=loc.get(id),lh=l?hsh(stable(l)):null,sh=snap[id];
@@ -39,7 +42,8 @@ async function dbSync(){
     const next=j.max||since;if(!j.more||!j.records.length||next===since){dbPull[c]=Math.max(dbPull[c]||0,next);break}since=next;dbPull[c]=next}}
   for(const c of touched){if(c==="bedrijf")S.set("bedrijf",bed);else S.set(c,D[c])}
   /* versturen: alleen tabellen met wijzigingen kosten een aanroep */
-  for(const c of DBC){const snap=dbSnap[c]||(dbSnap[c]={}),loc=dbLocal(c),batch=[];
+  /* support die alleen meekijkt: niets versturen */
+  if(!(typeof platLezen==="function"&&platLezen()))for(const c of DBC){const snap=dbSnap[c]||(dbSnap[c]={}),loc=dbLocal(c),batch=[];
    for(const[id,dt]of loc){const h=hsh(stable(dt));if(snap[id]!==h)batch.push({id,data:dt,deleted:false,h})}
    if(c!=="facturen")for(const id of Object.keys(snap))if(!loc.has(id))batch.push({id,data:{},deleted:true,h:null});
    const size=c==="honden"?20:100;
@@ -58,7 +62,7 @@ function dbUi(){const on=S.get("dbon",0)===1,url=S.get("dburl",""),t=ts=>new Dat
  if(on&&!url){sum="adres ontbreekt";stat="Vul hieronder het adres van de koppelservice in.";cls="err";dot="Database: adres ontbreekt"}
  else if(on){if(dbInfo.busy){sum="bezig";stat="Bezig met synchroniseren…";cls="on";dot="Synchroniseren…"}
   else if(dbInfo.err&&dbInfo.offline){sum="offline";stat="Geen verbinding met de database. Je werkt gewoon door op dit apparaat; zodra er weer internet is, gaan alle wijzigingen vanzelf mee."+(dbInfo.ts?` Laatste synchronisatie om ${t(dbInfo.ts)}.`:"");cls="off";dot="Offline"+(dbInfo.ts?" · laatst "+t(dbInfo.ts):"")}
-  else if(dbInfo.err){sum="fout";stat="Synchroniseren mislukt: "+dbInfo.err+". Trimmy probeert het opnieuw; er gaat niets verloren.";cls="err";dot="Database: fout"}
+  else if(dbInfo.err){sum="fout";stat="Synchroniseren mislukt: "+dbInfo.err+". "+SJ.app+" probeert het opnieuw; er gaat niets verloren.";cls="err";dot="Database: fout"}
   else if(dbInfo.ts){sum="laatst "+t(dbInfo.ts);stat=`Laatste synchronisatie om ${t(dbInfo.ts)}. Opgehaald: ${dbInfo.pulled||0}, verstuurd: ${dbInfo.pushed||0}.`;cls="on";dot="Aiven · "+t(dbInfo.ts)}
   else{sum="aan";stat="Aan. De eerste synchronisatie volgt zo.";cls="on";dot="Aiven"}}
  const s=$("#syncDot");s.className="sync "+cls;s.querySelector("span").textContent=dot;

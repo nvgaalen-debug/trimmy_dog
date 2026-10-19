@@ -1,4 +1,5 @@
 [build]
+  command = "node tools/site.mjs"
   publish = "public"
   functions = "netlify/functions"
 

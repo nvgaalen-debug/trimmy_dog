@@ -10,9 +10,11 @@ const fTijd = ms => ms ? new Date(+ms).toLocaleString("nl-NL", { day: "numeric",
 const eind = (t, d) => { const [h, m] = String(t).split(":").map(Number); const x = h * 60 + m + (+d || 30); return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
 const leeftijd = g => { if (!g) return ""; const d = new Date(g), n = new Date(); let j = n.getFullYear() - d.getFullYear(); if (n < new Date(n.getFullYear(), d.getMonth(), d.getDate())) j--; return j < 1 ? "pup" : j + " jaar"; };
 
+/* bij meerdere salons op één adres: welke salon (uit de link, bijv. /portaal?s=glans) */
+const SALON = (new URLSearchParams(location.search).get("s") || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40);
 async function api(pad, body) {
   const opt = body ? { method: "POST", headers: { "Content-Type": "application/json", "X-Trimmy-Portaal": "1" }, body: JSON.stringify(body) } : { cache: "no-store" };
-  let r; try { r = await fetch("/api/portaal/" + pad, opt); } catch (e) { throw Object.assign(new Error("Geen verbinding. Controleer je internet en probeer het opnieuw."), { net: true }); }
+  let r; try { r = await fetch("/api/portaal/" + pad + (SALON ? (pad.includes("?") ? "&" : "?") + "s=" + encodeURIComponent(SALON) : ""), opt); } catch (e) { throw Object.assign(new Error("Geen verbinding. Controleer je internet en probeer het opnieuw."), { net: true }); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(j.error || "Er ging iets mis."), { status: r.status, login: j.login, uit: j.uit });
   return j;
@@ -68,12 +70,14 @@ function teken() {
   const nieuw = data.berichten.filter(b => b.van === "salon" && (+b.ts || 0) > lastSeen).length;
   const wie = $("#wie");
   if (data.klanten.length > 1) { wie.hidden = false; $("#wieSel").innerHTML = data.klanten.map(k => `<option value="${esc(k.id)}" ${k.id === data.kSel ? "selected" : ""}>${esc(k.naam)}</option>`).join(""); } else wie.hidden = true;
-  $$("#tabs button").forEach(b => { b.setAttribute("aria-selected", b.dataset.t === tab); if (b.dataset.t === "berichten") b.innerHTML = "Berichten" + (nieuw && tab !== "berichten" ? ` <span class="nb">${nieuw}</span>` : ""); });
+  $$("#tabs button").forEach(b => { b.setAttribute("aria-selected", b.dataset.t === (["afspraken", "honden"].includes(tab) ? "overzicht" : tab)); if (b.dataset.t === "berichten") b.innerHTML = "Berichten" + (nieuw && tab !== "berichten" ? ` <span class="nb">${nieuw}</span>` : ""); });
   $$(".view").forEach(v => { v.hidden = v.id !== "v-" + tab; });
-  ({ overzicht: tOverzicht, historie: tHistorie, facturen: tFacturen, berichten: tBerichten, gegevens: tGegevens })[tab]();
+  ({ overzicht: tOverzicht, afspraken: tAfspraken, honden: tHonden, historie: tHistorie, facturen: tFacturen, berichten: tBerichten, gegevens: tGegevens })[tab]();
   clearInterval(poll); if (tab === "berichten") poll = setInterval(() => { if (document.visibilityState === "visible") laad(true); }, 30000);
 }
 
+/* is er een apart onderwerp (hond), of is de klant zelf het onderwerp (bv. nagelstudio)? */
+const OBJ = () => { const s = (data && data.salon) || salonPub || {}; return s.object !== false; };
 /* ---------- startscherm met tegels ---------- */
 const PICO = {
   agenda: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h2M14 14h2M8 17h2"/>',
@@ -93,8 +97,8 @@ function tOverzicht() {
   const honden = d.honden.map(h => h.naam).filter(Boolean);
   const tel = String(d.salon.tel || "").replace(/[^\d+]/g, "");
   const T = [
-    ["#afs", "agenda", "Afspraken", d.afspraken.length ? `${d.afspraken.length} gepland` : "Geen gepland", volg ? `Volgende: ${fKort(volg.datum)} ${volg.start}` : "Stuur ons een bericht", 0],
-    ["#hnd", "hond", honden.length === 1 ? "Mijn hond" : "Mijn honden", honden.length ? honden.slice(0, 2).join(" en ") + (honden.length > 2 ? ` +${honden.length - 2}` : "") : "Nog niet bekend", honden.length ? "Ras, leeftijd en vacht" : "", 0],
+    ["afspraken", "agenda", "Afspraken", d.afspraken.length ? `${d.afspraken.length} gepland` : "Geen gepland", volg ? `Volgende: ${fKort(volg.datum)} ${volg.start}` : "Stuur ons een bericht", 0],
+    OBJ() && ["honden", "hond", honden.length === 1 ? "Mijn hond" : "Mijn honden", honden.length ? honden.slice(0, 2).join(" en ") + (honden.length > 2 ? ` +${honden.length - 2}` : "") : "Nog niet bekend", honden.length ? "Ras, leeftijd en vacht" : "", 0],
     ["historie", "historie", "Historie", d.historie.length ? `${d.historie.length} keer geweest` : "Nog geen bezoek", laatst ? `Laatst: ${fDatum(laatst.datum)}` : "", 0],
     ["facturen", "factuur", "Facturen", nOpen ? `${eur(open)} open` : "Alles betaald", nOpen ? `${nOpen} factu${nOpen === 1 ? "ur" : "ren"} te betalen` : `${d.facturen.length} factu${d.facturen.length === 1 ? "ur" : "ren"}`, nOpen],
     ["berichten", "bericht", "Berichten", nieuw ? `${nieuw} nieuw` : "Stel een vraag", nieuw ? "Van de salon" : "We reageren zo snel mogelijk", nieuw],
@@ -107,21 +111,22 @@ function tOverzicht() {
     return /^(tel:|#privacy)/.test(doel) ? `<a class="tegel${alert ? " let" : ""}" href="${esc(doel)}">${inh}</a>` : `<button type="button" class="tegel${alert ? " let" : ""}" data-doel="${esc(doel)}">${inh}</button>`;
   };
   $("#v-overzicht").innerHTML = `
-   ${volg ? `<div class="hero"><span class="ti">${pico("agenda", 26)}</span><div><span class="tl">Volgende afspraak</span><b>${esc((t => t.charAt(0).toUpperCase() + t.slice(1))(fDag(volg.datum)))}</b><div>${esc(volg.start)}–${esc(eind(volg.start, volg.duur))} · ${esc(volg.hond)}${volg.behandelingen.length ? " · " + esc(volg.behandelingen.join(", ")) : ""}</div></div>${volg.bevestigd ? `<span class="pill ok">Bevestigd</span>` : ""}</div>` : ""}
+   ${volg ? `<div class="hero"><span class="ti">${pico("agenda", 26)}</span><div><span class="tl">Volgende afspraak</span><b>${esc((t => t.charAt(0).toUpperCase() + t.slice(1))(fDag(volg.datum)))}</b><div>${esc(volg.start)}–${esc(eind(volg.start, volg.duur))}${OBJ() ? " · " + esc(volg.hond) : ""}${volg.behandelingen.length ? " · " + esc(volg.behandelingen.join(", ")) : ""}</div></div>${volg.bevestigd ? `<span class="pill ok">Bevestigd</span>` : ""}</div>` : ""}
    <div class="tegels">${T.map(tegel).join("")}</div>
-   <div class="card" id="afs"><h2>Komende afspraken</h2>${d.afspraken.length ? `<div class="list">${d.afspraken.map(a => `<div class="row"><div><div class="when">${esc(fDag(a.datum))}</div><div>${esc(a.start)}–${esc(eind(a.start, a.duur))} · <b>${esc(a.hond)}</b></div><div class="mute">${esc(a.behandelingen.join(", "))}</div></div>${a.bevestigd ? `<span class="pill ok">Bevestigd</span>` : `<span class="pill">Gepland</span>`}</div>`).join("")}</div>` : `<p class="empty">Er staat geen afspraak gepland. Stuur ons een bericht als je een afspraak wilt maken.</p>`}
-   <p class="mute" style="margin:12px 0 0;font-size:14px">Verhinderd of een andere tijd nodig? Stuur een bericht${d.salon.tel ? " of bel " + esc(d.salon.tel) : ""}.</p></div>
-   <div class="card" id="hnd"><h2>${d.honden.length === 1 ? "Je hond" : "Je honden"}</h2>${d.honden.length ? `<div class="dogs">${d.honden.map(h => `<div class="dog"><div class="av" ${h.foto ? `style="background-image:url('${esc(h.foto)}')"` : ""}>${h.foto ? "" : esc((h.naam || "?")[0])}</div><div><b style="font:700 18px var(--f-d)">${esc(h.naam)}</b><div class="mute" style="font-size:14px">${esc([h.ras, leeftijd(h.geb), h.geslacht, h.gewicht !== "" && h.gewicht != null ? String(h.gewicht).replace(".", ",") + " kg" : "", h.vacht].filter(Boolean).join(" · "))}</div></div></div>`).join("")}</div>` : `<p class="empty">Nog geen hond bekend.</p>`}</div>`;
+  `;
 }
+function tAfspraken() { const d = data; $("#v-afspraken").innerHTML = `<button type="button" class="btn link terug" data-doel="overzicht">← Start</button><div class="card"><h2>Komende afspraken</h2>${d.afspraken.length ? `<div class="list">${d.afspraken.map(a => `<div class="row"><div><div class="when">${esc(fDag(a.datum))}</div><div>${esc(a.start)}–${esc(eind(a.start, a.duur))}${OBJ() ? ` · <b>${esc(a.hond)}</b>` : ""}</div><div class="mute">${esc(a.behandelingen.join(", "))}</div></div>${a.bevestigd ? `<span class="pill ok">Bevestigd</span>` : `<span class="pill">Gepland</span>`}</div>`).join("")}</div>` : `<p class="empty">Er staat geen afspraak gepland. Stuur ons een bericht als je een afspraak wilt maken.</p>`}
+   <p class="mute" style="margin:12px 0 0;font-size:14px">Verhinderd of een andere tijd nodig? Stuur een bericht${d.salon.tel ? " of bel " + esc(d.salon.tel) : ""}.</p></div>`; }
+function tHonden() { const d = data; $("#v-honden").innerHTML = `<button type="button" class="btn link terug" data-doel="overzicht">← Start</button><div class="card"><h2>${d.honden.length === 1 ? "Je hond" : "Je honden"}</h2>${d.honden.length ? `<div class="dogs">${d.honden.map(h => `<div class="dog"><div class="av" ${h.foto ? `style="background-image:url('${esc(h.foto)}')"` : ""}>${h.foto ? "" : esc((h.naam || "?")[0])}</div><div><b style="font:700 18px var(--f-d)">${esc(h.naam)}</b><div class="mute" style="font-size:14px">${esc([h.ras, leeftijd(h.geb), h.geslacht, h.gewicht !== "" && h.gewicht != null ? String(h.gewicht).replace(".", ",") + " kg" : "", h.vacht].filter(Boolean).join(" · "))}</div></div></div>`).join("")}</div>` : `<p class="empty">Nog geen hond bekend.</p>`}</div>`; }
 const fKort = s => s ? new Date(s + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" }) : "";
-$("#v-overzicht").addEventListener("click", e => {
+["#v-overzicht", "#v-afspraken", "#v-honden"].forEach(v => $(v).addEventListener("click", e => {
   const t = e.target.closest("[data-doel]"); if (!t) return; const doel = t.dataset.doel;
   if (doel[0] === "#") { const el = $(doel); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }
   else { tab = doel; teken(); scrollTo(0, 0); }
-});
+}));
 function tHistorie() {
   const h = data.historie;
-  $("#v-historie").innerHTML = `<div class="card"><h2>Historie</h2>${h.length ? `<div class="list">${h.map(b => `<div style="border-bottom:1px solid var(--line);padding-bottom:10px"><div class="row"><b>${esc(fDatum(b.datum))}</b><span class="mute">${esc(b.hond)}</span></div><div>${esc(b.behandelingen)}</div>${b.mesje ? `<div class="mute" style="font-size:14px">Mesje/techniek: ${esc(b.mesje)}${b.vacht ? " · vacht: " + esc(b.vacht) : ""}</div>` : ""}${b.notitie ? `<div class="note">${esc(b.notitie)}</div>` : ""}</div>`).join("")}</div>` : `<p class="empty">Nog geen behandelingen.</p>`}</div>`;
+  $("#v-historie").innerHTML = `<div class="card"><h2>Historie</h2>${h.length ? `<div class="list">${h.map(b => `<div style="border-bottom:1px solid var(--line);padding-bottom:10px"><div class="row"><b>${esc(fDatum(b.datum))}</b><span class="mute">${OBJ() ? esc(b.hond) : ""}</span></div><div>${esc(b.behandelingen)}</div>${b.mesje ? `<div class="mute" style="font-size:14px">Mesje/techniek: ${esc(b.mesje)}${b.vacht ? " · vacht: " + esc(b.vacht) : ""}</div>` : ""}${[b.techniek, b.vorm, b.kleur, b.extra].some(Boolean) ? `<div class="mute" style="font-size:14px">${esc([b.techniek, b.vorm, b.kleur, b.extra].filter(Boolean).join(" · "))}</div>` : ""}${b.notitie ? `<div class="note">${esc(b.notitie)}</div>` : ""}</div>`).join("")}</div>` : `<p class="empty">Nog geen behandelingen.</p>`}</div>`;
 }
 function tFacturen() {
   const f = data.facturen;
@@ -176,7 +181,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 let salonPub = null, sesDagen = 60;
 async function laadSalon() { try { const j = await api("salon"); salonPub = j.salon; sesDagen = j.sessieDagen || 60; if (!data) salonKop(salonPub); } catch (e) {} }
 function privacyHtml(s) {
-  const p = s.privacy || {}, S = esc(s.naam || "de trimsalon"), mail = esc(p.mail || s.mail || ""), jaren = +p.jaren || 2;
+  const p = { ...(s.privacy || {}), obj: s.object !== false }, S = esc(s.naam || "de trimsalon"), mail = esc(p.mail || s.mail || ""), jaren = +p.jaren || 2;
   const adres = [s.straat, [s.pc, s.plaats].filter(Boolean).join(" ")].filter(Boolean).map(esc).join(", ");
   const diensten = p.diensten ? esc(p.diensten) : "Netlify (hosting van de app en dit portaal), Aiven (database) en onze e-mailprovider (versturen van e-mails)";
   const contact = [mail ? `<a href="mailto:${mail}">${mail}</a>` : "", s.tel ? "telefoon " + esc(s.tel) : ""].filter(Boolean).join(" of ");
@@ -185,30 +190,30 @@ function privacyHtml(s) {
   return `<button type="button" class="btn link prvTerug" data-terug>← Terug</button>
   <h1 id="prvTitel">Privacyverklaring</h1>
   <p class="mute">${S}${datum ? " · bijgewerkt op " + datum : ""}</p>
-  <p>In deze verklaring lees je welke gegevens ${S} van jou en je hond bewaart, waarvoor, hoe lang, en welke rechten je hebt.</p>
+  <p>In deze verklaring lees je welke gegevens ${S} van jou${p.obj ? " en je hond" : ""} bewaart, waarvoor, hoe lang, en welke rechten je hebt.</p>
   <h2>Wie is verantwoordelijk</h2>
   <p>${S}${adres ? ", " + adres : ""}${s.kvk ? ", KvK " + esc(s.kvk) : ""}.${contact ? ` Vragen over je gegevens? Neem contact op via ${contact}, of stuur een bericht in dit portaal.` : " Vragen over je gegevens? Stuur een bericht in dit portaal."}</p>
   <h2>Welke gegevens we bewaren</h2>
   <ul>
    <li><b>Contactgegevens:</b> naam, adres, telefoonnummer en e-mailadres.</li>
-   <li><b>Over je hond:</b> naam, ras, geboortedatum, chipnummer, vacht, gedrag en gezondheidsbijzonderheden die belangrijk zijn voor de behandeling, en eventueel een foto.</li>
-   <li><b>Afspraken en behandelingen:</b> wanneer je hond is geweest, wat er is gedaan en aantekeningen voor de volgende keer.</li>
+   ${p.obj ? `<li><b>Over je hond:</b> naam, ras, geboortedatum, chipnummer, vacht, gedrag en gezondheidsbijzonderheden die belangrijk zijn voor de behandeling, en eventueel een foto.</li>` : `<li><b>Over je behandelingen:</b> je voorkeuren (zoals vorm, lengte en kleuren), de conditie van je nagels en, alleen als je daar toestemming voor geeft, een allergie of gevoeligheid die belangrijk is voor de behandeling.</li>`}
+   <li><b>Afspraken en behandelingen:</b> wanneer ${p.obj ? "je hond is" : "je bent"} geweest, wat er is gedaan en aantekeningen voor de volgende keer.</li>
    <li><b>Facturen en betalingen.</b></li>
    <li><b>Wat je via dit portaal doet:</b> berichten die je stuurt en wijzigingen in je gegevens.</li>
    <li><b>Bij het inloggen:</b> je e-mailadres, het tijdstip en je IP-adres, om misbruik te voorkomen.</li>
   </ul>
   <h2>Waarvoor we ze gebruiken</h2>
   <ul>
-   <li>Afspraken maken en je hond goed verzorgen. Dit is nodig voor de afspraak die we met je hebben.</li>
+   <li>Afspraken maken en ${p.obj ? "je hond" : "je"} goed verzorgen. Dit is nodig voor de afspraak die we met je hebben.</li>
    <li>Facturen maken en onze administratie bijhouden. Dit verplicht de wet.</li>
-   <li>Je herinneren aan een afspraak${p.herinneringen ? " (per e-mail)" : ""} en laten weten wanneer je hond weer aan de beurt is. Dit doen we omdat het jou en ons helpt; wil je dit niet, laat het ons weten, dan stoppen we ermee.</li>
+   <li>Je herinneren aan een afspraak${p.herinneringen ? " (per e-mail)" : ""} en laten weten wanneer ${p.obj ? "je hond weer aan de beurt is" : "het tijd is om op te vullen"}. Dit doen we omdat het jou en ons helpt; wil je dit niet, laat het ons weten, dan stoppen we ermee.</li>
    <li>Dit portaal veilig houden.</li>
   </ul>
   <p>We gebruiken je gegevens niet voor iets anders. We verkopen ze niet en sturen je geen reclame van anderen.</p>
   <h2>Hoe lang we ze bewaren</h2>
   <ul>
    <li><b>Facturen en betalingen:</b> 7 jaar, zoals de wet voorschrijft.</li>
-   <li><b>Gegevens van jou en je hond, afspraken en berichten:</b> tot ${jaren} jaar na je laatste bezoek. Daarna verwijderen we ze.</li>
+   <li><b>Gegevens van jou${p.obj ? " en je hond" : ""}, afspraken en berichten:</b> tot ${jaren} jaar na je laatste bezoek. Daarna verwijderen we ze.</li>
    <li><b>Inloggen:</b> een inlogcode is 10 minuten geldig en wordt binnen een dag verwijderd. Je blijft maximaal ${sesDagen} dagen ingelogd, of tot je uitlogt.</li>
   </ul>
   <h2>Wie je gegevens kan zien</h2>
@@ -248,7 +253,7 @@ async function route() {
   scrollTo(0, 0);
 }
 let pvIntern = false; // via een link in het portaal geopend (dan is "terug" de vorige stap)
-$("#privacy").addEventListener("click", e => { if (e.target.closest("[data-terug]")) { if (pvIntern) history.back(); else { history.replaceState("", "", location.pathname); route(); } } });
+$("#privacy").addEventListener("click", e => { if (e.target.closest("[data-terug]")) { if (pvIntern) history.back(); else { history.replaceState("", "", location.pathname + location.search); route(); } } });
 addEventListener("hashchange", () => { pvIntern = location.hash === "#privacy"; route(); });
 /* eerst de klantgegevens (daar zit de salon al in); alleen als je niet bent ingelogd de salongegevens apart ophalen */
 laad().then(() => { if (!data) laadSalon(); }); route();

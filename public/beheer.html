@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Beheer · salons</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="portaal.css">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<style>
+.wrap{max-width:1180px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:0 0 14px}.kpi div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.kpi b{display:block;font:700 22px var(--f-d)}.kpi span{color:var(--mute);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.pill.proef{background:#fbeccc;color:#7a4b00}.pill.actief{background:#dcefe4;color:#1f5a3c}.pill.geblokkeerd{background:#f6dcd6;color:#8a2c1a}
+@media(prefers-color-scheme:dark){.pill.proef{background:#4a3712;color:#f2cf8a}.pill.actief{background:#173a29;color:#9fdcbb}.pill.geblokkeerd{background:#4b1f17;color:#f3b2a3}}
+.g3{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.scroll{overflow-x:auto}.klein{font-size:13px;color:var(--mute)}
+dialog{border:0;border-radius:14px;padding:22px;max-width:560px;width:calc(100% - 32px);background:var(--panel);color:var(--ink)}dialog::backdrop{background:rgba(0,0,0,.4)}
+select{display:block;width:100%;margin-top:5px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><div class="brand">Beheer · salons</div><button class="btn s" id="uit" type="button" hidden>Uitloggen</button></div></header>
+<main class="wrap">
+ <section id="login" class="card narrow" hidden>
+  <h1>Beheer</h1>
+  <form id="lf"><label>Beheercode<input id="lc" type="password" autocomplete="current-password" required></label><button class="btn p wide" type="submit">Inloggen</button></form>
+  <p class="msg" id="lm" role="alert"></p>
+ </section>
+ <section id="app" hidden>
+  <div class="acts" style="justify-content:space-between;margin-bottom:12px"><h1 style="margin:0">Salons</h1><button class="btn p" id="nieuw" type="button">Nieuwe salon</button></div>
+  <div class="kpi" id="kpi"></div>
+  <div class="card scroll"><table><thead><tr><th>Salon</th><th>Status</th><th>Eigenaar</th><th>Gebruik</th><th>Betaling</th><th></th></tr></thead><tbody id="lijst"></tbody></table></div>
+ </section>
+</main>
+<dialog id="dlg"><div id="dlgIn"></div></dialog>
+<script src="beheer.js"></script>
+</body>
+</html>

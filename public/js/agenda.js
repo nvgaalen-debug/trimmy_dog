@@ -33,7 +33,7 @@ function drawAg(){
    const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),w=100/it.n;
    const dn=(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", ");
    const dbl=conflicts(a).length;
-   h+=`<button type="button" class="blk ${["noshow","geannuleerd"].includes(a.status)?"x":""} ${a.status==="afgerekend"?"paid":""} ${dbl?"dbl":""}" data-af="${a.id}" style="--mw:${mwKleur(a.mwId)};top:${top}px;height:${ht}px;left:calc(${it.L*w}% + 2px);width:calc(${w}% - 4px)" title="${esc(a.start+" "+(hd?hd.naam:"")+" · "+dn)}">${dbl?`<span class="flag">Dubbel</span>`:""}<span class="t">${a.start}–${toHM(s+(+a.duur||30))}${a.status!=="gepland"?" · "+esc(statLab(a.status)):""}</span><b>${esc(hd?hd.naam:"Geen hond")}${hd&&hd.ras?` <span class="t">${esc(hd.ras)}</span>`:""}</b>${ht>40?`<span>${esc(kl?kl.naam:"")}</span>`:""}${ht>58&&dn?`<br><span class="t">${esc(dn)}</span>`:""}${a.status!=="afgerekend"?`<span class="rz" aria-hidden="true"></span>`:""}</button>`}
+   h+=`<button type="button" class="blk ${["noshow","geannuleerd"].includes(a.status)?"x":""} ${a.status==="afgerekend"?"paid":""} ${dbl?"dbl":""}" data-af="${a.id}" style="--mw:${mwKleur(a.mwId)};top:${top}px;height:${ht}px;left:calc(${it.L*w}% + 2px);width:calc(${w}% - 4px)" title="${esc(a.start+" "+onderwerp(a.hondId,a.klantId)+" · "+dn)}">${dbl?`<span class="flag">Dubbel</span>`:""}<span class="t">${a.start}–${toHM(s+(+a.duur||30))}${a.status!=="gepland"?" · "+esc(statLab(a.status)):""}</span><b>${esc(onderwerp(a.hondId,a.klantId)||W.geenObj||"–")}${SJ.object&&hd&&hd.ras?` <span class="t">${esc(hd.ras)}</span>`:""}</b>${ht>40?`<span>${esc(SJ.object?(kl?kl.naam:""):dn)}</span>`:""}${SJ.object&&ht>58&&dn?`<br><span class="t">${esc(dn)}</span>`:""}${a.status!=="afgerekend"?`<span class="rz" aria-hidden="true"></span>`:""}</button>`}
   if(x.date===tdy&&nowM>o&&nowM<c)h+=`<div class="now" style="top:${(nowM-o)*PXM}px"></div>`;
   h+=`</div>`}
  ag.innerHTML=h;
@@ -42,7 +42,7 @@ function drawAg(){
  const ds=agMode==="dag"?ymd(agD):(days.some(d=>ymd(d)===tdy)?tdy:ymd(days[0]));
  const L=D.afspraken.filter(a=>a.datum===ds&&(!agMw||a.mwId===agMw)).sort((a,b)=>toMin(a.start)-toMin(b.start));
  $("#agList").innerHTML=`<h3>${ds===tdy?"Vandaag":fromYmd(ds).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"})} · ${L.length} afspra${L.length===1?"ak":"ken"}</h3><div class="panel scroll"><table><tbody>${L.length?L.map(a=>{const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),m=get("medewerkers",a.mwId);
-  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(hd?hd.naam:"–")}</b> <span class="mute">${esc(hd?hd.ras:"")}</span><br><small>${esc(kl?kl.naam+(kl.tel?" · "+kl.tel:""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${hd&&(hd.medisch||hd.gedrag)?`<br><small style="color:var(--warn)">${esc([hd.medisch,hd.gedrag].filter(Boolean).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span>${a.bevestigd&&!a.herinnerd?` <span class="pill acc">Bevestiging verstuurd</span>`:""}${a.herinnerd?` <span class="pill acc">Herinnerd</span>`:planFor(a.id)?` <span class="pill">Herinnering ${fDT(planFor(a.id).sendAt)}</span>`:""}${conflicts(a).length?` <span class="pill warn">Dubbel</span>`:""}</td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
+  return`<tr class="click" data-af="${a.id}"><td style="white-space:nowrap"><b>${a.start}</b> <span class="mute">${a.duur} min</span></td><td><b>${esc(onderwerp(a.hondId,a.klantId)||"–")}</b> <span class="mute">${esc(SJ.object&&hd?hd.ras:"")}</span><br><small>${esc(kl?(SJ.object?kl.naam+(kl.tel?" · "+kl.tel:""):kl.tel||kl.email||""):"")}</small></td><td>${esc((a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "))}${letOp(a.hondId,a.klantId).length?`<br><small style="color:var(--warn)">${esc(letOp(a.hondId,a.klantId).join(" · "))}</small>`:""}</td><td>${esc(m?m.naam:"")}</td><td><span class="pill ${statCls(a.status)}">${esc(statLab(a.status))}</span>${a.bevestigd&&!a.herinnerd?` <span class="pill acc">Bevestiging verstuurd</span>`:""}${a.herinnerd?` <span class="pill acc">Herinnerd</span>`:planFor(a.id)?` <span class="pill">Herinnering ${fDT(planFor(a.id).sendAt)}</span>`:""}${conflicts(a).length?` <span class="pill warn">Dubbel</span>`:""}</td></tr>`}).join(""):`<tr><td class="empty">Geen afspraken op deze dag.</td></tr>`}</tbody></table></div>`;
 }
 $("#agPrev").onclick=()=>{agD=addDays(agD,agMode==="week"?-7:-1);drawAg()};
 $("#agNext").onclick=()=>{agD=addDays(agD,agMode==="week"?7:1);drawAg()};
@@ -94,7 +94,7 @@ function moveAf(a,nv,rz){const x={...a,...nv},c=conflicts(x);
  const dag=(d,t)=>fromYmd(d).toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"short"})+" "+t;
  const wat=rz?`Duur van <b>${a.duur||30}</b> naar <b>${nv.duur}</b> minuten (${a.start}–${toHM(toMin(a.start)+nv.duur)}).`
   :`Van <b>${esc(dag(a.datum,a.start))}</b>${a.mwId!==nv.mwId?" bij "+esc(mw(a.mwId)):""}<br>naar <b>${esc(dag(nv.datum,nv.start))}</b>${a.mwId!==nv.mwId?" bij "+esc(mw(nv.mwId)):""}`;
- const d=modal(`<h2>${rz?"Duur aanpassen?":"Afspraak verplaatsen?"}</h2><p style="margin:0 0 6px"><b>${esc(h.naam||"Afspraak")}</b>${k.naam?` · ${esc(k.naam)}`:""}</p><p style="margin:0">${wat}</p>
+ const d=modal(`<h2>${rz?"Duur aanpassen?":"Afspraak verplaatsen?"}</h2><p style="margin:0 0 6px"><b>${esc(h.naam||k.naam||"Afspraak")}</b>${SJ.object&&k.naam?` · ${esc(k.naam)}`:""}</p><p style="margin:0">${wat}</p>
   ${c.length?`<div class="note w">Dubbele boeking: ${esc(confText(x,c))}</div>`:""}
   ${!rz&&(k.tel||k.email)?`<label class="chk"><input type="checkbox" id="mvMsg" checked> Klant daarna informeren</label>`:""}
   <div class="acts"><button class="btn" type="button" id="cX">Annuleren</button><button class="btn p" type="button" id="cOk">${rz?"Aanpassen":c.length?"Toch verplaatsen":"Verplaatsen"}</button></div>`);
@@ -107,9 +107,9 @@ function moveDo(a,nv,rz,tell){
   toast(rz?`${h}: duur nu ${a.duur} minuten`:`${h} verplaatst naar ${fromYmd(a.datum).toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"short"})} ${a.start}`,[["Ongedaan maken",()=>{Object.assign(a,old);saveC("afspraken");drawAg()}],...(rz?[]:[["Klant informeren",()=>msgDlg(a,"wijziging")]])],10000)};
  return apply()}
 /* klant + hond kiezer */
-function khHtml(kId){const k=get("klanten",kId);return`<label>Klant<input id="khK" list="khL" autocomplete="off" value="${k?esc(klLab(k)):""}" placeholder="Typ een naam"></label><datalist id="khL">${D.klanten.slice().sort(by("naam")).map(k=>`<option value="${esc(klLab(k))}">${esc(k.tel||"")}</option>`).join("")}</datalist><label>Hond<select id="khH"></select></label>`}
+function khHtml(kId){const k=get("klanten",kId);return`<label>Klant<input id="khK" list="khL" autocomplete="off" value="${k?esc(klLab(k)):""}" placeholder="Typ een naam"></label><datalist id="khL">${D.klanten.slice().sort(by("naam")).map(k=>`<option value="${esc(klLab(k))}">${esc(k.tel||"")}</option>`).join("")}</datalist><label class="obj">${W.Hond}<select id="khH"></select></label>`}
 const khKlant=d=>{const v=d.q("#khK").value.trim().toLowerCase();if(!v)return null;return D.klanten.find(k=>klLab(k).toLowerCase()===v)||D.klanten.find(k=>k.naam.toLowerCase()===v)||null};
-function khBind(d,hId,cb){const fill=()=>{const k=khKlant(d);const hs=k?D.honden.filter(h=>h.klantId===k.id&&(!h.inactief||h.id===hId)):[];
+function khBind(d,hId,cb){const fill=()=>{const k=khKlant(d);const hs=!k?[]:SJ.object?D.honden.filter(h=>h.klantId===k.id&&!h.auto&&(!h.inactief||h.id===hId)):[subj(k.id)];
   d.q("#khH").innerHTML=`<option value="">${k?(hs.length?"Kies een hond":"Nog geen hond bij deze klant"):"Kies eerst een klant"}</option>`+hs.map(h=>`<option value="${h.id}" ${h.id===hId?"selected":""}>${esc(h.naam)}${h.ras?" · "+esc(h.ras):""}</option>`).join("");
   if(hs.length===1&&!d.q("#khH").value)d.q("#khH").value=hs[0].id;cb&&cb()};
  d.q("#khK").addEventListener("input",()=>{hId=null;fill()});d.q("#khH").addEventListener("change",()=>cb&&cb());fill();
@@ -122,7 +122,7 @@ function afDlg(id,init={}){
  const dien=D.artikelen.filter(x=>x.type==="dienst"&&(x.actief||(a.diensten||[]).includes(x.id)));
  const d=modal(`<h2>${id?"Afspraak":"Nieuwe afspraak"}</h2>
   ${khHtml(a.klantId)}
-  <div class="acts l" style="margin-top:-4px"><button class="btn s" type="button" id="afNk">Nieuwe klant</button><button class="btn s" type="button" id="afNh">Hond toevoegen</button><button class="btn s" type="button" id="afKk" ${a.klantId?"":"hidden"}>Klantkaart openen</button></div>
+  <div class="acts l" style="margin-top:-4px"><button class="btn s" type="button" id="afNk">Nieuwe klant</button><button class="btn s obj" type="button" id="afNh">${W.Hond} toevoegen</button><button class="btn s" type="button" id="afKk" ${a.klantId?"":"hidden"}>Klantkaart openen</button></div>
   <div class="note w" id="afHw" hidden></div>
   <div><div style="font-weight:500;font-size:14px;margin-bottom:4px">Behandelingen</div><div class="chk-list">${dien.map(x=>`<label class="chk"><input type="checkbox" value="${x.id}" ${(a.diensten||[]).includes(x.id)?"checked":""}> ${esc(x.naam)} <small>${x.duur||0} min</small></label>`).join("")||`<span class="mute">Nog geen behandelingen. Voeg ze toe onder Artikelen.</span>`}</div></div>
   <div class="g2"><label>Datum<input id="afD" type="date" value="${a.datum}"></label><label>Begintijd<input id="afS" type="time" step="900" value="${a.start}"></label></div>
@@ -139,7 +139,7 @@ function afDlg(id,init={}){
    ${a.factuurId?`<button class="btn" type="button" id="afInv">Factuur bekijken</button>`:""}
    <button class="btn p" type="button" id="afOk">Opslaan</button></div>`);
  const upd=()=>{const k=khKlant(d),h=get("honden",d.q("#khH").value);d.q("#afKk").hidden=!k;
-  const w=h?[h.medisch&&"Medisch: "+h.medisch,h.gedrag&&"Gedrag: "+h.gedrag].filter(Boolean):[];d.q("#afHw").hidden=!w.length;d.q("#afHw").textContent=w.join(" · ");conf()};
+  const w=k?letOp(h&&h.id,k.id):[];d.q("#afHw").hidden=!w.length;d.q("#afHw").textContent=w.join(" · ");conf()};
  const kh=khBind(d,a.hondId,upd);
  function conf(){const x={id:a.id,datum:d.q("#afD").value,start:d.q("#afS").value,duur:num(d.q("#afDu").value),mwId:d.q("#afM").value,status:d.q("#afSt").value},c=conflicts(x);
   const rw=roosterWaarschuwing(x),tx=[c.length?"Dubbele boeking: "+confText(x,c)+(bed.dubbel==="blokkeer"?" Dubbele boekingen zijn niet toegestaan.":""):"",rw].filter(Boolean).join(" ");
@@ -149,7 +149,7 @@ function afDlg(id,init={}){
  ["#afD","#afS","#afDu","#afM","#afSt"].forEach(s=>{d.q(s).addEventListener("input",conf);d.q(s).addEventListener("change",conf)});conf();
  d.q("#afX").onclick=()=>d.close();
  if(d.q("#afMsgB"))d.q("#afMsgB").onclick=()=>msgDlg(get("afspraken",id),a.bevestigd?"herinnering":"bevestiging");
- d.q("#afNk").onclick=()=>klantDlg(null,k=>{kh.set(k,null);hondDlg(null,k.id,h=>kh.set(k,h.id))});
+ d.q("#afNk").onclick=()=>klantDlg(null,k=>{kh.set(k,null);if(SJ.object)hondDlg(null,k.id,h=>kh.set(k,h.id));else kh.set(k,subj(k.id).id)});
  d.q("#afNh").onclick=()=>{const k=khKlant(d);if(!k){d.q("#afMsg").textContent="Kies eerst een klant.";return}hondDlg(null,k.id,h=>kh.set(k,h.id))};
  d.q("#afKk").onclick=()=>{const k=khKlant(d);if(k){d.close();selKl=k.id;go("klanten")}};
  const collect=()=>{const k=khKlant(d),msg=t=>{d.q("#afMsg").textContent=t;return null};

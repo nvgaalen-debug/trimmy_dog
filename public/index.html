@@ -131,6 +131,7 @@
    </nav>
    <div class="spanes">
     <div class="pane panel" data-p="salon"><h2>Salon</h2><p class="lead">Deze gegevens staan op facturen, kassabonnen en in e-mails aan klanten.</p><div class="sbody">
+     <label>Branche<select id="bSjabloon"></select><small class="mute">Bepaalt de woorden in de app, de velden in het dossier en bij een behandeling, en de standaardteksten. Je gegevens blijven gewoon bewaard.</small></label>
      <label>Naam salon<input id="bNaam"></label>
      <label>Straat en huisnummer<input id="bStraat"></label>
      <div class="g3"><label>Postcode<input id="bPc" maxlength="8"></label><label>Plaats<input id="bPlaats"></label></div>
@@ -201,11 +202,13 @@
     </div></div>
 
     <div class="pane panel" data-p="koppel" hidden><h2>Koppelingen <small id="dbSum" class="mute"></small></h2><p class="lead">De koppelservice op Netlify verstuurt e-mail en kan je gegevens in een database bewaren.</p><div class="sbody">
+     <div id="platAcc" hidden></div>
+     <div id="platAbo" hidden></div>
      <div class="note" id="dbStat"></div>
      <div class="note w" id="dbFrame" hidden>Deze voorbeeldversie draait binnen Claude en mag geen verbinding maken met andere websites. Koppelingen werken in de versie op jullie eigen webadres (Netlify).</div>
-     <label>Adres van de koppelservice (nodig voor e-mail en database)<input id="dbUrl" type="url" placeholder="https://jouw-trimmy.netlify.app/api/db?code=…" autocomplete="off"></label>
+     <div id="dbLegacy"><label>Adres van de koppelservice (nodig voor e-mail en database)<input id="dbUrl" type="url" placeholder="https://jouw-trimmy.netlify.app/api/db?code=…" autocomplete="off"></label>
      <small>Voor e-mail is alleen dit adres nodig. Zet het vinkje hieronder pas aan als de Aiven-database is ingericht en <em>Verbinding testen</em> groen is.</small>
-     <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database (PostgreSQL)</label>
+     <label class="chk"><input type="checkbox" id="dbOn"> Gegevens bewaren in de Aiven-database (PostgreSQL)</label></div>
      <div class="acts l"><button class="btn" id="dbTest" type="button">Verbinding testen</button><button class="btn" id="dbNow" type="button">Nu synchroniseren</button><button class="btn" id="dbRefill" type="button">Opnieuw ophalen</button><span class="mute" id="dbTestMsg" role="status"></span></div>
      <small>Met de database bewaart Trimmy elke soort gegevens in een eigen tabel en kunnen meerdere apparaten samenwerken. Zolang de database uit staat of onbereikbaar is, werkt Trimmy gewoon door op dit apparaat. Geef elke kassa een eigen Kassa-ID voordat je dit aanzet.</small>
      <small><b>Opnieuw ophalen</b> maakt dit apparaat leeg en vult het opnieuw met alles uit de database, inclusief medewerkers en inlogcodes. Handig als een apparaat niet goed is overgenomen. Wat nog niet verstuurd was, gaat verloren.</small>
@@ -241,6 +244,8 @@
 
 <!-- Logica: elk onderdeel in een eigen bestand, in deze volgorde laden -->
 <script src="js/hulp.js"></script>
+<script src="js/site.js"></script>
+<script src="js/sjabloon.js"></script>
 <script src="js/berichten.js"></script>
 <script src="js/gegevens.js"></script>
 <script src="js/rooster.js"></script>
@@ -264,6 +269,7 @@
 <script src="js/sync.js"></script>
 <script src="js/herinneringen.js"></script>
 <script src="js/toegang.js"></script>
+<script src="js/platform.js"></script>
 <script src="js/start.js"></script>
 </body>
 </html>

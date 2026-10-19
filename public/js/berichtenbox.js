@@ -69,11 +69,11 @@ $("#berDet").addEventListener("click",async e=>{const a=e.target.closest("[data-
  berOpen_=selBer;berMarkeer(selBer);
  const wie=cur()||get("medewerkers",$("#berWie")?$("#berWie").value:"")||(D.medewerkers.length===1?D.medewerkers[0]:null);if(wie&&!cur()){lastDoor=wie.id;S.set("door",wie.id)}
  D.berichten.push({id:uid(),klantId:selBer,van:"salon",tekst:t,ts:Date.now(),gelezen:true,...(wie?{door:wie.naam,doorId:wie.id}:{})});saveC("berichten");drawBer();
- if(mail){$("#berMsg").textContent="Mailtje versturen…";const tekst=`Hoi ${k.naam||""},\n\nJe hebt een nieuw bericht van ${wie?wie.naam+" van ":""}${bed.naam||"de trimsalon"} in het klantportaal:\n\n"${t}"\n\nBekijk het en reageer via ${location.origin}/portaal\n\nGroet,\n${wie?wie.naam+"\n":""}${bed.naam||""}`;
+ if(mail){$("#berMsg").textContent="Mailtje versturen…";const tekst=`Hoi ${k.naam||""},\n\nJe hebt een nieuw bericht van ${wie?wie.naam+" van ":""}${bed.naam||"de trimsalon"} in het klantportaal:\n\n"${t}"\n\nBekijk het en reageer via ${portaalUrl()}\n\nGroet,\n${wie?wie.naam+"\n":""}${bed.naam||""}`;
   try{await sendMailApi(k.email,"Nieuw bericht van "+(bed.naam||"de trimsalon"),mailHtml({klantId:k.id},"vrij",tekst),tekst);$("#berMsg").textContent="Verstuurd. De klant krijgt een mailtje."}
   catch(x){$("#berMsg").textContent="Antwoord staat in het portaal, maar het mailtje lukte niet: "+x.message}}
  else $("#berMsg").textContent="Verstuurd. De klant ziet het in het klantportaal."});
-function portaalUi(){const st=$("#portaalStat");if(!st)return;const u=location.origin+"/portaal",mist=[];
+function portaalUi(){const st=$("#portaalStat");if(!st)return;const u=portaalUrl(),mist=[];
  if(!dbOn())mist.push("de database staat uit");if(!bed.mailDirect&&!$("#bMailDirect").checked)mist.push("direct e-mail versturen staat uit (nodig voor de inlogcodes)");
  st.classList.toggle("w",!!mist.length&&$("#bPortaal").checked);
  st.innerHTML=$("#bPortaal").checked?(mist.length?"Let op: "+esc(mist.join(" en "))+".":`Adres voor klanten: <b>${esc(u)}</b>`)+(STANDALONE?` <button class="btn s" type="button" id="portaalCopy">Adres kopiëren</button>`:""):"Staat uit. Klanten kunnen niet inloggen.";

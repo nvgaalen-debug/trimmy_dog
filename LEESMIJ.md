@@ -148,6 +148,8 @@ Logica in `public/js/`:
 | `export.js` | Export voor de accountant |
 | `klanten.js` | Klantenlijst en klantkaart |
 | `beurt.js` | Weer aan de beurt: welke honden weer moeten komen |
+| `platform.js` | Inloggen met een account, apparaten, eigen logins voor medewerkers, abonnement |
+| `sjabloon.js` | Sjablonen per branche: woorden, velden, standaardteksten, app-naam |
 | `thuis.js` | Startscherm: tegels per onderdeel met de belangrijkste cijfers, en de afspraken van vandaag |
 | `avg.js` | Gegevens van één klant exporteren en oude klantgegevens opruimen (AVG) |
 | `berichtenbox.js` | Berichten uit het klantportaal lezen en beantwoorden |
@@ -270,6 +272,80 @@ De datum *bijgewerkt op* zet Trimmy zelf zodra je hier iets wijzigt. Let op: wat
 "Laatste contact" is de jongste afspraak, behandeling, factuur of bericht. Doe dit bijvoorbeeld elk kwartaal.
 
 **Verwijderen is echt verwijderen.** Verwijder je iets in Trimmy, dan wist de database de inhoud (de JSON en de leesbare kolommen). Alleen een lege regel met het id en `deleted = true` blijft over, zodat andere apparaten het verwijderen overnemen. Records die al eerder waren verwijderd, worden bij de volgende start van de koppelservice ook leeggemaakt. Facturen worden nooit verwijderd.
+
+## Platform: meerdere salons vanuit één omgeving
+
+Eén Netlify-site en één database voor alle salons. Elke salon heeft een **eigen schema** in de database (strikt gescheiden), eigen accounts, eigen apparaten, een eigen klantportaal en een eigen abonnement. Jij beheert alles via **/beheer**.
+
+### Eenmalig instellen
+1. **Aiven** (als avnadmin): `GRANT CREATE ON DATABASE defaultdb TO trimmy_app;` Hiermee mag de app per salon een schema en het platform-schema aanmaken.
+2. **Netlify > Environment variables** (naast de bestaande):
+
+| Variabele | Waarde |
+|---|---|
+| `BEHEER_CODE` | lange geheime code voor /beheer (alleen voor jou) |
+| `PLATFORM_SECRET` | lange willekeurige tekst (ondertekent de beheer-sessie) |
+| `MOLLIE_API_KEY` | `test_…` om te testen, later `live_…` (Mollie-dashboard > Developers > API-keys) |
+| `ABONNEMENT_PRIJS` | standaardprijs per maand, bv. `19.95` (per salon aan te passen in /beheer) |
+| `PLATFORM_NAAM` | naam in mails en op afschriften, bv. `Trimmy` |
+| `APP_URL` | pas nodig met een eigen domein, bv. `https://app.jouwdomein.nl` |
+
+3. Deploy opnieuw en open `/beheer`.
+
+### Een salon aanmelden
+In /beheer: **Nieuwe salon**. Kies naam, branche, eigenaar en e-mail, status (proef of actief), einddatum van de proef en prijs. De eigenaar krijgt een mail met een activatielink (7 dagen geldig); lukt mailen niet, dan toont /beheer de link om zelf door te geven. Bij de eerste keer inloggen zet de app de eigenaar als medewerker en de standaardbehandelingen van de branche klaar.
+
+### Inloggen
+- De **eigenaar** logt in met e-mail en wachtwoord. Elk apparaat wordt gekoppeld (een jaar, intrekbaar bij *Instellingen > Koppelingen*). Afmelden wist de salongegevens van dat apparaat.
+- **Medewerkers** krijgen een eigen login: *Instellingen > Medewerkers en toegang > Eigen login* (e-mailadres). Ze loggen zelf in op telefoon of computer; de app weet dan wie er werkt. De server weigert dat een medewerker medewerkers, rollen of pincodes wijzigt. Intrekken kan op dezelfde plek, ook op al hun apparaten tegelijk.
+- **Wachtwoord vergeten** staat op het inlogscherm (link 2 uur geldig).
+- Een **nieuw wachtwoord** meldt alle oude apparaten van dat account af.
+
+### Abonnement via Mollie
+- De eigenaar ziet bij *Instellingen > Koppelingen > Abonnement* de status en kan het **starten**: de eerste maand via iDEAL of creditcard, daarmee ook de machtiging. Daarna maakt de app automatisch een maandelijkse incasso aan.
+- Mollie meldt elke betaling bij `/api/mollie`; de app vraagt de status altijd zelf bij Mollie op (een vervalste melding doet niets).
+- **Proef verlopen** of **abonnement beëindigd**: de salon kan niet meer inloggen of synchroniseren, maar de eigenaar kan het abonnement starten. **Mislukte incasso**: twee weken respijt, daarna geblokkeerd tot de betaling rond is.
+- **Opzeggen** kan altijd; toegang loopt door tot de betaalde datum.
+- In /beheer zie je per salon de status, betaling, het gebruik, en zet je een salon handmatig op actief, proef of geblokkeerd.
+
+### Support: meekijken in een salon
+In /beheer staat bij elke salon de knop **Support**. Kies **Meekijken** (alleen lezen: de server weigert elke wijziging) of **Volledige toegang** (wijzigingen worden opgeslagen) en geef een reden op. De app van die salon opent dan in een nieuw tabblad, 2 uur lang, met bovenin een balk *Supportmodus* en de knop *Support stoppen*.
+- Support kan nooit het abonnement, de accounts of de apparaten van de salon beheren.
+- Support werkt ook bij een geblokkeerde salon, zodat je kunt helpen.
+- De eigenaar ziet bij *Instellingen > Koppelingen > Supporttoegang* elke sessie (soort, reden, van–tot) en kan supporttoegang uitzetten; een lopende sessie stopt dan meteen.
+- De supportsessie vervangt een eigen salonlogin in dezelfde browser. Gebruik voor support daarom een apart browserprofiel.
+- Vastleggen in je verwerkersovereenkomst/voorwaarden dat support op verzoek van de salon kan meekijken.
+
+### Klantportaal per salon
+Het portaal staat op `/portaal?s=<korte-naam>`. De app gebruikt die link zelf in berichten, en /beheer toont hem bij **Portaallink**.
+
+### Je eigen Trimmy overzetten
+1. /beheer > Nieuwe salon, vul bij **Bestaand schema** `trimmy` in (het schema dat je nu gebruikt). Er wordt niets gekopieerd of gewist.
+2. Activeer je account via de mail.
+3. Op elk apparaat verschijnt bij *Instellingen > Koppelingen* de knop om over te stappen op inloggen. Daarna is de code niet meer nodig. Zodra alle apparaten over zijn, kun je `TRIMMY_CODE` verwijderen; de oude manier blijft tot dan gewoon werken.
+
+### Eigen domein
+Koppel het domein in Netlify (*Domain management*) en zet `APP_URL` op het nieuwe adres (en eventueel `TRIMMY_ORIGIN`). Links in mails en de Mollie-meldingen gebruiken dan het nieuwe adres. Apparaten moeten op het nieuwe adres één keer opnieuw inloggen, omdat de koppeling bij het webadres hoort. Laat het oude Netlify-adres doorverwijzen naar het nieuwe.
+
+### Beveiliging in het kort
+Wachtwoorden met scrypt; inlogtokens en uitnodigingslinks alleen gehasht in de database; cookies HttpOnly, Secure en SameSite=Strict; maximaal 5 inlogpogingen per e-mailadres per kwartier en 30 per IP per uur; gelijke antwoorden bij onbekende e-mailadressen; elke salon in een eigen schema; een nieuw salonschema mag nog niet bestaan (geen per ongeluk gekoppelde oude gegevens).
+
+## Sjablonen per branche (trimsalon, nagelstudio, …)
+
+Eén app, meerdere branches. Het sjabloon staat in `public/js/sjabloon.js` en bepaalt:
+- de **woorden** (hond, trimbeurt, Weer aan de beurt, Hond is binnen …) en de **app-naam** (Trimmy, Nailly);
+- of er een **apart onderwerp** is (een hond per klant) of dat de **klant zelf** het onderwerp is. Zonder onderwerp maakt de app per klant één onzichtbaar record (`s_<klant-id>`) aan, zodat agenda, kassa, historie en "aan de beurt" ongewijzigd werken;
+- de **dossiervelden** op de klantkaart (nagelstudio: natuurlijke nagels, vorm, lengte, opvulritme, vaste kleuren, allergie);
+- de **velden bij een behandeling**, bij afrekenen en in de historie (trimsalon: mesje, vacht, gedrag; nagelstudio: techniek, vorm, kleur, nail art);
+- de **standaardteksten** voor berichten, de factuurvoet, het standaardritme (8 of 3 weken) en de **voorbeeldgegevens**.
+
+Kiezen: *Instellingen > Salon > Branche*. De keuze hoort bij de salon en gaat mee naar alle apparaten. Teksten die je zelf hebt aangepast, blijven staan. **Per Netlify-site vastleggen:** zet bij de site in Netlify de omgevingsvariabele `TRIMMY_SJABLOON` (bijvoorbeeld `nagelstudio`) en publiceer opnieuw. Bij het publiceren maakt `tools/site.mjs` dan `public/js/site.js` aan, zodat de app vanaf de allereerste start in die branche opent (ook offline), en krijgt de installeerbare app de juiste naam en kleur. Het klantportaal gebruikt dezelfde instelling. Een keuze die de salon zelf maakt bij Instellingen gaat voor. Zonder `TRIMMY_SJABLOON` is het gewoon Trimmy.
+
+Een demo bekijken kan met `?sjabloon=nagelstudio` achter het adres (alleen zolang je voorbeeldgegevens gebruikt).
+
+Het klantportaal volgt het sjabloon ook: bij een nagelstudio geen hondentegel, en de privacyverklaring spreekt over voorkeuren en een eventuele allergie in plaats van over een hond. De allergie is een gezondheidsgegeven en gaat nooit naar het portaal.
+
+Een nieuw sjabloon toevoegen = een blok in `SJABLONEN` (woorden, velden, teksten), eventueel een functie voor voorbeeldgegevens in `gegevens.js`, en vervangingen voor vaste paginateksten in `SJ_VERVANG`.
 
 ## Lettertypen
 

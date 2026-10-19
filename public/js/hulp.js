@@ -26,5 +26,7 @@ function arm(btn,fn,txt="Klik nogmaals om te bevestigen"){if(btn.dataset.armed){
 function modal(html,cls=""){const d=document.createElement("dialog");if(cls)d.className=cls;d.innerHTML=`<div class="dlg">${html}</div>`;document.body.append(d);d.q=s=>d.querySelector(s);d.addEventListener("close",()=>d.remove());d.showModal();return d}
 
 /* code uit het adres halen en als header meesturen, zodat hij niet in logs of browsergeschiedenis belandt */
+/* adres van het klantportaal; bij een salon-account met ?s=<salon> */
+function portaalUrl(){let p=null;try{p=JSON.parse(localStorage.getItem("tr_platform")||"null")}catch(e){}return location.origin+"/portaal"+(p&&p.salon&&p.salon.slug?"?s="+encodeURIComponent(p.salon.slug):"")}
 function apiFetch(u,opt={}){let url=u,code="";try{const x=new URL(u,location.href);code=x.searchParams.get("code")||"";x.searchParams.delete("code");url=x.toString()}catch(e){}
- return fetch(url,{...opt,headers:{...(opt.headers||{}),...(code?{"X-Trimmy-Code":code}:{})}})}
+ return fetch(url,{credentials:"same-origin",...opt,headers:{"X-Trimmy-App":"1",...(opt.headers||{}),...(code?{"X-Trimmy-Code":code}:{})}})}

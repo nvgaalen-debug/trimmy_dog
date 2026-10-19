@@ -10,20 +10,21 @@ function klantDlg(id,cb){
   <div class="g3"><label>Postcode<input id="kP" maxlength="8" value="${esc(k.pc)}"></label><label>Plaats<input id="kPl" value="${esc(k.plaats)}"></label></div>
   <div class="g2"><label>Telefoon<input id="kT" type="tel" value="${esc(k.tel)}"></label><label>E-mail<input id="kE" type="email" value="${esc(k.email)}"></label></div>
   <label>Notitie<textarea id="kNo" rows="2">${esc(k.notitie)}</textarea></label>
+  ${SJ.dossier.length?`<h3 style="margin:6px 0 0">Dossier</h3>${veldenHtml(SJ.dossier,k,"kD_")}`:""}
   <div class="msg" id="kMsg"></div>
   <div class="acts">${id&&can("klantDel")?`<button class="btn d" type="button" id="kDel" ${heeftF?"disabled title=\"Klant heeft facturen en blijft bewaard\"":""}>Verwijderen</button><span class="sp"></span>`:""}<button class="btn" type="button" id="kX">Annuleren</button><button class="btn p" type="button" id="kOk">Opslaan</button></div>`);
  d.q("#kX").onclick=()=>d.close();
- d.q("#kOk").onclick=()=>{const v={naam:d.q("#kN").value.trim(),straat:d.q("#kS").value.trim(),pc:d.q("#kP").value.trim().toUpperCase(),plaats:d.q("#kPl").value.trim(),tel:d.q("#kT").value.trim(),email:d.q("#kE").value.trim(),notitie:d.q("#kNo").value.trim()};
+ d.q("#kOk").onclick=()=>{const v={naam:d.q("#kN").value.trim(),straat:d.q("#kS").value.trim(),pc:d.q("#kP").value.trim().toUpperCase(),plaats:d.q("#kPl").value.trim(),tel:d.q("#kT").value.trim(),email:d.q("#kE").value.trim(),notitie:d.q("#kNo").value.trim(),...veldenLees(SJ.dossier,d,"kD_")};
   if(!v.naam){d.q("#kMsg").textContent="Vul de naam in.";return}
   if(v.email&&!/^\S+@\S+\.\S+$/.test(v.email)){d.q("#kMsg").textContent="Dit e-mailadres lijkt niet te kloppen.";return}
   {const zelfde=v.email?D.klanten.filter(x=>x.id!==id&&String(x.email||"").trim().toLowerCase()===v.email.toLowerCase()):[];
    if(zelfde.length&&d.mailOk!==v.email.toLowerCase()){d.mailOk=v.email.toLowerCase();d.q("#kMsg").textContent=`Let op: dit e-mailadres hoort ook bij ${zelfde.map(x=>x.naam).join(", ")}. Wie met dit adres inlogt op het klantportaal, kan al deze klanten bekijken. Klik nogmaals op Opslaan als dat de bedoeling is (bijvoorbeeld een gezin).`;return}}
-  let r;if(id){r=get("klanten",id);Object.assign(r,v)}else{r={id:uid(),...v};D.klanten.push(r)}saveC("klanten");d.close();draw();cb&&cb(r)};
- if(d.q("#kDel"))d.q("#kDel").onclick=e=>arm(e.target,()=>{D.klanten=D.klanten.filter(x=>x.id!==id);D.honden=D.honden.filter(h=>h.klantId!==id);D.afspraken=D.afspraken.filter(a=>a.klantId!==id||a.datum<ymd(today()));["klanten","honden","afspraken"].forEach(saveC);if(selKl===id)selKl=null;d.close();draw()},"Nogmaals: klant en honden verwijderen");
+  let r;if(id){r=get("klanten",id);Object.assign(r,v)}else{r={id:uid(),...v};D.klanten.push(r)}saveC("klanten");subj(r.id);d.close();draw();cb&&cb(r)};
+ if(d.q("#kDel"))d.q("#kDel").onclick=e=>arm(e.target,()=>{D.klanten=D.klanten.filter(x=>x.id!==id);D.honden=D.honden.filter(h=>h.klantId!==id);D.afspraken=D.afspraken.filter(a=>a.klantId!==id||a.datum<ymd(today()));["klanten","honden","afspraken"].forEach(saveC);if(selKl===id)selKl=null;d.close();draw()},SJ.object?"Nogmaals: klant en "+W.honden+" verwijderen":"Nogmaals: klant verwijderen");
  setTimeout(()=>d.q("#kN").focus(),30);
 }
 const VACHT=["Kort","Lang","Krullend","Ruwhaar","Draadhaar","Dubbele vacht","Zijdeachtig"];
-function hondDlg(id,klantId,cb){
+function hondDlg(id,klantId,cb){if(!SJ.object){const k=get("klanten",klantId||(get("honden",id)||{}).klantId);if(k)klantDlg(k.id,()=>cb&&cb(subj(k.id)));return}
  const h=id?get("honden",id):{naam:"",ras:"",geb:"",geslacht:"",gecast:false,gewicht:"",vacht:"",kleur:"",chip:"",gedrag:"",medisch:"",notitie:"",foto:"",inactief:false,klantId};
  let foto=h.foto||"";
  const d=modal(`<h2>${id?"Hond wijzigen":"Hond toevoegen"}</h2>

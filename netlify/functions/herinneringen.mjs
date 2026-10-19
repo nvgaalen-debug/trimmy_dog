@@ -23,11 +23,11 @@ function logoAttachment(logo, html) {
   return [{ filename: "logo." + ext, content: m[2], encoding: "base64", contentType: m[1], cid: "trimmy-logo", contentDisposition: "inline" }];
 }
 
-async function sendMail({ to, subject, html, text, logo }) {
+async function sendMail({ to, subject, html, text, logo, from, replyTo }) {
   const attachments = logoAttachment(logo, html);
   return getTransport().sendMail({
-    from: process.env.MAIL_FROM, to, subject, html: html || undefined, text: text || undefined,
-    replyTo: process.env.MAIL_REPLY_TO || undefined,
+    from: from || process.env.MAIL_FROM, to, subject, html: html || undefined, text: text || undefined,
+    replyTo: replyTo || process.env.MAIL_REPLY_TO || undefined,
     attachments: attachments.length ? attachments : undefined,
   });
 }

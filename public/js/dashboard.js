@@ -93,7 +93,7 @@ function dbTegels(){const T=today(),P=tegelPeriode(),nMw=DB.mw?1:Math.max(1,D.me
    return{id:"bezet",lab:"Agenda-bezetting "+Nm,v:c?m/c:NaN,vv:bz(hpv,hpt),fmt:pct,pp:true,vs:P.vs,
     sub:`${uur(m)} van ${uur(c)} beschikbare uren geboekt`,sub2:cg?`Uitgevoerd${P.htot<T?"":" t/m vandaag"}: ${pct(mg/cg)} (${uur(mg)} van ${uur(cg)} uur)`:""}})(),
   {id:"herhaal",lab:"Komt op tijd terug",v:tot?ok/tot:NaN,fmt:pct,sub:tot?`${ok} van ${tot} bezoeken binnen het eigen ritme`:"nog te weinig bezoeken"},
-  {id:"opvolgen",lab:"Opvolgen",v:opv,fmt:nl,sub:opv===1?"hond is weer aan de beurt":"honden zijn weer aan de beurt",act:true}]}
+  {id:"opvolgen",lab:"Opvolgen",v:opv,fmt:nl,sub:SJ.object?(opv===1?W.hond+" is "+W.aanDeBeurt:W.honden+" zijn "+W.aanDeBeurt):W.AanDeBeurt,act:true}]}
 
 /* ---------- grafiek-bouwstenen (SVG) ---------- */
 function niceStep(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v))),m=v/p;return(m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p}
@@ -176,7 +176,7 @@ function drawDash(){
   $("#dbNaarFac").onclick=()=>{go("facturen");const q=$("#fq");if(q){q.value="";q.dispatchEvent(new Event("input"))}}}else det.hidden=true;
  /* opvolgen */
  {const L=typeof beurtLijst==="function"?beurtLijst(0).slice(0,8):[];$("#dOpv .hd small").textContent=L.length?"langer weg dan hun normale ritme, zonder nieuwe afspraak":"";
-  $("#dOpv .plot").innerHTML=L.length?`<div class="opv">${L.map(x=>{const k=get("klanten",x.h.klantId)||{};return`<div class="opvr"><div><b>${esc(x.h.naam)}</b> <span class="mute">· ${esc(k.naam||"")}</span><br><small class="mute">${x.sinds} weken geleden · normaal elke ${x.wk} weken</small></div><button class="btn s" type="button" data-opk="${esc(k.id||"")}">Klant openen</button></div>`}).join("")}</div><div class="acts l"><button class="btn s" type="button" id="dbAlleOpv">Alle honden die aan de beurt zijn</button></div>`:`<div class="mute">Geen honden die over hun ritme heen zijn. Mooi zo!</div>`;
+  $("#dOpv .plot").innerHTML=L.length?`<div class="opv">${L.map(x=>{const k=get("klanten",x.h.klantId)||{};return`<div class="opvr"><div><b>${esc(SJ.object?x.h.naam:k.naam||x.h.naam)}</b> <span class="mute">${SJ.object?"· "+esc(k.naam||""):esc(k.tel||"")}</span><br><small class="mute">${x.sinds} weken geleden · normaal elke ${x.wk} weken</small></div><button class="btn s" type="button" data-opk="${esc(k.id||"")}">Klant openen</button></div>`}).join("")}</div><div class="acts l"><button class="btn s" type="button" id="dbAlleOpv">${SJ.object?"Alle "+W.honden+" die aan de beurt zijn":"Iedereen die moet opvullen"}</button></div>`:`<div class="mute">${SJ.object?"Geen "+W.honden:"Niemand"} die over het ritme heen is. Mooi zo!</div>`;
   const a=$("#dbAlleOpv");if(a)a.onclick=()=>{klMode="beurt";S.set("klmode","beurt");go("klanten")}}}
 $("#dbPer").onchange=e=>{DB.per=e.target.value;DB.maand=null;drawDash()};
 $("#dbMw").onchange=e=>{DB.mw=e.target.value;drawDash()};
