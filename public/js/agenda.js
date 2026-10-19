@@ -26,7 +26,9 @@ function drawAg(){
  for(const x of cols){
   const list=D.afspraken.filter(a=>a.datum===x.date&&(x.mw==null||(x.mw==="-"?!get("medewerkers",a.mwId):a.mwId===x.mw)));
   const dicht=fromYmd(x.date).getDay()===0&&!bed.zondag;
-  h+=`<div class="col ${dicht?"dicht":""}" data-date="${x.date}" data-mw="${x.mw==="-"?"none":(x.mw||"")}" style="height:${H}px;--hh:${60*PXM}px">`;
+  const wt=x.mw&&x.mw!=="-"?werkTijd(x.mw,fromYmd(x.date)):undefined,vrij=wt===null;
+  h+=`<div class="col ${dicht||vrij?"dicht":""}" data-date="${x.date}" data-mw="${x.mw==="-"?"none":(x.mw||"")}" style="height:${H}px;--hh:${60*PXM}px" ${vrij?`title="${esc((get("medewerkers",x.mw)||{}).naam||"")} werkt niet op deze dag"`:""}>`;
+  if(wt){if(wt[0]>o)h+=`<div class="off" style="top:0;height:${(Math.min(wt[0],c)-o)*PXM}px"></div>`;if(wt[1]<c)h+=`<div class="off" style="top:${(Math.max(wt[1],o)-o)*PXM}px;height:${(c-Math.max(wt[1],o))*PXM}px"></div>`}
   for(const it of lanes(list)){const a=it.a,s=toMin(a.start),top=Math.max(0,(s-o)*PXM),ht=Math.max(22,(+a.duur||30)*PXM-2);
    const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),w=100/it.n;
    const dn=(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", ");
@@ -140,7 +142,8 @@ function afDlg(id,init={}){
   const w=h?[h.medisch&&"Medisch: "+h.medisch,h.gedrag&&"Gedrag: "+h.gedrag].filter(Boolean):[];d.q("#afHw").hidden=!w.length;d.q("#afHw").textContent=w.join(" · ");conf()};
  const kh=khBind(d,a.hondId,upd);
  function conf(){const x={id:a.id,datum:d.q("#afD").value,start:d.q("#afS").value,duur:num(d.q("#afDu").value),mwId:d.q("#afM").value,status:d.q("#afSt").value},c=conflicts(x);
-  d.q("#afC").hidden=!c.length;d.q("#afC").className="note w";d.q("#afC").textContent=c.length?"Dubbele boeking: "+confText(x,c)+(bed.dubbel==="blokkeer"?" Dubbele boekingen zijn niet toegestaan.":""):"";
+  const rw=roosterWaarschuwing(x),tx=[c.length?"Dubbele boeking: "+confText(x,c)+(bed.dubbel==="blokkeer"?" Dubbele boekingen zijn niet toegestaan.":""):"",rw].filter(Boolean).join(" ");
+  d.q("#afC").hidden=!tx;d.q("#afC").className="note w";d.q("#afC").textContent=tx;
   if(d.ok2){d.ok2=0;d.q("#afOk").textContent="Opslaan";d.q("#afMsg").textContent=""}}
  d.querySelectorAll(".chk-list input").forEach(cb=>cb.onchange=()=>{const sel=[...d.querySelectorAll(".chk-list input:checked")].map(x=>get("artikelen",x.value));const t=sel.reduce((s,x)=>s+(+x.duur||0),0);if(t)d.q("#afDu").value=t;conf()});
  ["#afD","#afS","#afDu","#afM","#afSt"].forEach(s=>{d.q(s).addEventListener("input",conf);d.q(s).addEventListener("change",conf)});conf();

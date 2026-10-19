@@ -150,6 +150,7 @@ Logica in `public/js/`:
 | `beurt.js` | Weer aan de beurt: welke honden weer moeten komen |
 | `berichtenbox.js` | Berichten uit het klantportaal lezen en beantwoorden |
 | `dashboard.js` | KPI-dashboard met interactieve grafieken (Beheer) |
+| `rooster.js` | Werktijden per medewerker |
 | `artikelen.js` | Artikelen en prijzen |
 | `historie.js` | Historie en behandelingen vastleggen |
 | `instellingen.js` | Instellingen, logo, medewerkers, back-up |
@@ -203,8 +204,16 @@ Bij *Klanten > Weer aan de beurt* staan de honden die volgens hun ritme weer moe
 - **Grafieken**: omzet per maand (met het jaar ervoor als stippellijn zodra daar genoeg gegevens voor zijn), afspraken per maand, nieuwe en terugkerende klanten, populairste behandelingen (omzet of aantal), drukte per weekdag en omzet per medewerker.
 - **Interactief**: beweeg over een grafiek voor de precieze waarden; klik op een maand voor de details van die maand (met knoppen naar de agenda en facturen); klik op een behandeling of medewerker om het hele dashboard daarop te filteren. Filters staan als knopjes bovenaan en gaan weg met het kruisje. Periode: deze of vorige week (per dag), deze of vorige maand (per dag), laatste 12 maanden, dit jaar of vorig jaar (per maand). De tegels volgen de gekozen periode en vergelijken met dezelfde dagen van de periode ervoor.
 - Elke grafiek heeft een knop *Tabel* met de cijfers.
-- Bezetting = ingeplande minuten gedeeld door openingsuren × aantal medewerkers × werkdagen (zondag telt alleen mee als die aan staat).
+- **Agenda-bezetting** = geboekte uren gedeeld door beschikbare uren (de werktijden van de medewerkers; wie geen werktijden heeft, telt mee met alle openingsuren). De tegel toont ook de uren ("20 van 540 beschikbare uren geboekt") en de **uitgevoerde** bezetting: alleen afgerekende afspraken tot en met vandaag.
 - Alles wordt berekend uit de gegevens die al op het apparaat staan; er gaat niets extra's over internet.
+
+## Werktijden per medewerker
+
+*Instellingen > Medewerkers en toegang > Werktijden*: kies per dag of iemand werkt en van hoe laat tot hoe laat (bijvoorbeeld ma–do 9:00–17:00). Zonder werktijden werkt iemand alle openingsuren.
+
+- De agenda toont de tijden waarop iemand niet werkt gearceerd (dagweergave, of weekweergave met één medewerker gekozen).
+- Plan je iemand in buiten zijn werktijden, dan waarschuwt het afspraakvenster ("Joris werkt niet op vrijdag").
+- Het dashboard rekent de beschikbare uren met deze werktijden, zodat de bezetting klopt.
 
 ## Klantportaal
 

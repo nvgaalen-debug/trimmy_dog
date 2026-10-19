@@ -13,7 +13,7 @@ const bKey=d=>isDag()?ymd(d):mKey(d);
 const mLab=k=>{if(k.length===10){const d=fromYmd(k);return DB.per==="week"||DB.per==="vweek"?d.toLocaleDateString("nl-NL",{weekday:"short"})+" "+d.getDate():String(d.getDate())}const[y,m]=k.split("-");return MND[+m-1]+" "+String(y).slice(2)};
 const mLang=k=>{if(k.length===10)return fromYmd(k).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});const[y,m]=k.split("-");return new Date(+y,+m-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"})};
 const maandag=d=>addDays(d,-((d.getDay()+6)%7));
-const eur0=n=>(+n||0).toLocaleString("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:0});
+const eur0=n=>"€\u00a0"+Math.round(+n||0).toLocaleString("nl-NL",{minimumFractionDigits:0,maximumFractionDigits:0});
 const pct=n=>isFinite(n)?Math.round(n*100)+"%":"–";
 const nl=n=>(+n||0).toLocaleString("nl-NL");
 
@@ -28,9 +28,8 @@ const shiftKey=(k,dm)=>{const[y,m]=k.split("-").map(Number);return mKey(new Date
 /* vergelijkingsvak: maand → zelfde maand jaar ervoor; dag → zelfde dag vorige week/maand */
 function prevKey(k){if(k.length!==10)return shiftKey(k,-12);const d=fromYmd(k);if(DB.per==="week"||DB.per==="vweek")return ymd(addDays(d,-7));const p=new Date(d.getFullYear(),d.getMonth()-1,1),n=new Date(p.getFullYear(),p.getMonth()+1,0).getDate();return ymd(new Date(p.getFullYear(),p.getMonth(),Math.min(d.getDate(),n)))}
 const vglNaam=()=>isDag()?(DB.per==="week"||DB.per==="vweek"?"Week ervoor":"Maand ervoor"):"Jaar ervoor";
-const werkdag=d=>d.getDay()!==0||bed.zondag;
-function capMin(k,nMw){if(k.length===10)return werkdag(fromYmd(k))?Math.max(1,(+bed.sluit||18)-(+bed.open||8))*60*nMw:0;const[y,m]=k.split("-").map(Number),n=new Date(y,m,0).getDate();let dagen=0;for(let i=1;i<=n;i++)if(werkdag(new Date(y,m-1,i)))dagen++;
- return dagen*Math.max(1,(+bed.sluit||18)-(+bed.open||8))*60*nMw}
+const werkdag=d=>D.medewerkers.length?D.medewerkers.some(m=>(!DB.mw||m.id===DB.mw)&&werkMin(m.id,d)>0):salonOpen(d);
+function capMin(k){if(k.length===10)return capDag(fromYmd(k),DB.mw);const[y,m]=k.split("-").map(Number),n=new Date(y,m,0).getDate();let t=0;for(let i=1;i<=n;i++)t+=capDag(new Date(y,m-1,i),DB.mw);return t}
 /* factuurregels die bij het filter horen (behandeling) */
 const fRegels=f=>(f.regels||[]).filter(r=>!DB.beh||r.artId===DB.beh||(!r.artId&&r.naam===DB.beh)).map(r=>({...r,netto:(+r.totaal||0)*(1-(+f.korting||0)/100)}));
 function fMw(f){if(f.afspraakId){const a=get("afspraken",f.afspraakId);if(a&&a.mwId)return a.mwId}const m=D.medewerkers.find(x=>x.naam&&x.naam===f.door);return m?m.id:""}
@@ -50,8 +49,7 @@ function dbData(){
   }}
  /* afspraken, bezetting, weekdagen */
  const wdCap=[0,0,0,0,0,0,0];
- const uren=Math.max(1,(+bed.sluit||18)-(+bed.open||8))*60*nMw;
- for(const k of maanden){if(k.length===10){const d=fromYmd(k);if(werkdag(d))wdCap[d.getDay()]+=uren;continue}const[y,m]=k.split("-").map(Number),n=new Date(y,m,0).getDate();for(let i=1;i<=n;i++){const d=new Date(y,m-1,i);if(werkdag(d))wdCap[d.getDay()]+=uren}}
+ for(const k of maanden){if(k.length===10){const d=fromYmd(k);wdCap[d.getDay()]+=capDag(d,DB.mw);continue}const[y,m]=k.split("-").map(Number),n=new Date(y,m,0).getDate();for(let i=1;i<=n;i++){const d=new Date(y,m-1,i);wdCap[d.getDay()]+=capDag(d,DB.mw)}}
  for(const a of D.afspraken){if(!a.datum)continue;const d=fromYmd(a.datum),k=bKey(d);if(!set.has(k)||!afOk(a))continue;
   if(a.status==="noshow"){noshow[k]++;continue}if(a.status==="geannuleerd"){geann[k]++;continue}
   afs[k]++;bezet[k]+=+a.duur||30;wd[d.getDay()]+=+a.duur||30}
@@ -60,11 +58,11 @@ function dbData(){
  for(const a of D.afspraken){if(!a.datum||DEAD_AF.includes(a.status)||!a.klantId)continue;const e=eerste.get(a.klantId);if(!e||a.datum<e)eerste.set(a.klantId,a.datum)}
  for(const a of D.afspraken){if(!a.datum||DEAD_AF.includes(a.status)||!a.klantId||!afOk(a))continue;const k=bKey(fromYmd(a.datum));if(!set.has(k))continue;const s=bezoek.get(k)||new Set();s.add(a.klantId);bezoek.set(k,s)}
  for(const k of maanden)for(const kid of (bezoek.get(k)||[])){if(bKey(fromYmd(eerste.get(kid)))===k)nieuw[k]++;else terug[k]++}
- const bez=Object.fromEntries(maanden.map(k=>{const c=capMin(k,nMw);return[k,c?bezet[k]/c:0]}));
- return{maanden,prev,omzet,omzetV,aantF,afs,noshow,geann,bez,nieuw,terug,
+ const capK=Object.fromEntries(maanden.map(k=>[k,capMin(k)])),bez=Object.fromEntries(maanden.map(k=>[k,capK[k]?bezet[k]/capK[k]:0]));
+ return{maanden,prev,omzet,omzetV,aantF,afs,noshow,geann,bez,bezMin:bezet,cap:capK,nieuw,terug,
   beh:[...perBeh.values()].sort((a,b)=>b[DB.metric]-a[DB.metric]),
   mw:D.medewerkers.map(m=>({id:m.id,naam:m.naam,omzet:perMw.get(m.id)||0})).sort((a,b)=>b.omzet-a.omzet),
-  wd:[1,2,3,4,5,6,0].filter(i=>i!==0||bed.zondag).map(i=>({lab:["zo","ma","di","wo","do","vr","za"][i],v:wdCap[i]?wd[i]/wdCap[i]:0,min:wd[i]}))}}
+  wd:[1,2,3,4,5,6,0].filter(i=>wdCap[i]>0||wd[i]>0).map(i=>({lab:["zo","ma","di","wo","do","vr","za"][i],v:wdCap[i]?wd[i]/wdCap[i]:0,min:wd[i]}))}}
 
 /* KPI-tegels: de lopende periode t/m vandaag vs. dezelfde dagen van de periode ervoor */
 function tegelPeriode(){const T=today();
@@ -79,8 +77,10 @@ function dbTegels(){const T=today(),P=tegelPeriode(),nMw=DB.mw?1:Math.max(1,D.me
  const af=(a,b)=>D.afspraken.filter(x=>x.datum&&!DEAD_AF.includes(x.status)&&afOk(x)&&tussen(x.datum,a,b)).length;
  const eerste=new Map();for(const x of D.afspraken){if(!x.datum||DEAD_AF.includes(x.status))continue;const e=eerste.get(x.klantId);if(!e||x.datum<e)eerste.set(x.klantId,x.datum)}
  const nw=(a,b)=>[...eerste.values()].filter(dd=>tussen(dd,a,b)).length;
- const cap=(a,b)=>{let c=0;for(let d=new Date(a);d<=b;d=addDays(d,1))if(werkdag(d))c+=Math.max(1,(+bed.sluit||18)-(+bed.open||8))*60*nMw;return c};
- const bz=(a,b)=>{const c=cap(a,b);return c?D.afspraken.filter(x=>x.datum&&!DEAD_AF.includes(x.status)&&afOk(x)&&tussen(x.datum,a,b)).reduce((s,x)=>s+(+x.duur||30),0)/c:0};
+ const cap=(a,b)=>{let c=0;for(let d=new Date(a);d<=b;d=addDays(d,1))c+=capDag(d,DB.mw);return c};
+ const bzMin=(a,b,alleenGedaan)=>D.afspraken.filter(x=>x.datum&&!DEAD_AF.includes(x.status)&&afOk(x)&&tussen(x.datum,a,b)&&(!alleenGedaan||x.status==="afgerekend")).reduce((s,x)=>s+(+x.duur||30),0);
+ const bz=(a,b)=>{const c=cap(a,b);return c?bzMin(a,b)/c:0};
+ const uur=m=>(Math.round(m/6)/10).toLocaleString("nl-NL");
  const hn=Math.round((P.htot-P.hvan)/864e5)+1,hpv=P.naam.includes("maand")?new Date(P.hvan.getFullYear(),P.hvan.getMonth()-1,1):addDays(P.hvan,-hn),hpt=addDays(P.hvan,-1);
  /* herhaling: hoeveel bezoeken kwamen binnen het eigen ritme (+1 week) na het vorige */
  const per=new Map();D.afspraken.filter(a=>a.hondId&&a.datum&&!DEAD_AF.includes(a.status)&&a.datum<=ymd(T)).forEach(a=>{if(!per.has(a.hondId))per.set(a.hondId,[]);per.get(a.hondId).push(a.datum)});
@@ -89,7 +89,9 @@ function dbTegels(){const T=today(),P=tegelPeriode(),nMw=DB.mw?1:Math.max(1,D.me
  return[{id:"omzet",lab:"Omzet "+Nm,v:om(P.van,P.tot),vv:om(P.pvan,P.ptot),fmt:eur0,sub:P.sub,vs:P.vs},
   {id:"afspraken",lab:"Afspraken "+Nm,v:af(P.van,P.tot),vv:af(P.pvan,P.ptot),fmt:nl,sub:P.sub,vs:P.vs},
   {id:"klanten",lab:"Nieuwe klanten",v:nw(P.van,P.tot),vv:nw(P.pvan,P.ptot),fmt:nl,sub:Nm,abs:true,vs:P.vs},
-  {id:"bezet",lab:"Bezetting "+Nm,v:bz(P.hvan,P.htot),vv:bz(hpv,hpt),fmt:pct,sub:P.hsub,pp:true,vs:P.vs},
+  (()=>{const c=cap(P.hvan,P.htot),m=bzMin(P.hvan,P.htot),eind=P.htot<T?P.htot:T,cg=P.hvan<=eind?cap(P.hvan,eind):0,mg=P.hvan<=eind?bzMin(P.hvan,eind,true):0;
+   return{id:"bezet",lab:"Agenda-bezetting "+Nm,v:c?m/c:NaN,vv:bz(hpv,hpt),fmt:pct,pp:true,vs:P.vs,
+    sub:`${uur(m)} van ${uur(c)} beschikbare uren geboekt`,sub2:cg?`Uitgevoerd${P.htot<T?"":" t/m vandaag"}: ${pct(mg/cg)} (${uur(mg)} van ${uur(cg)} uur)`:""}})(),
   {id:"herhaal",lab:"Komt op tijd terug",v:tot?ok/tot:NaN,fmt:pct,sub:tot?`${ok} van ${tot} bezoeken binnen het eigen ritme`:"nog te weinig bezoeken"},
   {id:"opvolgen",lab:"Opvolgen",v:opv,fmt:nl,sub:opv===1?"hond is weer aan de beurt":"honden zijn weer aan de beurt",act:true}]}
 
@@ -130,9 +132,9 @@ function drawDash(){
  $("#dbChips").innerHTML=(DB.beh?`<button class="chip" type="button" data-x="beh">${esc(bNaam)} ×</button>`:"")+(DB.maand?`<button class="chip" type="button" data-x="maand">${esc(mLang(DB.maand))} ×</button>`:"");
  const d=dbData(),T=dbTegels(),ix=DB.maand?d.maanden.indexOf(DB.maand):null;
  $("#dbTiles").innerHTML=T.map(t=>{let tr="";if(t.vv!=null&&isFinite(t.v)){const dlt=t.pp?(t.v-t.vv):t.abs?(t.v-t.vv):(t.vv?(t.v-t.vv)/t.vv:null);
-   if(dlt!=null&&isFinite(dlt)){const up=dlt>0.0001,dn=dlt<-0.0001,txt=t.pp?`${dlt>0?"+":""}${Math.round(dlt*100)} procentpunt`:t.abs?`${dlt>0?"+":""}${dlt}`:`${dlt>0?"+":""}${Math.round(dlt*100)}%`;
+   if(dlt!=null&&isFinite(dlt)){const r0=t.pp?Math.round(dlt*100)===0:t.abs?dlt===0:Math.round(dlt*100)===0,up=!r0&&dlt>0,dn=!r0&&dlt<0,txt=t.pp?`${dlt>0?"+":""}${Math.round(dlt*100)} procentpunt`:t.abs?`${dlt>0?"+":""}${dlt}`:`${dlt>0?"+":""}${Math.round(dlt*100)}%`;
     tr=`<span class="trend ${up?"up":dn?"dn":""}">${up?"▲":dn?"▼":"="} ${esc(txt)}</span> <span class="mute">vs. ${esc(t.vs||"vorige maand")}</span>`}}
-  return`<button type="button" class="tile" data-tile="${t.id}"><span class="tl">${esc(t.lab)}</span><span class="tv">${esc(t.fmt(t.v))}</span><span class="ts">${tr||esc(t.sub)}</span>${tr?`<span class="ts mute">${esc(t.sub)}</span>`:""}</button>`}).join("");
+  return`<button type="button" class="tile" data-tile="${t.id}"><span class="tl">${esc(t.lab)}</span><span class="tv">${esc(t.fmt(t.v))}</span><span class="ts">${tr||esc(t.sub)}</span>${tr?`<span class="ts mute">${esc(t.sub)}</span>`:""}${t.sub2?`<span class="ts">${esc(t.sub2)}</span>`:""}</button>`}).join("");
  const labels=d.maanden.map(mLab),vals=k=>d.maanden.map(x=>d[k][x]);
  const card=(id)=>{const c=$("#"+id);return{plot:c.querySelector(".plot"),tbl:!!DB.tabel[id]}};
  /* omzet */
@@ -141,13 +143,13 @@ function drawDash(){
   const pern=isDag()?"dag":"maand";$("#dOmzet h3").textContent="Omzet per "+pern;$("#dAf h3").textContent="Afspraken per "+pern;
   const tot=cur.reduce((a,b)=>a+b,0),totV=pv.reduce((a,b)=>a+b,0);$("#dOmzet .hd small").textContent=`${eur0(tot)} totaal${heeftV&&totV?` · ${tot>=totV?"+":""}${Math.round((tot-totV)/totV*100)}% t.o.v. ${vglNaam().toLowerCase()}`:""}`;
   if(c.tbl)tabel(c.plot,[isDag()?"Dag":"Maand","Omzet",vglNaam(),"Facturen"],d.maanden.map((k,i)=>[mLang(k),eur0(cur[i]),eur0(pv[i]),nl(d.aantF[k])]));
-  else barSvg(c.plot,{labels,series:[{naam:"Omzet",cls:"s1",waarden:cur}],line:heeftV?{waarden:pv}:null,fmt:eur0,sel:ix,onClick:i=>{DB.maand=DB.maand===d.maanden[i]?null:d.maanden[i];drawDash()},
+  else barSvg(c.plot,{labels,int:true,series:[{naam:"Omzet",cls:"s1",waarden:cur}],line:heeftV?{waarden:pv}:null,fmt:eur0,sel:ix,onClick:i=>{DB.maand=DB.maand===d.maanden[i]?null:d.maanden[i];drawDash()},
    tipFn:i=>`<b>${esc(mLang(d.maanden[i]))}</b><br>Omzet: ${esc(eur0(cur[i]))}${heeftV?`<br><span class="mute">${vglNaam()}: ${esc(eur0(pv[i]))}${pv[i]?` (${cur[i]>=pv[i]?"+":""}${Math.round((cur[i]-pv[i])/pv[i]*100)}%)`:""}</span>`:""}<br>${nl(d.aantF[d.maanden[i]])} facturen${d.aantF[d.maanden[i]]?` · gem. ${esc(eur0(cur[i]/d.aantF[d.maanden[i]]))}`:""}<br><small class="mute">Klik voor details</small>`})}
  /* afspraken */
  {const c=card("dAf"),a=vals("afs"),ns=vals("noshow"),ga=vals("geann");$("#dAf .hd small").textContent=`${nl(a.reduce((x,y)=>x+y,0))} afspraken · ${nl(ns.reduce((x,y)=>x+y,0))} niet gekomen · ${nl(ga.reduce((x,y)=>x+y,0))} geannuleerd`;
   if(c.tbl)tabel(c.plot,[isDag()?"Dag":"Maand","Afspraken","Niet gekomen","Geannuleerd","Bezetting"],d.maanden.map((k,i)=>[mLang(k),nl(a[i]),nl(ns[i]),nl(ga[i]),pct(d.bez[k])]));
   else barSvg(c.plot,{labels,series:[{naam:"Afspraken",cls:"s1",waarden:a}],int:true,sel:ix,onClick:i=>{DB.maand=DB.maand===d.maanden[i]?null:d.maanden[i];drawDash()},
-   tipFn:i=>`<b>${esc(mLang(d.maanden[i]))}</b><br>${nl(a[i])} afspraken<br>Bezetting: ${pct(d.bez[d.maanden[i]])}<br><span class="mute">${nl(ns[i])} niet gekomen · ${nl(ga[i])} geannuleerd</span>`})}
+   tipFn:i=>`<b>${esc(mLang(d.maanden[i]))}</b><br>${nl(a[i])} afspraken<br>Agenda-bezetting: ${pct(d.bez[d.maanden[i]])} <span class="mute">(${(Math.round(d.bezMin[d.maanden[i]]/6)/10).toLocaleString("nl-NL")} van ${(Math.round(d.cap[d.maanden[i]]/6)/10).toLocaleString("nl-NL")} uur)</span><br><span class="mute">${nl(ns[i])} niet gekomen · ${nl(ga[i])} geannuleerd</span>`})}
  /* nieuw vs terugkerend */
  {const c=card("dKl"),nw=vals("nieuw"),tr=vals("terug");$("#dKl .hd small").textContent=`${nl(nw.reduce((x,y)=>x+y,0))} nieuwe klanten in deze periode`;
   if(c.tbl)tabel(c.plot,[isDag()?"Dag":"Maand","Terugkerend","Nieuw"],d.maanden.map((k,i)=>[mLang(k),nl(tr[i]),nl(nw[i])]));
