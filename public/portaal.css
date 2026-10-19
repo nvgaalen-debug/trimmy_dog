@@ -76,3 +76,24 @@ body.pv main>*:not(#privacy){display:none!important}
 .prvTerug{padding-top:0}
 .pfoot{padding:0 16px 32px;font-size:14px}.pfoot a{color:var(--mute)}
 body.pv .pfoot{display:none}
+
+/* startscherm met tegels */
+.hero{display:flex;align-items:center;gap:14px;background:var(--acc);color:var(--acc-ink);border-radius:16px;padding:16px 18px;margin-bottom:14px}
+.hero .ti{display:grid;place-items:center;flex:none;width:50px;height:50px;border-radius:14px;background:color-mix(in srgb,var(--acc-ink) 16%,transparent)}
+.hero .tl{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.8}
+.hero b{display:block;font:700 20px/1.25 var(--f-d)}
+.hero>div{flex:1;min-width:0}
+.hero .pill{background:color-mix(in srgb,var(--acc-ink) 18%,transparent);color:var(--acc-ink)}
+.tegels{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.tegel{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-height:146px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--ink);font:inherit;text-decoration:none;cursor:pointer;transition:border-color .15s,transform .15s}
+.tegel:hover{border-color:var(--acc);transform:translateY(-2px)}
+.tegel .ti{display:grid;place-items:center;width:46px;height:46px;border-radius:13px;background:var(--acc-soft);color:var(--acc);margin-bottom:auto}
+.tegel .tl{margin-top:14px;font-size:12px;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.tegel b{font:700 18px/1.25 var(--f-d);overflow-wrap:anywhere}
+.tegel small{color:var(--mute);font-size:13px;line-height:1.35}
+.tegel.let{border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.tegel.let .ti{background:color-mix(in srgb,var(--warn) 14%,var(--panel));color:var(--warn)}
+.tegel .nb{position:absolute;top:14px;right:14px;margin:0;min-width:22px;height:22px;border-radius:11px;font-size:12px}
+#afs,#hnd{scroll-margin-top:12px}
+@media(max-width:560px){.tegels{grid-template-columns:1fr 1fr;gap:10px}.tegel{min-height:132px;padding:13px}.tegel b{font-size:16px}.hero b{font-size:18px}}
+@media(prefers-reduced-motion:reduce){.tegel{transition:none}.tegel:hover{transform:none}}

@@ -16,18 +16,23 @@ const ico=(k,s=24)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="n
 function drawStart(){const nu=new Date(),tdy=ymd(today()),uur=nu.getHours(),m=cur(),nuMin=uur*60+nu.getMinutes();
  const groet=uur<6?"Goedenacht":uur<12?"Goedemorgen":uur<18?"Goedemiddag":"Goedenavond";
  const levend=a=>!DEAD.includes(a.status);
- const vandaag=D.afspraken.filter(a=>a.datum===tdy&&levend(a)).sort(by("start"));
+ /* "Vandaag": iedereen, of alleen de afspraken van één medewerker (keuze per apparaat) */
+ const wie=S.get("startwie","alle"),wieId=wie==="mij"?(m?m.id:null):wie!=="alle"&&get("medewerkers",wie)?wie:null,wieMw=wieId&&get("medewerkers",wieId);
+ const vanWie=a=>!wieId||a.mwId===wieId;
+ const allesVandaag=D.afspraken.filter(a=>a.datum===tdy&&levend(a)).sort(by("start"));
+ const vandaag=allesVandaag.filter(vanWie);
  const nogTeKomen=vandaag.filter(a=>toMin(a.start)+(+a.duur||30)>nuMin);
- const afTeRekenen=vandaag.filter(a=>a.status!=="afgerekend"&&toMin(a.start)<=nuMin);
- const volgende=D.afspraken.filter(a=>a.datum>tdy&&levend(a)).sort((a,b)=>(a.datum+a.start).localeCompare(b.datum+b.start))[0];
+ /* pas meetellen als de afspraak voorbij is (eindtijd verstreken), niet zodra hij begint */
+ const afTeRekenen=allesVandaag.filter(a=>a.status!=="afgerekend"&&toMin(a.start)+(+a.duur||30)<=nuMin);
+ const volgende=D.afspraken.filter(a=>a.datum>tdy&&levend(a)&&vanWie(a)).sort((a,b)=>(a.datum+a.start).localeCompare(b.datum+b.start))[0];
  const hn=a=>(get("honden",a.hondId)||{}).naam||"",kn=a=>(get("klanten",a.klantId)||{}).naam||"";
  const beurt=beurtLijst(0).length,nieuw=berOngelezen().length,open=D.facturen.filter(f=>(+f.rest||0)>0.004),openSom=open.reduce((s,f)=>s+(+f.rest||0),0);
  const mnd=tdy.slice(0,7),omzetMnd=D.facturen.filter(f=>f.ts&&ymd(new Date(f.ts)).slice(0,7)===mnd).reduce((s,f)=>s+(+f.totaal||0),0);
  const behMnd=D.behandelingen.filter(b=>(b.datum||"").slice(0,7)===mnd).length;
  const berZicht=!!bed.portaal||D.berichten.length>0;
  const T=[
-  ["agenda","Agenda",vandaag.length?`${vandaag.length} afspra${vandaag.length===1?"ak":"ken"} vandaag`:"Vandaag vrij",nogTeKomen[0]?`Volgende: ${nogTeKomen[0].start} ${hn(nogTeKomen[0])}`:volgende?`Volgende: ${new Date(volgende.datum+"T12:00").toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"short"})} ${volgende.start}`:"Geen afspraken gepland",0],
-  ["kassa","Kassa","Afrekenen",afTeRekenen.length?`${afTeRekenen.length} nog af te rekenen`:"Alles van vandaag is afgerekend",afTeRekenen.length],
+  ["agenda","Agenda",vandaag.length?`${vandaag.length} afspra${vandaag.length===1?"ak":"ken"} ${wieMw?(m&&wieId===m.id?"voor jou":"voor "+wieMw.naam):"vandaag"}`:wieMw?(m&&wieId===m.id?"Vandaag geen afspraken voor jou":"Vandaag vrij voor "+wieMw.naam):"Vandaag vrij",nogTeKomen[0]?`Volgende: ${nogTeKomen[0].start} ${hn(nogTeKomen[0])}`:volgende?`Volgende: ${new Date(volgende.datum+"T12:00").toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"short"})} ${volgende.start}`:"Geen afspraken gepland",0],
+  ["kassa","Kassa","Afrekenen",afTeRekenen.length===1?`${hn(afTeRekenen[0])||"1 afspraak"} (${afTeRekenen[0].start}) nog afrekenen`:afTeRekenen.length?`${afTeRekenen.length} afspraken nog afrekenen`:"Niets open van vandaag",afTeRekenen.length],
   ["klanten","Klanten",`${D.klanten.filter(k=>!k.opgeruimd).length} klanten`,beurt?`${beurt} ${beurt===1?"hond":"honden"} weer aan de beurt`:"Niemand achterstallig",beurt],
   berZicht&&["berichten","Berichten",nieuw?`${nieuw} nieuw`:"Geen nieuwe",nieuw?"Uit het klantportaal":"Alles gelezen",nieuw],
   ["historie","Historie","Trimhistorie",`${behMnd} behandeling${behMnd===1?"":"en"} deze maand`,0],
@@ -43,9 +48,12 @@ function drawStart(){const nu=new Date(),tdy=ymd(today()),uur=nu.getHours(),m=cu
  <div class="sgrid">
   <div class="tiles2">${T.map(([k,l,big,sub,alert])=>`<button type="button" class="tegel${alert?" let":""}" data-go="${k}"><span class="ti">${ico(k)}</span><span class="tl">${esc(l)}</span><b>${esc(big)}</b><small>${esc(sub)}</small>${alert?`<span class="nb" aria-hidden="true">${alert}</span>`:""}</button>`).join("")}</div>
   ${canTab("agenda")?`<div class="panel svan"><div class="svh"><h2>Vandaag</h2><button class="btn s" type="button" data-go="agenda">Agenda ${ico("pijl",16)}</button></div>
-   ${vandaag.length?`<div class="slist">${vandaag.map(af).join("")}</div>`:`<div class="empty">Geen afspraken vandaag.${volgende?` De volgende is op ${esc(new Date(volgende.datum+"T12:00").toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"}))} om ${esc(volgende.start)}.`:""}</div>`}</div>`:""}
+   ${D.medewerkers.length>1?(m?`<div class="seg swie" role="group" aria-label="Welke afspraken"><button type="button" data-wie="alle" aria-pressed="${!wieId}">Iedereen</button><button type="button" data-wie="mij" aria-pressed="${!!wieId}">Alleen ik</button></div>`
+    :`<label class="swie2">Toon<select id="startWie"><option value="alle">Iedereen</option>${D.medewerkers.map(x=>`<option value="${esc(x.id)}" ${x.id===wieId?"selected":""}>Alleen ${esc(x.naam)}</option>`).join("")}</select></label>`):""}
+   ${vandaag.length?`<div class="slist">${vandaag.map(af).join("")}</div>`:`<div class="empty">${wieMw?(allesVandaag.length?`Geen afspraken vandaag${m&&wieId===m.id?" voor jou":" voor "+esc(wieMw.naam)}; collega's hebben er ${allesVandaag.length}.`:"Geen afspraken vandaag."):"Geen afspraken vandaag."}${volgende?` De volgende is op ${esc(new Date(volgende.datum+"T12:00").toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"}))} om ${esc(volgende.start)}.`:""}</div>`}</div>`:""}
  </div>`}
-$("#startBody").addEventListener("click",e=>{const g=e.target.closest("[data-go]"),a=e.target.closest("[data-af]"),q=e.target.closest("[data-q]");
+$("#startBody").addEventListener("change",e=>{if(e.target.id==="startWie"){S.set("startwie",e.target.value);drawStart()}});
+$("#startBody").addEventListener("click",e=>{const w=e.target.closest("[data-wie]");if(w){S.set("startwie",w.dataset.wie);drawStart();return}const g=e.target.closest("[data-go]"),a=e.target.closest("[data-af]"),q=e.target.closest("[data-q]");
  if(g){go(g.dataset.go);return}if(a){afDlg(a.dataset.af);return}
  if(q){if(q.dataset.q==="af"){const n=new Date(),mm=Math.ceil((n.getHours()*60+n.getMinutes())/15)*15;afDlg(null,{datum:ymd(today()),start:toHM(Math.min(Math.max(mm,salonTijd()[0]),salonTijd()[1]-30))})}
   else{go("klanten");klantDlg(null,k=>{selKl=k.id;drawKl();hondDlg(null,k.id)})}}});

@@ -103,13 +103,19 @@ export default async (req) => {
       // ook bij een onbekend adres een (nutteloze) rij, zodat de limieten niet verraden of een adres bestaat
       const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
       await db.query(`INSERT INTO ${Q("portaal_codes")} (email, code_hash, ip, verloopt) VALUES ($1, $2, $3, now() + interval '10 minutes')`, [email, kl.length ? sha(SECRET, "code", email, code) : "x", ip]);
-      if (kl.length && smtpOk()) {
+      if (kl.length && !smtpOk()) { console.error("portaal code: SMTP_HOST/SMTP_USER/SMTP_PASS/MAIL_FROM ontbreken in Netlify"); return json(503, { error: "De salon kan nu geen e-mail versturen. Neem contact op met de salon." }); }
+      if (kl.length) {
         const naam = kl.length === 1 ? ((kl[0].data && kl[0].data.naam) || "") : "";
-        await mailer().sendMail({
+        try {
+          await mailer().sendMail({
           from: process.env.MAIL_FROM, to: email, subject: `Je inlogcode: ${code}`,
           text: `Hoi ${naam},\n\nJe code om in te loggen bij het klantportaal van ${salon.naam || "de trimsalon"} is: ${code}\n\nDe code is 10 minuten geldig. Heb je dit niet aangevraagd? Dan kun je deze mail negeren.`,
           html: mailHtml(salon, "Je inlogcode", `<p>Hoi ${esc(naam)},</p><p>Je code om in te loggen bij het klantportaal is:</p><p style="font-size:30px;font-weight:bold;letter-spacing:6px;margin:10px 0 16px">${code}</p><p style="color:#6b706d;font-size:13px">De code is 10 minuten geldig. Heb je dit niet aangevraagd? Dan kun je deze mail negeren.</p>`),
         });
+        } catch (e) {
+          console.error("portaal code: e-mail versturen mislukt:", e && (e.response || e.message || e));
+          return json(503, { error: "De e-mail met de code kon niet worden verstuurd. Probeer het over een paar minuten opnieuw of neem contact op met de salon." + (process.env.PORTAAL_DEBUG ? " " + (e && e.message) : "") });
+        }
       }
       return generiek();
     }
@@ -153,25 +159,30 @@ export default async (req) => {
     if (actie === "ik" && req.method === "GET") {
       const q = (t, extra = "") => db.query(`SELECT id, data FROM ${Q(t)} WHERE NOT deleted AND klant_id = $1 ${extra}`, [sel]).then(r => r.rows.map(x => ({ id: x.id, ...x.data })));
       const [honden, afs, beh, fac, ber] = await Promise.all([q("honden"), q("afspraken", "AND datum >= (now() AT TIME ZONE 'Europe/Amsterdam')::date - 1"), q("behandelingen"), q("facturen"), q("berichten")]);
-      const artIds = [...new Set(afs.flatMap(a => Array.isArray(a.diensten) ? a.diensten : []))];
+      const artIds = [...new Set(afs.flatMap(a => a && Array.isArray(a.diensten) ? a.diensten.filter(x => typeof x === "string") : []))];
       const arts = artIds.length ? (await db.query(`SELECT id, data->>'naam' AS naam FROM ${Q("artikelen")} WHERE id = ANY($1)`, [artIds])).rows : [];
       const artNaam = Object.fromEntries(arts.map(a => [a.id, a.naam]));
-      const hondNaam = Object.fromEntries(honden.map(h => [h.id, h.naam]));
+      const hondNaam = Object.fromEntries(honden.filter(Boolean).map(h => [h.id, h.naam]));
       const vandaag = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Amsterdam" });
       const k0 = kSel.data || {};
+      const lijst = v => Array.isArray(v) ? v : [];
+      // één afwijkend record mag nooit het hele portaal stoppen: overslaan en in het logboek melden
+      const veilig = (naam, rijen, fn) => { const uit = []; for (const r of lijst(rijen)) { try { const x = fn(r); if (x) uit.push(x); } catch (e) { console.error(`portaal ik: ${naam} ${r && r.id} overgeslagen:`, e && e.message); } } return uit; };
+      const tekst = v => v == null ? "" : typeof v === "string" ? v : Array.isArray(v) ? v.join(", ") : String(v);
+      const ts = v => +v || 0;
       // alleen velden die voor de klant bedoeld zijn
       return json(200, {
         salon: { ...publiekSalon(salon), btwnr: salon.btwnr || "", iban: salon.iban || "", voet: salon.voet || "" },
         klanten: kl.map(k => ({ id: k.id, naam: (k.data && k.data.naam) || "Klant" })), kSel: sel,
-        klant: { naam: k0.naam || "", straat: k0.straat || "", pc: k0.pc || "", plaats: k0.plaats || "", tel: k0.tel || "", email: ses.email },
-        honden: honden.filter(h => !h.inactief).map(h => ({ id: h.id, naam: h.naam || "", ras: h.ras || "", geb: h.geb || "", geslacht: h.geslacht || "", gewicht: h.gewicht ?? "", vacht: h.vacht || "", kleur: h.kleur || "", chip: h.chip || "", foto: typeof h.foto === "string" && h.foto.length < 200000 ? h.foto : "" })),
-        afspraken: afs.filter(a => a.datum >= vandaag && !["geannuleerd", "noshow", "afgerekend"].includes(a.status)).sort((a, b) => (a.datum + a.start).localeCompare(b.datum + b.start))
-          .map(a => ({ datum: a.datum, start: a.start, duur: +a.duur || 30, hond: hondNaam[a.hondId] || "", behandelingen: (a.diensten || []).map(i => artNaam[i]).filter(Boolean), bevestigd: a.status === "bevestigd" })),
-        historie: beh.sort((a, b) => String(b.datum).localeCompare(String(a.datum))).slice(0, 100)
-          .map(b => ({ datum: b.datum, hond: hondNaam[b.hondId] || "", behandelingen: b.diensten || "", mesje: b.mesje || "", vacht: b.vacht || "", notitie: b.klantNotitie || "" })),
-        facturen: fac.sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(f => ({ id: f.id, nr: f.nr, ts: f.ts, vervalt: f.vervalt || "", hond: hondNaam[f.hondId] || "", korting: +f.korting || 0, sub: +f.sub || 0, totaal: +f.totaal || 0, betaald: +f.betaald || 0, rest: +f.rest || 0,
-          regels: (f.regels || []).map(r => ({ naam: r.naam || "", aantal: +r.aantal || 0, prijs: +r.prijs || 0, btw: +r.btw || 0, totaal: +r.totaal || 0 })), betalingen: (f.betalingen || []).map(p => ({ ts: p.ts, methode: p.methode || "", bedrag: +p.bedrag || 0 })) })),
-        berichten: ber.sort((a, b) => (a.ts || 0) - (b.ts || 0)).slice(-200).map(b => ({ id: b.id, van: b.van === "salon" ? "salon" : "klant", tekst: b.tekst || "", ts: b.ts, ...(b.van === "salon" && b.door ? { door: String(b.door).slice(0, 40) } : {}) })),
+        klant: { naam: tekst(k0.naam), straat: tekst(k0.straat), pc: tekst(k0.pc), plaats: tekst(k0.plaats), tel: tekst(k0.tel), email: ses.email },
+        honden: veilig("hond", honden.filter(h => h && !h.inactief), h => ({ id: h.id, naam: tekst(h.naam), ras: tekst(h.ras), geb: tekst(h.geb), geslacht: tekst(h.geslacht), gewicht: h.gewicht ?? "", vacht: tekst(h.vacht), kleur: tekst(h.kleur), chip: tekst(h.chip), foto: typeof h.foto === "string" && h.foto.length < 200000 ? h.foto : "" })),
+        afspraken: veilig("afspraak", afs.filter(a => a && typeof a.datum === "string" && a.datum >= vandaag && !["geannuleerd", "noshow", "afgerekend"].includes(a.status)).sort((a, b) => (a.datum + tekst(a.start)).localeCompare(b.datum + tekst(b.start))),
+          a => ({ datum: a.datum, start: tekst(a.start), duur: +a.duur || 30, hond: hondNaam[a.hondId] || "", behandelingen: lijst(a.diensten).map(i => artNaam[i]).filter(Boolean), bevestigd: a.status === "bevestigd" })),
+        historie: veilig("behandeling", beh.filter(Boolean).sort((a, b) => tekst(b.datum).localeCompare(tekst(a.datum))).slice(0, 100),
+          b => ({ datum: tekst(b.datum), hond: hondNaam[b.hondId] || "", behandelingen: tekst(b.diensten), mesje: tekst(b.mesje), vacht: tekst(b.vacht), notitie: tekst(b.klantNotitie) })),
+        facturen: veilig("factuur", fac.filter(Boolean).sort((a, b) => ts(b.ts) - ts(a.ts)), f => ({ id: f.id, nr: tekst(f.nr), ts: f.ts, vervalt: tekst(f.vervalt), hond: hondNaam[f.hondId] || "", korting: +f.korting || 0, sub: +f.sub || 0, totaal: +f.totaal || 0, betaald: +f.betaald || 0, rest: +f.rest || 0,
+          regels: lijst(f.regels).filter(Boolean).map(r => ({ naam: tekst(r.naam), aantal: +r.aantal || 0, prijs: +r.prijs || 0, btw: +r.btw || 0, totaal: +r.totaal || 0 })), betalingen: lijst(f.betalingen).filter(Boolean).map(p => ({ ts: p.ts, methode: tekst(p.methode), bedrag: +p.bedrag || 0 })) })),
+        berichten: veilig("bericht", ber.filter(Boolean).sort((a, b) => ts(a.ts) - ts(b.ts)).slice(-200), b => ({ id: b.id, van: b.van === "salon" ? "salon" : "klant", tekst: tekst(b.tekst), ts: b.ts, ...(b.van === "salon" && b.door ? { door: tekst(b.door).slice(0, 40) } : {}) })),
       });
     }
 
@@ -212,7 +223,7 @@ export default async (req) => {
 
     return json(404, { error: "onbekend" });
   } catch (e) {
-    console.error("portaal", e);
+    console.error("portaal fout bij /" + actie + ":", e && (e.stack || e.message || e));
     return json(500, { error: "Er ging iets mis. Probeer het later opnieuw." + (process.env.PORTAAL_DEBUG ? " " + foutmelding(e) : "") });
   }
 };

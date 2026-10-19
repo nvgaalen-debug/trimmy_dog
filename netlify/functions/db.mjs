@@ -134,15 +134,28 @@ export function getPool() {
   });
   return pool;
 }
+// Het schema alleen (opnieuw) aanleggen als het veranderd is: één snelle controle per koude start
+// in plaats van tientallen opdrachten. De versie is een hash van alle schema-opdrachten.
+let schemaVersie = null;
+const versieVan = () => schemaVersie || (schemaVersie = createHash("sha256").update(schemaSql().join(";\n")).digest("hex").slice(0, 32));
 export async function ensureSchema(db) {
   if (ready) return;
+  const want = versieVan();
   const c = await db.connect();
   try {
+    const nu = await c.query(`SELECT versie FROM ${Q("_schema")} LIMIT 1`).catch(() => null);
+    if (nu && nu.rows[0] && nu.rows[0].versie === want) { ready = true; return; }
     await c.query("BEGIN");
     await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["trimmy-schema:" + SCHEMA]);
     const ex = await c.query("SELECT 1 FROM pg_namespace WHERE nspname = $1", [SCHEMA]);
     if (!ex.rowCount) await c.query(`CREATE SCHEMA "${SCHEMA}"`);
-    for (const sql of schemaSql()) await c.query(sql);
+    await c.query(`CREATE TABLE IF NOT EXISTS ${Q("_schema")} (versie VARCHAR(64) NOT NULL, bijgewerkt TIMESTAMPTZ NOT NULL DEFAULT now())`);
+    const nog = await c.query(`SELECT versie FROM ${Q("_schema")} LIMIT 1`);   // een andere start kan het net gedaan hebben
+    if (!(nog.rows[0] && nog.rows[0].versie === want)) {
+      for (const sql of schemaSql()) await c.query(sql);
+      await c.query(`DELETE FROM ${Q("_schema")}`);
+      await c.query(`INSERT INTO ${Q("_schema")} (versie) VALUES ($1)`, [want]);
+    }
     await c.query("COMMIT");
     ready = true;
   } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; }

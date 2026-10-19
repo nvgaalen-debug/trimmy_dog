@@ -344,4 +344,6 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .sa .sn{display:flex;flex-direction:column;min-width:0}.sa small{color:var(--mute)}
 .sa.voorbij{opacity:.55}.sa.bezig{background:var(--acc-soft)}
 .svan .empty{padding:12px 16px}
+.swie{margin:0 16px 10px}.swie button{padding:5px 12px;font-size:14px}
+.swie2{display:flex;align-items:center;gap:8px;margin:0 16px 10px;font-size:14px;color:var(--mute)}.swie2 select{width:auto;padding:5px 8px}
 @media(max-width:560px){.tiles2{grid-template-columns:1fr 1fr;gap:10px}.tegel{min-height:132px;padding:13px}.tegel b{font-size:17px}.shead h1{font-size:23px}}
