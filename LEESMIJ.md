@@ -227,6 +227,8 @@ Klanten kunnen op `https://jouw-trimmy.netlify.app/portaal` inloggen en zien daa
 
 **Berichten**: nieuwe berichten verschijnen in Trimmy bij *Berichten* (met teller en een seintje); je krijgt ook een mailtje. Antwoord je, dan ziet de klant dat in het portaal en krijgt hij een mailtje. Wijzigt een klant zijn telefoon of adres, dan zie je dat als bericht en staat het direct op de klantkaart.
 
+Het berichtenoverzicht zet gesprekken met nieuwe berichten bovenaan onder **Nieuw** (vet, met een rood bolletje en het aantal). Filter met *Alle*, *Nieuw* of *Te beantwoorden* (de klant heeft als laatste iets gestuurd). Een gesprek telt pas als gelezen als je het zelf aanklikt; in het gesprek staat een streep *Nieuw* boven de nieuwe berichten. Met *Markeer als ongelezen* zet je een gesprek terug om het later af te handelen, met *Alles gelezen* wis je alle tellers in één keer.
+
 **Wat de klant wel en niet ziet**
 - Wel: naam, adres, telefoon, e-mail; per hond naam, ras, leeftijd, geslacht, gewicht, vacht, kleur, chip, foto; afspraken (datum, tijd, behandeling); historie (datum, behandeling, mesje/techniek, vachtconditie en de *notitie voor de klant*); facturen en betalingen.
 - Nooit: interne notities, gedrag en medische notities, notities bij afspraken, andere klanten, medewerkers, omzet of instellingen.

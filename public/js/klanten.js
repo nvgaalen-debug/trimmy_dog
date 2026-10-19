@@ -32,7 +32,7 @@ $("#klList").onclick=e=>{const b=e.target.closest("[data-k]");if(b){selKl=b.data
 $("#klDet").onclick=e=>{const b=e.target.closest("[data-act],[data-af],[data-ev]");if(!b)return;
  if(b.dataset.af)return afDlg(b.dataset.af);if(b.dataset.ev)return openEv(b.dataset.ev);
  const a=b.dataset.act,h=b.dataset.h;
- if(a==="kMsg")msgDlg({klantId:selKl},"vrij");else if(a==="kBer"){selBer=selKl;go("berichten")}else if(a==="kPortaal"){const h=D.honden.find(x=>x.klantId===selKl&&!x.inactief);msgDlg({klantId:selKl,hondId:h&&h.id},"portaal")}else if(a==="kEdit")klantDlg(selKl);else if(a==="kAf")afDlg(null,{klantId:selKl,datum:ymd(today()),start:"09:00"});
+ if(a==="kMsg")msgDlg({klantId:selKl},"vrij");else if(a==="kBer")berOpen(selKl);else if(a==="kPortaal"){const h=D.honden.find(x=>x.klantId===selKl&&!x.inactief);msgDlg({klantId:selKl,hondId:h&&h.id},"portaal")}else if(a==="kEdit")klantDlg(selKl);else if(a==="kAf")afDlg(null,{klantId:selKl,datum:ymd(today()),start:"09:00"});
  else if(a==="hNew")hondDlg(null,selKl);else if(a==="hEdit")hondDlg(h,selKl);
  else if(a==="hAf")afDlg(null,{klantId:selKl,hondId:h,datum:ymd(today()),start:"09:00"});
  else if(a==="hHis"){$("#hq").value=get("honden",h).naam;$("#hf").value="";go("historie")}};

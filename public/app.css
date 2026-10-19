@@ -262,9 +262,26 @@ table.beurt td{vertical-align:top}
 /* berichten uit het klantportaal */
 .chat{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow:auto;padding:10px 2px}
 .bub{max-width:80%;padding:9px 13px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;font-size:15px}
-.bub small{display:block;opacity:.7;font-size:12px;margin-top:3px}
+.bub small{display:block;opacity:.75;font-size:12px;margin-top:3px;color:inherit}
 .bub.me{align-self:flex-end;background:var(--acc);color:var(--acc-ink);border-bottom-right-radius:4px}
 .bub.them{align-self:flex-start;background:var(--sunk);border-bottom-left-radius:4px}
+.bub.nw{box-shadow:0 0 0 2px var(--warn)}
+.bday{align-self:center;font-size:12px;font-weight:600;color:var(--mute);margin:6px 0 0}
+.bnew{display:flex;align-items:center;gap:8px;color:var(--warn);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.bnew::before,.bnew::after{content:"";flex:1;height:1px;background:var(--warn)}
+.bnote{margin:10px 0 0}
+.berfil{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.berfil .seg button{padding:6px 10px;font-size:14px}.berfil .seg .nb{margin-left:4px}
+.bgrp{padding:8px 14px 4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);background:var(--sunk);border-bottom:1px solid var(--line)}
+.ki.ber{position:relative;padding-left:18px}
+.ki.ber .bt{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ki.ber .bt b{font-weight:500}.ki.ber .bw{font-size:12px;color:var(--mute);white-space:nowrap}
+.ki.ber .bp{color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ki.ber.isnew::before{content:"";position:absolute;left:6px;top:15px;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.ki.ber.isnew .bt b{font-weight:800}.ki.ber.isnew .bp{color:var(--ink);font-weight:600}.ki.ber.isnew .bw{color:var(--warn);font-weight:700}
+.btag{display:inline-block;margin-top:5px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.btag.new{background:var(--warn);color:#fff}
+.btag.open{border:1px solid var(--line);color:var(--mute)}
 /* dashboard */
 #v-dashboard{--s1:#8f4a8a;--s2:#cf7a22;--cmp:#8a918e}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) #v-dashboard{--s1:#b86fae;--s2:#c98500;--cmp:#7d8682}}
