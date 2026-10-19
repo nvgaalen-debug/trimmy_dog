@@ -1,0 +1,6 @@
+/* Lettertypen van je eigen site (geen verbinding met Google, dus geen IP-adressen naar derden).
+   Zet de bestanden uit Google Fonts in deze map (zie LEESMIJ, "Lettertypen"):
+     Figtree-VariableFont_wght.ttf  en  Gabarito-VariableFont_wght.ttf
+   Ontbreken ze, dan gebruikt Trimmy gewoon het systeemlettertype. */
+@font-face{font-family:"Figtree";font-style:normal;font-weight:300 900;font-display:swap;src:url("Figtree.woff2") format("woff2"),url("Figtree-VariableFont_wght.ttf") format("truetype")}
+@font-face{font-family:"Gabarito";font-style:normal;font-weight:400 900;font-display:swap;src:url("Gabarito.woff2") format("woff2"),url("Gabarito-VariableFont_wght.ttf") format("truetype")}

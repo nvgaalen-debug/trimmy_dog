@@ -11,7 +11,18 @@
 //   TRIMMY_CODE    dezelfde geheime code als voor de database
 import nodemailer from "nodemailer";
 
-const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
+// De app stuurt de code in de header X-Trimmy-Code (niet in het adres, zodat hij niet in logs of geschiedenis belandt).
+// ?code= in het adres werkt nog als terugval voor oudere versies van de app.
+import { timingSafeEqual, createHash } from "node:crypto";
+function codeOk(req, url) {
+  const want = process.env.TRIMMY_CODE; if (!want) return false;
+  const got = req.headers.get("x-trimmy-code") || url.searchParams.get("code") || "";
+  const h = x => createHash("sha256").update(String(x)).digest();
+  return timingSafeEqual(h(got), h(want));
+}
+
+
+const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Trimmy-Code", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: cors });
 const configured = () => !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.MAIL_FROM);
 
@@ -29,7 +40,7 @@ function getTransport() {
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const url = new URL(req.url);
-  if (!process.env.TRIMMY_CODE || url.searchParams.get("code") !== process.env.TRIMMY_CODE) return json(401, { error: "onjuiste of ontbrekende code in het adres" });
+  if (!codeOk(req, url)) return json(401, { error: "onjuiste of ontbrekende code in het adres" });
   if (req.method === "GET") return json(200, { configured: configured() });
   if (req.method !== "POST") return json(405, { error: "alleen GET en POST" });
   if (!configured()) return json(500, { error: "e-mail is nog niet ingesteld op Netlify (SMTP_HOST, SMTP_USER, SMTP_PASS en MAIL_FROM)" });

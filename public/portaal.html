@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Klantportaal</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="portaal.css">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <meta name="theme-color" content="#6a3560">
@@ -34,6 +34,7 @@
    <button class="btn link" type="button" id="terug">Ander e-mailadres of nieuwe code</button>
   </form>
   <p class="msg" id="lmsg" role="alert"></p>
+  <p class="mute" style="font-size:14px;margin:14px 0 0">Wil je weten wat we met je gegevens doen? Lees de <a href="#privacy">privacyverklaring</a>.</p>
  </section>
 
  <section id="uitStaat" class="card narrow" hidden><h1>Klantportaal</h1><p>Het klantportaal is op dit moment niet beschikbaar. Neem gerust contact op met de salon.</p></section>
@@ -71,7 +72,10 @@
    </form>
   </div>
  </section>
+ <!-- privacyverklaring (ook zonder inloggen te lezen) -->
+ <section id="privacy" class="card prv" hidden aria-labelledby="prvTitel"></section>
 </main>
+<footer class="wrap pfoot"><a href="#privacy">Privacyverklaring</a></footer>
 
 <dialog id="fdlg"><div class="dlg"><div id="factuur"></div><div class="acts noprint"><button class="btn" type="button" id="fClose">Sluiten</button><button class="btn p" type="button" id="fPrint">Printen of opslaan als pdf</button></div></div></dialog>
 <script src="portaal.js"></script>

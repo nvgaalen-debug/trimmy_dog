@@ -52,7 +52,7 @@ Gebruik **niet** de `avnadmin`-URI van Restpartijbeurs: met de eigen gebruiker k
 
 1. Open Trimmy op je eigen Netlify-adres. Daar werkt ook printen en pdf maken van kassabon en factuur.
 2. Ga naar **Instellingen > Bedrijfsgegevens** en geef elk apparaat een eigen **Kassa-ID** (K1, K2, …). Zo krijgen facturen nooit hetzelfde nummer.
-3. Ga naar **Instellingen > Koppelingen** en vul in: `https://jouw-trimmy.netlify.app/api/db?code=JOUW_TRIMMY_CODE`. Klik op **Verbinding testen**.
+3. Ga naar **Instellingen > Koppelingen** en vul in: `https://jouw-trimmy.netlify.app/api/db?code=JOUW_TRIMMY_CODE`. Klik op **Verbinding testen**. Trimmy bewaart dit adres alleen op het apparaat zelf. Bij elke opvraging haalt de app de code uit het adres en stuurt hem mee als header `X-Trimmy-Code`, zodat hij niet in serverlogs of de browsergeschiedenis terechtkomt. Het adres met `?code=` werkt nog als terugval, bijvoorbeeld voor de test in stap 4.
 4. Vink *Gegevens bewaren in de Aiven-database* aan. Het bolletje rechtsboven wordt groen zodra de eerste synchronisatie klaar is.
 
 Wis eerst de voorbeeldgegevens (knop bovenaan) voordat je de database aanzet, anders komen de verzonnen klanten ook in Aiven.
@@ -148,6 +148,8 @@ Logica in `public/js/`:
 | `export.js` | Export voor de accountant |
 | `klanten.js` | Klantenlijst en klantkaart |
 | `beurt.js` | Weer aan de beurt: welke honden weer moeten komen |
+| `thuis.js` | Startscherm: tegels per onderdeel met de belangrijkste cijfers, en de afspraken van vandaag |
+| `avg.js` | Gegevens van één klant exporteren en oude klantgegevens opruimen (AVG) |
 | `berichtenbox.js` | Berichten uit het klantportaal lezen en beantwoorden |
 | `dashboard.js` | KPI-dashboard met interactieve grafieken (Beheer) |
 | `rooster.js` | Werktijden per medewerker |
@@ -215,6 +217,10 @@ Bij *Klanten > Weer aan de beurt* staan de honden die volgens hun ritme weer moe
 - Plan je iemand in buiten zijn werktijden, dan waarschuwt het afspraakvenster ("Joris werkt niet op vrijdag").
 - Het dashboard rekent de beschikbare uren met deze werktijden, zodat de bezetting klopt.
 
+## Automatisch vergrendelen
+
+Bij *Instellingen > Medewerkers en toegang > Automatisch vergrendelen* kies je na hoeveel minuten zonder activiteit Trimmy vergrendelt (standaard: nooit). Tikken, klikken, typen, scrollen en de muis bewegen tellen als activiteit, ook in een ander venster van Trimmy op hetzelfde apparaat. Een minuut van tevoren verschijnt de melding *Trimmy vergrendelt over een minuut* met de knop *Ingelogd blijven*. Was de app een tijd weg (iPhone op slot, ander programma), dan vergrendelt hij bij terugkomst direct als de tijd verstreken is.
+
 ## Klantportaal
 
 Klanten kunnen op `https://jouw-trimmy.netlify.app/portaal` inloggen en zien daar **alleen hun eigen** gegevens: honden, komende afspraken, historie, facturen (bekijken, printen of als pdf opslaan) en openstaande bedragen. Ze kunnen hun telefoon en adres aanpassen en de salon een bericht sturen.
@@ -227,7 +233,7 @@ Klanten kunnen op `https://jouw-trimmy.netlify.app/portaal` inloggen en zien daa
 
 **Berichten**: nieuwe berichten verschijnen in Trimmy bij *Berichten* (met teller en een seintje); je krijgt ook een mailtje. Antwoord je, dan ziet de klant dat in het portaal en krijgt hij een mailtje. Wijzigt een klant zijn telefoon of adres, dan zie je dat als bericht en staat het direct op de klantkaart.
 
-Het berichtenoverzicht zet gesprekken met nieuwe berichten bovenaan onder **Nieuw** (vet, met een rood bolletje en het aantal). Filter met *Alle*, *Nieuw* of *Te beantwoorden* (de klant heeft als laatste iets gestuurd). Een gesprek telt pas als gelezen als je het zelf aanklikt; in het gesprek staat een streep *Nieuw* boven de nieuwe berichten. Met *Markeer als ongelezen* zet je een gesprek terug om het later af te handelen, met *Alles gelezen* wis je alle tellers in één keer.
+Het berichtenoverzicht zet gesprekken met nieuwe berichten bovenaan onder **Nieuw** (vet, met een rood bolletje en het aantal). Filter met *Alle*, *Nieuw* of *Te beantwoorden* (de klant heeft als laatste iets gestuurd). Een gesprek telt pas als gelezen als je het zelf aanklikt; in het gesprek staat een streep *Nieuw* boven de nieuwe berichten. Met *Markeer als ongelezen* zet je een gesprek terug om het later af te handelen, met *Alles gelezen* wis je alle tellers in één keer. Bij elk antwoord staat wie het stuurde: de ingelogde medewerker, of (zonder inloggen) wie je kiest bij *Beantwoord door*. De klant ziet in het portaal bijvoorbeeld *Joris, Trimsalon Joris*. Oudere antwoorden zonder naam tonen *Salon*.
 
 **Wat de klant wel en niet ziet**
 - Wel: naam, adres, telefoon, e-mail; per hond naam, ras, leeftijd, geslacht, gewicht, vacht, kleur, chip, foto; afspraken (datum, tijd, behandeling); historie (datum, behandeling, mesje/techniek, vachtconditie en de *notitie voor de klant*); facturen en betalingen.
@@ -240,6 +246,37 @@ Het berichtenoverzicht zet gesprekken met nieuwe berichten bovenaan onder **Nieu
 - Codes en sessies staan alleen versleuteld (gehasht) in de database. De sessie is een beveiligde cookie (HttpOnly, Secure, SameSite=Strict) die 60 dagen geldig blijft, tot de klant uitlogt.
 - De server filtert elke opvraging op het e-mailadres van de ingelogde klant. Horen meerdere klanten bij hetzelfde e-mailadres (bijvoorbeeld een gezin), dan kiest de klant bovenaan welke klant hij bekijkt; gegevens, honden, afspraken, facturen en berichten gaan dan alleen over die klant. Trimmy waarschuwt als je een e-mailadres invult dat al bij een andere klant staat. Een klant kan zijn e-mailadres niet zelf wijzigen; dat doe jij in Trimmy (daarmee vervalt ook de toegang via het oude adres).
 - Het portaal heeft geen toegang tot de koppelservice van de app; de `TRIMMY_CODE` staat nergens in het portaal.
+
+## Privacyverklaring
+
+Het klantportaal heeft een privacyverklaring op `/portaal#privacy`. Klanten zien de link bij het inloggen en onderaan elke pagina, ook zonder in te loggen. De tekst is in gewone taal geschreven en volgt de AVG: wie verantwoordelijk is, welke gegevens, waarvoor, hoe lang, wie ze ziet, beveiliging, cookies, rechten en klachten.
+
+Trimmy vult de naam, het adres, KvK, telefoon en e-mail van de salon zelf in. Per salon stel je bij *Instellingen > Berichten aan klanten > Privacyverklaring* in:
+- het e-mailadres voor privacyvragen (leeg = salonadres);
+- hoe lang klantgegevens na het laatste bezoek bewaard blijven (facturen altijd 7 jaar);
+- welke dienstverleners gegevens verwerken (standaard Netlify, Aiven en de e-mailprovider);
+- eventueel een aanvullende tekst, bijvoorbeeld over foto's op social media.
+
+De datum *bijgewerkt op* zet Trimmy zelf zodra je hier iets wijzigt. Let op: wat er staat moet ook kloppen. Sluit verwerkersovereenkomsten af met Netlify, Aiven en je e-mailprovider, en verwijder oude klanten echt na de ingestelde termijn.
+
+## AVG: inzage en opruimen
+
+**Inzageverzoek.** Vraagt een klant welke gegevens je van hem hebt, open dan de klant en kies *Gegevens exporteren*. Je krijgt één html-bestand met alles over de klant en zijn honden: gegevens, afspraken, behandelingen en notities, facturen en berichten. Het opent in elke browser, is te printen, en bevat onderaan dezelfde gegevens als JSON (om over te zetten naar een andere salon). Stuur het naar de klant, liefst via een beveiligde weg.
+
+**Opruimen.** Bij *Instellingen > Gegevens en apparaat > Privacy (AVG)* zie je hoeveel klanten langer dan de bewaartermijn niet zijn geweest. *Oude klantgegevens opruimen* toont de lijst:
+- klanten zonder facturen worden helemaal verwijderd, met honden, afspraken, behandelingen en berichten;
+- bij klanten met facturen blijven alleen naam en adres (die staan op de factuur, en facturen moeten 7 jaar blijven). Honden blijven alleen met naam en ras, alles daarnaast gaat weg. Zulke klanten staan niet meer in de klantenlijst, maar zijn nog te vinden met zoeken.
+
+"Laatste contact" is de jongste afspraak, behandeling, factuur of bericht. Doe dit bijvoorbeeld elk kwartaal.
+
+**Verwijderen is echt verwijderen.** Verwijder je iets in Trimmy, dan wist de database de inhoud (de JSON en de leesbare kolommen). Alleen een lege regel met het id en `deleted = true` blijft over, zodat andere apparaten het verwijderen overnemen. Records die al eerder waren verwijderd, worden bij de volgende start van de koppelservice ook leeggemaakt. Facturen worden nooit verwijderd.
+
+## Lettertypen
+
+Trimmy en het portaal laden geen lettertypen meer van Google (dat stuurt het IP-adres van elke bezoeker naar Google). Zet de lettertypen zelf in `public/fonts/`:
+1. Download *Figtree* en *Gabarito* op fonts.google.com (knop *Get font*, dan *Download all*).
+2. Pak de zips uit en kopieer `Figtree-VariableFont_wght.ttf` en `Gabarito-VariableFont_wght.ttf` naar `public/fonts/`.
+Zonder deze bestanden werkt alles gewoon, met het systeemlettertype.
 
 ## Automatische herinneringen
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Trimmy</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="app.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#6a3560">
@@ -25,6 +25,7 @@
 <div class="wrap"><div class="banner" id="demo" hidden><span>Je bekijkt <b>voorbeeldgegevens</b>: verzonnen klanten, honden en afspraken om de app te leren kennen.</span><span class="sp"></span><button class="btn s" id="demoWipe" type="button">Voorbeeldgegevens wissen en leeg beginnen</button></div></div>
 
 <main class="wrap">
+ <section class="view" id="v-start" hidden><div id="startBody"></div></section>
  <section class="view" id="v-agenda">
   <div class="bar">
    <button class="btn" id="agPrev" type="button" aria-label="Vorige">‹</button>
@@ -179,6 +180,13 @@
      <label class="chk"><input type="checkbox" id="bPortaal"> Klantportaal aanzetten</label>
      <div class="note" id="portaalStat"></div>
      <small>Klanten loggen in met hun e-mailadres en een code die ze per mail krijgen. Ze zien alleen hun eigen gegevens, honden, komende afspraken, historie (met de notitie voor de klant) en facturen, en kunnen jou een bericht sturen. Nodig: database aan, direct e-mail versturen aan, en de site op Netlify openbaar (niet Private).</small>
+     <h3>Privacyverklaring</h3>
+     <p class="mute" style="margin:0 0 8px">Het portaal toont klanten een privacyverklaring (link onderaan elke pagina en bij het inloggen). Trimmy vult je salongegevens zelf in; hieronder vul je aan wat per salon verschilt.</p>
+     <div class="g2"><label>E-mailadres voor privacyvragen<input id="bPrivMail" type="email" placeholder="Leeg = het e-mailadres van de salon"></label>
+     <label>Klantgegevens bewaren tot<select id="bPrivJaren"><option value="1">1 jaar na het laatste bezoek</option><option value="2">2 jaar na het laatste bezoek</option><option value="3">3 jaar na het laatste bezoek</option><option value="5">5 jaar na het laatste bezoek</option><option value="7">7 jaar na het laatste bezoek</option></select></label></div>
+     <label>Dienstverleners die gegevens voor je verwerken<textarea id="bPrivDienst" rows="2" maxlength="2000" placeholder="Leeg = Netlify (hosting van de app en het portaal), Aiven (database) en onze e-mailprovider (versturen van e-mails)"></textarea></label>
+     <label>Aanvullende tekst (optioneel)<textarea id="bPrivExtra" rows="3" maxlength="4000" placeholder="Bijvoorbeeld over foto's op social media: we plaatsen alleen foto's van je hond als je daar toestemming voor geeft."></textarea></label>
+     <div class="acts l"><a class="btn" id="privLink" href="/portaal#privacy" target="_blank" rel="noopener">Privacyverklaring bekijken</a><span class="mute" id="privDatum"></span></div>
      <h3>E-mail versturen</h3>
      <label class="chk"><input type="checkbox" id="bMailDirect"> E-mail direct vanuit Trimmy versturen (via de koppelservice op Netlify)</label>
      <div class="note" id="mailStat">Staat dit uit, dan kopieer je de opgemaakte e-mail en plak je hem in Outlook of Gmail.</div>
@@ -216,6 +224,10 @@
      <label>Back-up (JSON). Plak hier een eerdere back-up om die te herstellen.<textarea id="bkTxt" rows="5" spellcheck="false"></textarea></label>
      <div class="acts l"><button class="btn d" id="bkRestore" type="button">Herstellen uit tekst hierboven</button><span id="bkMsg" role="status" class="mute"></span></div>
      <small>Herstellen vervangt alle gegevens op dit apparaat. Staat de database aan, dan gaat de herstelde stand daarna ook naar Aiven. Een back-up bevat klantgegevens: bewaar hem veilig.</small>
+     <h3>Privacy (AVG)</h3>
+     <div class="note" id="avgStat"></div>
+     <div class="acts l"><button class="btn" id="avgGo" type="button">Oude klantgegevens opruimen</button></div>
+     <small>De bewaartermijn stel je in bij Berichten aan klanten, Privacyverklaring. Vraagt een klant welke gegevens je van hem hebt? Open de klant en kies <em>Gegevens exporteren</em>.</small>
      <h3>Alles wissen</h3>
      <p style="margin:0">Wist klanten, honden, afspraken, facturen, artikelen en historie op dit apparaat. In de Aiven-database blijven facturen altijd bewaard.</p>
      <div class="acts l"><button class="btn d" id="wipeAll" type="button">Alles wissen</button></div>
@@ -246,6 +258,8 @@
 <script src="js/dashboard.js"></script>
 <script src="js/artikelen.js"></script>
 <script src="js/historie.js"></script>
+<script src="js/avg.js"></script>
+<script src="js/thuis.js"></script>
 <script src="js/instellingen.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/herinneringen.js"></script>

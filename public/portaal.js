@@ -109,7 +109,7 @@ $("#fPrint").onclick = () => window.print();
 
 function tBerichten() {
   const b = data.berichten;
-  $("#chat").innerHTML = b.length ? b.map(m => `<div class="bub ${m.van}">${esc(m.tekst)}<small>${m.van === "salon" ? esc(data.salon.naam || "Salon") + " · " : ""}${esc(fTijd(m.ts))}</small></div>`).join("") : `<p class="empty">Nog geen berichten. Stel hieronder je vraag aan de salon.</p>`;
+  $("#chat").innerHTML = b.length ? b.map(m => `<div class="bub ${m.van}">${esc(m.tekst)}<small>${m.van === "salon" ? esc((m.door ? m.door + ", " : "") + (data.salon.naam || "Salon")) + " · " : ""}${esc(fTijd(m.ts))}</small></div>`).join("") : `<p class="empty">Nog geen berichten. Stel hieronder je vraag aan de salon.</p>`;
   $("#chat").scrollTop = $("#chat").scrollHeight;
   const max = Math.max(0, ...b.filter(m => m.van === "salon").map(m => +m.ts || 0));
   if (max > lastSeen) { lastSeen = max; try { localStorage.setItem("tp_gezien", String(max)); } catch (e) {} }
@@ -135,4 +135,82 @@ $("#fg").onsubmit = async e => {
 
 $("#wieSel").onchange = e => { selK = e.target.value; tab = "overzicht"; laad(); };
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && data) laad(true); });
-laad();
+/* ---------- privacyverklaring ---------- */
+let salonPub = null, sesDagen = 60;
+async function laadSalon() { try { const j = await api("salon"); salonPub = j.salon; sesDagen = j.sessieDagen || 60; if (!data) salonKop(salonPub); } catch (e) {} }
+function privacyHtml(s) {
+  const p = s.privacy || {}, S = esc(s.naam || "de trimsalon"), mail = esc(p.mail || s.mail || ""), jaren = +p.jaren || 2;
+  const adres = [s.straat, [s.pc, s.plaats].filter(Boolean).join(" ")].filter(Boolean).map(esc).join(", ");
+  const diensten = p.diensten ? esc(p.diensten) : "Netlify (hosting van de app en dit portaal), Aiven (database) en onze e-mailprovider (versturen van e-mails)";
+  const contact = [mail ? `<a href="mailto:${mail}">${mail}</a>` : "", s.tel ? "telefoon " + esc(s.tel) : ""].filter(Boolean).join(" of ");
+  const datum = p.datum ? new Date(p.datum + "T12:00:00").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
+  const alinea = t => esc(t).split(/\n{2,}/).map(x => `<p>${x.replace(/\n/g, "<br>")}</p>`).join("");
+  return `<button type="button" class="btn link prvTerug" data-terug>← Terug</button>
+  <h1 id="prvTitel">Privacyverklaring</h1>
+  <p class="mute">${S}${datum ? " · bijgewerkt op " + datum : ""}</p>
+  <p>In deze verklaring lees je welke gegevens ${S} van jou en je hond bewaart, waarvoor, hoe lang, en welke rechten je hebt.</p>
+  <h2>Wie is verantwoordelijk</h2>
+  <p>${S}${adres ? ", " + adres : ""}${s.kvk ? ", KvK " + esc(s.kvk) : ""}.${contact ? ` Vragen over je gegevens? Neem contact op via ${contact}, of stuur een bericht in dit portaal.` : " Vragen over je gegevens? Stuur een bericht in dit portaal."}</p>
+  <h2>Welke gegevens we bewaren</h2>
+  <ul>
+   <li><b>Contactgegevens:</b> naam, adres, telefoonnummer en e-mailadres.</li>
+   <li><b>Over je hond:</b> naam, ras, geboortedatum, chipnummer, vacht, gedrag en gezondheidsbijzonderheden die belangrijk zijn voor de behandeling, en eventueel een foto.</li>
+   <li><b>Afspraken en behandelingen:</b> wanneer je hond is geweest, wat er is gedaan en aantekeningen voor de volgende keer.</li>
+   <li><b>Facturen en betalingen.</b></li>
+   <li><b>Wat je via dit portaal doet:</b> berichten die je stuurt en wijzigingen in je gegevens.</li>
+   <li><b>Bij het inloggen:</b> je e-mailadres, het tijdstip en je IP-adres, om misbruik te voorkomen.</li>
+  </ul>
+  <h2>Waarvoor we ze gebruiken</h2>
+  <ul>
+   <li>Afspraken maken en je hond goed verzorgen. Dit is nodig voor de afspraak die we met je hebben.</li>
+   <li>Facturen maken en onze administratie bijhouden. Dit verplicht de wet.</li>
+   <li>Je herinneren aan een afspraak${p.herinneringen ? " (per e-mail)" : ""} en laten weten wanneer je hond weer aan de beurt is. Dit doen we omdat het jou en ons helpt; wil je dit niet, laat het ons weten, dan stoppen we ermee.</li>
+   <li>Dit portaal veilig houden.</li>
+  </ul>
+  <p>We gebruiken je gegevens niet voor iets anders. We verkopen ze niet en sturen je geen reclame van anderen.</p>
+  <h2>Hoe lang we ze bewaren</h2>
+  <ul>
+   <li><b>Facturen en betalingen:</b> 7 jaar, zoals de wet voorschrijft.</li>
+   <li><b>Gegevens van jou en je hond, afspraken en berichten:</b> tot ${jaren} jaar na je laatste bezoek. Daarna verwijderen we ze.</li>
+   <li><b>Inloggen:</b> een inlogcode is 10 minuten geldig en wordt binnen een dag verwijderd. Je blijft maximaal ${sesDagen} dagen ingelogd, of tot je uitlogt.</li>
+  </ul>
+  <h2>Wie je gegevens kan zien</h2>
+  <p>Alleen medewerkers van ${S}, en alleen als dat nodig is voor hun werk. Voor de techniek werken we met dienstverleners die je gegevens in onze opdracht verwerken: ${diensten}. Met hen hebben we afspraken gemaakt over beveiliging en geheimhouding. Aan anderen geven we je gegevens alleen als de wet dat verplicht.</p>
+  <h2>Hoe we je gegevens beveiligen</h2>
+  <ul>
+   <li>De verbinding is altijd versleuteld (https).</li>
+   <li>Je logt in met een code die je per e-mail krijgt; er is geen wachtwoord dat kan uitlekken.</li>
+   <li>Je ziet in dit portaal alleen je eigen gegevens.</li>
+   <li>Medewerkers loggen in met een eigen code.</li>
+  </ul>
+  <h2>Cookies</h2>
+  <p>Dit portaal gebruikt één cookie, om je ingelogd te houden. Je browser onthoudt verder welke berichten je al hebt gezien en, als er meerdere klanten bij je e-mailadres horen, welke je bekijkt. We gebruiken geen cookies voor statistieken of advertenties en volgen je niet op andere websites.</p>
+  <h2>Je rechten</h2>
+  <p>Je mag:</p>
+  <ul>
+   <li>je gegevens inzien;</li>
+   <li>onjuiste gegevens laten verbeteren (telefoon en adres pas je zelf aan bij <i>Mijn gegevens</i>);</li>
+   <li>je gegevens laten verwijderen, behalve wat we volgens de wet moeten bewaren;</li>
+   <li>bezwaar maken tegen herinneringen en andere berichten;</li>
+   <li>je gegevens ontvangen in een bestand, bijvoorbeeld om aan een andere salon te geven.</li>
+  </ul>
+  <p>Stuur hiervoor een bericht in dit portaal${mail ? ` of mail naar <a href="mailto:${mail}">${mail}</a>` : ""}. We reageren binnen een maand.</p>
+  <h2>Een klacht</h2>
+  <p>Ben je niet tevreden over hoe we met je gegevens omgaan? Laat het ons eerst weten, dan zoeken we samen een oplossing. Je kunt ook een klacht indienen bij de Autoriteit Persoonsgegevens: <a href="https://www.autoriteitpersoonsgegevens.nl" target="_blank" rel="noopener">autoriteitpersoonsgegevens.nl</a>.</p>
+  ${p.extra ? `<h2>Verder</h2>${alinea(p.extra)}` : ""}
+  <h2>Wijzigingen</h2>
+  <p>Passen we deze verklaring aan, dan zie je bovenaan de nieuwe datum.</p>
+  <button type="button" class="btn" data-terug>Terug</button>`;
+}
+async function route() {
+  const pv = location.hash === "#privacy"; document.body.classList.toggle("pv", pv); $("#privacy").hidden = !pv;
+  if (!pv) return;
+  if (!(data && data.salon && data.salon.privacy) && !salonPub) await laadSalon();
+  const s = (data && data.salon && data.salon.privacy) ? data.salon : salonPub;
+  $("#privacy").innerHTML = s ? privacyHtml(s) : `<h1>Privacyverklaring</h1><p>De privacyverklaring kan nu niet worden geladen. Probeer het later opnieuw of neem contact op met de salon.</p><button type="button" class="btn" data-terug>Terug</button>`;
+  scrollTo(0, 0);
+}
+let pvIntern = false; // via een link in het portaal geopend (dan is "terug" de vorige stap)
+$("#privacy").addEventListener("click", e => { if (e.target.closest("[data-terug]")) { if (pvIntern) history.back(); else { history.replaceState("", "", location.pathname); route(); } } });
+addEventListener("hashchange", () => { pvIntern = location.hash === "#privacy"; route(); });
+laadSalon(); laad(); route();

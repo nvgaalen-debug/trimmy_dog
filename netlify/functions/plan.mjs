@@ -3,7 +3,18 @@
 // POST /api/plan?code=…   -> { upsert: [{ id, sendAt, afspraakAt, to, subject, html, text, logo }], remove: [id, …] }
 import { getStore } from "@netlify/blobs";
 
-const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
+// De app stuurt de code in de header X-Trimmy-Code (niet in het adres, zodat hij niet in logs of geschiedenis belandt).
+// ?code= in het adres werkt nog als terugval voor oudere versies van de app.
+import { timingSafeEqual, createHash } from "node:crypto";
+function codeOk(req, url) {
+  const want = process.env.TRIMMY_CODE; if (!want) return false;
+  const got = req.headers.get("x-trimmy-code") || url.searchParams.get("code") || "";
+  const h = x => createHash("sha256").update(String(x)).digest();
+  return timingSafeEqual(h(got), h(want));
+}
+
+
+const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Trimmy-Code", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: cors });
 const EMAIL = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 const ID = /^[A-Za-z0-9_-]{1,60}$/;
@@ -11,7 +22,7 @@ const ID = /^[A-Za-z0-9_-]{1,60}$/;
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const url = new URL(req.url);
-  if (!process.env.TRIMMY_CODE || url.searchParams.get("code") !== process.env.TRIMMY_CODE) return json(401, { error: "onjuiste of ontbrekende code in het adres" });
+  if (!codeOk(req, url)) return json(401, { error: "onjuiste of ontbrekende code in het adres" });
   const store = getStore("trimmy-herinneringen");
 
   if (req.method === "GET") {

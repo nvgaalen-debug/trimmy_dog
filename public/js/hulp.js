@@ -24,3 +24,7 @@ const S={get(k,d){try{const v=JSON.parse(localStorage.getItem("tr_"+k));return v
 const STANDALONE=(()=>{try{return window.self===window.top}catch(e){return false}})();
 function arm(btn,fn,txt="Klik nogmaals om te bevestigen"){if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.orig;fn();return}btn.dataset.orig=btn.textContent;btn.dataset.armed=1;btn.textContent=txt;setTimeout(()=>{if(btn.dataset.armed){delete btn.dataset.armed;btn.textContent=btn.dataset.orig}},4000)}
 function modal(html,cls=""){const d=document.createElement("dialog");if(cls)d.className=cls;d.innerHTML=`<div class="dlg">${html}</div>`;document.body.append(d);d.q=s=>d.querySelector(s);d.addEventListener("close",()=>d.remove());d.showModal();return d}
+
+/* code uit het adres halen en als header meesturen, zodat hij niet in logs of browsergeschiedenis belandt */
+function apiFetch(u,opt={}){let url=u,code="";try{const x=new URL(u,location.href);code=x.searchParams.get("code")||"";x.searchParams.delete("code");url=x.toString()}catch(e){}
+ return fetch(url,{...opt,headers:{...(opt.headers||{}),...(code?{"X-Trimmy-Code":code}:{})}})}

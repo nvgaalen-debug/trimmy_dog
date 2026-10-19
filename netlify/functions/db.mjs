@@ -11,6 +11,17 @@
 // De tabellen worden bij de eerste verbinding automatisch aangemaakt in het schema.
 import pg from "pg";
 
+// De app stuurt de code in de header X-Trimmy-Code (niet in het adres, zodat hij niet in logs of geschiedenis belandt).
+// ?code= in het adres werkt nog als terugval voor oudere versies van de app.
+import { timingSafeEqual, createHash } from "node:crypto";
+function codeOk(req, url) {
+  const want = process.env.TRIMMY_CODE; if (!want) return false;
+  const got = req.headers.get("x-trimmy-code") || url.searchParams.get("code") || "";
+  const h = x => createHash("sha256").update(String(x)).digest();
+  return timingSafeEqual(h(got), h(want));
+}
+
+
 const SCHEMA = /^[a-z_][a-z0-9_]{0,40}$/.test(process.env.DB_SCHEMA || "") ? process.env.DB_SCHEMA : "trimmy";
 const Q = n => `"${SCHEMA}"."${n}"`;
 const SEQ = `"${SCHEMA}"."sync_versie"`;
@@ -76,6 +87,12 @@ const TABLES = {
 const NO_DELETE = new Set(["facturen"]);   // facturen worden nooit verwijderd (bewaarplicht)
 const PAGE = 500;
 
+// ---------- verwijderen = echt leegmaken (AVG) ----------
+// Een verwijderd record blijft als lege huls bestaan (id + deleted), zodat andere apparaten het verwijderen overnemen.
+// De inhoud (JSON en leesbare kolommen) wordt gewist.
+const sqlLit = v => v == null ? "NULL" : typeof v === "number" ? String(v) : typeof v === "boolean" ? String(v) : "'" + String(v).replace(/'/g, "''") + "'";
+function leegSet(table) { let leeg = {}; try { leeg = TABLES[table].map({}) || {}; } catch (e) { leeg = {}; } return Object.entries(leeg).map(([k, v]) => `"${k}" = ${sqlLit(v)}`); }
+
 // ---------- schema ----------
 export function schemaSql() {
   const out = [`CREATE SEQUENCE IF NOT EXISTS ${SEQ}`];
@@ -97,6 +114,8 @@ export function schemaSql() {
   out.push(`CREATE OR REPLACE VIEW ${Q("v_omzet_per_dag")} AS SELECT (b.tijdstip AT TIME ZONE 'Europe/Amsterdam')::date AS dag, b.methode, SUM(b.bedrag) AS ontvangen, COUNT(*) AS aantal FROM ${Q("betalingen")} b JOIN ${Q("facturen")} f ON f.id = b.factuur_id AND NOT f.deleted GROUP BY 1, 2`);
   out.push(`CREATE OR REPLACE VIEW ${Q("v_hond_historie")} AS SELECT h.naam AS hond, h.ras, k.naam AS klant, bh.datum, bh.behandelingen, bh.mesje_techniek, bh.vachtconditie, bh.gedrag, bh.medewerker, bh.notitie FROM ${Q("behandelingen")} bh JOIN ${Q("honden")} h ON h.id = bh.hond_id LEFT JOIN ${Q("klanten")} k ON k.id = h.klant_id WHERE NOT bh.deleted`);
   out.push(`CREATE OR REPLACE VIEW ${Q("v_openstaande_facturen")} AS SELECT f.nummer, f.datum, f.vervaldatum, k.naam AS klant, k.email, f.totaal, f.openstaand FROM ${Q("facturen")} f LEFT JOIN ${Q("klanten")} k ON k.id = f.klant_id WHERE NOT f.deleted AND f.openstaand > 0`);
+  // eerder verwijderde records alsnog leegmaken
+  for (const t of Object.keys(TABLES)) if (!NO_DELETE.has(t)) out.push(`UPDATE ${Q(t)} SET ${[...leegSet(t), "data = jsonb_build_object('id', id)"].join(", ")} WHERE deleted AND data <> jsonb_build_object('id', id)`);
   return out;
 }
 
@@ -158,7 +177,7 @@ export async function upsertRow(c, table, id, data, kassa) {
 }
 export { SCHEMA, Q, SEQ, TABLES };
 
-const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
+const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Trimmy-Code", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: cors });
 
 export function foutmelding(e, table) {
@@ -176,7 +195,7 @@ export function foutmelding(e, table) {
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const url = new URL(req.url);
-  if (!process.env.TRIMMY_CODE || url.searchParams.get("code") !== process.env.TRIMMY_CODE) return json(401, { error: "onjuiste of ontbrekende code in het adres" });
+  if (!codeOk(req, url)) return json(401, { error: "onjuiste of ontbrekende code in het adres" });
   const table = url.pathname.split("/").filter(Boolean).pop();
 
   let db;
@@ -225,7 +244,7 @@ export default async (req) => {
         if (!id) continue;
         if (rec.deleted) {
           if (NO_DELETE.has(table)) continue;
-          await c.query(`UPDATE ${Q(table)} SET deleted = true, versie = nextval('${SEQ}'), kassa = $2, bijgewerkt = now() WHERE id = $1`, [id, kassa]);
+          await c.query(`UPDATE ${Q(table)} SET ${[...leegSet(table), "data = jsonb_build_object('id', id)"].join(", ")}, deleted = true, versie = nextval('${SEQ}'), kassa = $2, bijgewerkt = now() WHERE id = $1`, [id, kassa]);
           continue;
         }
         await upsertRow(c, table, id, rec.data && typeof rec.data === "object" ? rec.data : {}, kassa);

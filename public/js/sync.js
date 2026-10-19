@@ -10,7 +10,7 @@ const hsh=s=>{let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0,c;i<s.length;i++){c=s.
 function dbLocal(c){const m=new Map();if(c==="bedrijf"){const{kassa,...b}=bed;m.set("bedrijf",b)}else D[c].forEach(x=>m.set(String(x.id),x));return m}
 function dbApply(c,id,data,del){if(c==="bedrijf"){if(!del){const{kassa,...rest}=data||{};bed={...BED0,...rest,kassa:S.get("kassa",bed.kassa||"K1")}}return}const a=D[c],i=a.findIndex(x=>String(x.id)===id);if(del){if(i>=0)a.splice(i,1)}else if(i<0)a.push(data);else a[i]=data}
 function dbUrl(c){let u;try{u=new URL(S.get("dburl",""))}catch(e){throw new Error("het adres van de koppelservice is geen geldig webadres")}u.pathname=u.pathname.replace(/\/+$/,"")+"/"+c;return u.toString()}
-async function dbCall(c,body,since,extra=""){const u=dbUrl(c);const r=body?await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}):await fetch(u+(u.includes("?")?"&":"?")+"since="+since+extra,{cache:"no-store"});
+async function dbCall(c,body,since,extra=""){const u=dbUrl(c);const r=body?await apiFetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}):await apiFetch(u+(u.includes("?")?"&":"?")+"since="+since+extra,{cache:"no-store"});
  const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||"status "+r.status);e.status=r.status;throw e}return j}
 function dbSoon(){if(!dbOn())return;clearTimeout(dbSoon.t);dbSoon.t=setTimeout(dbSync,2000)}
 /* één binnengekomen record verwerken; lokale wijzigingen die nog niet verstuurd zijn gaan voor */
@@ -88,7 +88,7 @@ $("#dbNow").onclick=()=>{S.set("dburl",$("#dbUrl").value.trim());if(!dbOn()){dbU
 /* verversen: elke 30 s met de agenda (of een venster) open, anders elke 2 min, na 10 min niets doen elke 5 min */
 let dbUse=Date.now();["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,()=>{dbUse=Date.now()},true));
 setInterval(()=>{if(!dbOn()||dbBusy||document.visibilityState!=="visible")return;const idle=Date.now()-dbUse>6e5;
- const iv=idle?3e5:(tab==="agenda"||document.querySelector("dialog[open]"))?3e4:12e4;if(Date.now()-dbLast>=iv)dbSync()},5000);
+ const iv=idle?3e5:(tab==="agenda"||tab==="start"||document.querySelector("dialog[open]"))?3e4:12e4;if(Date.now()-dbLast>=iv)dbSync()},5000);
 const dbWake=()=>{if(dbOn()&&document.visibilityState==="visible"&&Date.now()-dbLast>1e4)dbSync()};
 document.addEventListener("visibilitychange",dbWake);window.addEventListener("focus",dbWake);
 window.addEventListener("online",()=>{if(dbOn())setTimeout(dbSync,1500)});

@@ -7,6 +7,7 @@
 //   POST bericht  { tekst }          -> bericht aan de salon
 //   POST gegevens { tel, straat, pc, plaats }
 //   POST uit                         -> uitloggen
+//   GET  salon                       -> openbare salongegevens voor de kop en de privacyverklaring
 // Beveiliging:
 //   - codes en sessies staan alleen gehasht in de database; code 10 minuten geldig, max. 5 pogingen
 //   - max. 3 codes per e-mailadres per 15 minuten en 10 per IP-adres per uur
@@ -57,6 +58,16 @@ async function sessie(db, req) {
   await db.query(`UPDATE ${Q("portaal_sessies")} SET laatst = now() WHERE token_hash = $1`, [sha(SECRET, "sessie", tok)]);
   return { email: r.rows[0].email, tok };
 }
+/* gegevens die toch al op elke factuur staan, plus de instellingen voor de privacyverklaring */
+function publiekSalon(s) {
+  const t = (v, n) => String(v || "").slice(0, n);
+  return {
+    naam: t(s.naam, 120), straat: t(s.straat, 200), pc: t(s.pc, 12), plaats: t(s.plaats, 120), tel: t(s.tel, 40), mail: t(s.mail, 200), kvk: t(s.kvk, 20), kleur: t(s.kleur, 7),
+    logo: typeof s.logo === "string" && s.logo.length < 400000 ? s.logo : "",
+    privacy: { mail: t(s.privacyMail, 200), jaren: Math.min(20, Math.max(1, +s.privacyJaren || 2)), diensten: t(s.privacyDiensten, 2000), extra: t(s.privacyExtra, 4000), datum: t(s.privacyDatum, 10), herinneringen: !!s.autoHer },
+  };
+}
+
 async function klantenVan(db, email) {
   const r = await db.query(`SELECT id, data FROM ${Q("klanten")} WHERE NOT deleted AND lower(trim(email)) = $1 ORDER BY lower(data->>'naam'), id`, [email]);
   return r.rows;
@@ -76,6 +87,9 @@ export default async (req) => {
     const salon = await salonVan(db);
     if (!salon.portaal) return json(403, { error: "Het klantportaal staat uit.", uit: true });
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+
+    /* ---------- openbaar: salongegevens voor de kop en de privacyverklaring (geen klantgegevens) ---------- */
+    if (actie === "salon" && req.method === "GET") return json(200, { salon: publiekSalon(salon), sessieDagen: SESSIE_DAGEN });
 
     /* ---------- code aanvragen ---------- */
     if (actie === "code" && req.method === "POST") {
@@ -147,7 +161,7 @@ export default async (req) => {
       const k0 = kSel.data || {};
       // alleen velden die voor de klant bedoeld zijn
       return json(200, {
-        salon: { naam: salon.naam || "", straat: salon.straat || "", pc: salon.pc || "", plaats: salon.plaats || "", tel: salon.tel || "", mail: salon.mail || "", kvk: salon.kvk || "", btwnr: salon.btwnr || "", iban: salon.iban || "", voet: salon.voet || "", kleur: salon.kleur || "", logo: typeof salon.logo === "string" && salon.logo.length < 400000 ? salon.logo : "" },
+        salon: { ...publiekSalon(salon), btwnr: salon.btwnr || "", iban: salon.iban || "", voet: salon.voet || "" },
         klanten: kl.map(k => ({ id: k.id, naam: (k.data && k.data.naam) || "Klant" })), kSel: sel,
         klant: { naam: k0.naam || "", straat: k0.straat || "", pc: k0.pc || "", plaats: k0.plaats || "", tel: k0.tel || "", email: ses.email },
         honden: honden.filter(h => !h.inactief).map(h => ({ id: h.id, naam: h.naam || "", ras: h.ras || "", geb: h.geb || "", geslacht: h.geslacht || "", gewicht: h.gewicht ?? "", vacht: h.vacht || "", kleur: h.kleur || "", chip: h.chip || "", foto: typeof h.foto === "string" && h.foto.length < 200000 ? h.foto : "" })),
@@ -157,7 +171,7 @@ export default async (req) => {
           .map(b => ({ datum: b.datum, hond: hondNaam[b.hondId] || "", behandelingen: b.diensten || "", mesje: b.mesje || "", vacht: b.vacht || "", notitie: b.klantNotitie || "" })),
         facturen: fac.sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(f => ({ id: f.id, nr: f.nr, ts: f.ts, vervalt: f.vervalt || "", hond: hondNaam[f.hondId] || "", korting: +f.korting || 0, sub: +f.sub || 0, totaal: +f.totaal || 0, betaald: +f.betaald || 0, rest: +f.rest || 0,
           regels: (f.regels || []).map(r => ({ naam: r.naam || "", aantal: +r.aantal || 0, prijs: +r.prijs || 0, btw: +r.btw || 0, totaal: +r.totaal || 0 })), betalingen: (f.betalingen || []).map(p => ({ ts: p.ts, methode: p.methode || "", bedrag: +p.bedrag || 0 })) })),
-        berichten: ber.sort((a, b) => (a.ts || 0) - (b.ts || 0)).slice(-200).map(b => ({ id: b.id, van: b.van === "salon" ? "salon" : "klant", tekst: b.tekst || "", ts: b.ts })),
+        berichten: ber.sort((a, b) => (a.ts || 0) - (b.ts || 0)).slice(-200).map(b => ({ id: b.id, van: b.van === "salon" ? "salon" : "klant", tekst: b.tekst || "", ts: b.ts, ...(b.van === "salon" && b.door ? { door: String(b.door).slice(0, 40) } : {}) })),
       });
     }
 

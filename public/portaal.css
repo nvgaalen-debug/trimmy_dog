@@ -66,3 +66,13 @@ dialog::backdrop{background:rgb(0 0 0/.45)}
 .wie{padding:12px 16px}.wie label{margin:0}.wie select{display:block;width:100%;margin-top:6px;font:600 16px var(--f-b);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 @media(max-width:560px){h1{font-size:23px}.g2{grid-template-columns:1fr}.hide-s{display:none}}
 @media print{body{background:#fff;color:#000}header,main,.noprint{display:none!important}dialog{position:static;display:block;width:100%;max-width:none;box-shadow:none}dialog::backdrop{display:none}}
+
+/* privacyverklaring */
+body.pv main>*:not(#privacy){display:none!important}
+.prv{max-width:720px;line-height:1.6}
+.prv h1{margin:4px 0 2px}.prv h2{margin:22px 0 6px;font-size:18px}
+.prv ul{padding-left:20px;margin:0 0 10px}.prv li{margin:4px 0}
+.prv a{color:var(--acc)}
+.prvTerug{padding-top:0}
+.pfoot{padding:0 16px 32px;font-size:14px}.pfoot a{color:var(--mute)}
+body.pv .pfoot{display:none}
