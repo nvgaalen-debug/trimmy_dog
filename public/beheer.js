@@ -81,6 +81,6 @@ function supportDlg(s) {
   $("#sx").onclick = () => dlg.close();
   if ($("#sStop")) $("#sStop").onclick = async () => { try { await api("support-stop", { id: s.id }); dlg.close(); laad(); } catch (x) { $("#sm").textContent = x.message; } };
   $("#sf").onsubmit = async e => { e.preventDefault(); $("#sm").textContent = "";
-    try { await api("support", { id: s.id, soort: $("#sS").value, reden: $("#sR").value }); dlg.close(); window.open("/", "_blank"); laad(); }
+    try { await api("support", { id: s.id, soort: $("#sS").value, reden: $("#sR").value }); dlg.close(); try { localStorage.setItem("tr_nieuwLogin", "1"); } catch (x) {} window.open("/", "_blank"); laad(); }
     catch (x) { $("#sm").textContent = x.message; } };
 }

@@ -213,8 +213,8 @@ export default async (req) => {
       if (naar && smtpOk()) {
         const naam = (kSel.data && kSel.data.naam) || ses.email;
         mailer().sendMail({ from: afzender(salon.naam).from, to: naar, replyTo: ses.email, subject: `Nieuw bericht van ${naam} via het klantportaal`,
-          text: `${naam} (${ses.email}) schreef via het klantportaal:\n\n${tekst}\n\nBeantwoord het bericht in Trimmy bij Berichten.`,
-          html: mailHtml(salon, "Nieuw bericht via het klantportaal", `<p><b>${esc(naam)}</b> (${esc(ses.email)}) schreef:</p><blockquote style="margin:0 0 14px;padding:10px 14px;background:#f4f1f4;border-left:4px solid #6a3560;white-space:pre-wrap">${esc(tekst)}</blockquote><p style="color:#6b706d;font-size:13px">Beantwoord het bericht in Trimmy bij Berichten; de klant ziet je antwoord in het portaal en krijgt een mailtje.</p>`) }).catch(e => console.error("portaal mail salon", e));
+          text: `${naam} (${ses.email}) schreef via het klantportaal:\n\n${tekst}\n\nBeantwoord het bericht in ${process.env.PLATFORM_NAAM || (salon.sjabloon === "nagelstudio" ? "Nailly" : "Trimmy")} bij Berichten.`,
+          html: mailHtml(salon, "Nieuw bericht via het klantportaal", `<p><b>${esc(naam)}</b> (${esc(ses.email)}) schreef:</p><blockquote style="margin:0 0 14px;padding:10px 14px;background:#f4f1f4;border-left:4px solid #6a3560;white-space:pre-wrap">${esc(tekst)}</blockquote><p style="color:#6b706d;font-size:13px">Beantwoord het bericht in ${esc(process.env.PLATFORM_NAAM || (salon.sjabloon === "nagelstudio" ? "Nailly" : "Trimmy"))} bij Berichten; de klant ziet je antwoord in het portaal en krijgt een mailtje.</p>`) }).catch(e => console.error("portaal mail salon", e));
       }
       return json(200, { ok: true, id });
     }

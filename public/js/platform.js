@@ -23,7 +23,7 @@ function platWis(){COLS.forEach(c=>{D[c]=[];S.set(c,[])});["platform","bedrijf",
 
 /* ---------- inlogscherm ---------- */
 function platLogin(melding){if($("#plat"))return;const el=document.createElement("div");el.id="plat";el.className="plat";
- el.innerHTML=`<div class="box" role="dialog" aria-labelledby="platH"><div class="logo plogo">${$("#hdrLogo>svg")?$("#hdrLogo>svg").outerHTML:""}<span>${esc(SJ.app)}</span></div>
+ el.innerHTML=`<div class="box" role="dialog" aria-labelledby="platH"><div class="logo plogo">${self.SITE&&SITE.naam?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>':$("#hdrLogo>svg")?$("#hdrLogo>svg").outerHTML:""}<span>${esc(SJ.app)}</span></div>
   <h2 id="platH">Inloggen</h2>${melding?`<div class="note w">${esc(melding)}</div>`:""}
   <form id="plF"><label>E-mailadres<input id="plE" type="email" autocomplete="username" required></label><label>Wachtwoord<input id="plW" type="password" autocomplete="current-password" required></label>
    <button class="btn p wide" type="submit">Inloggen</button></form>
@@ -45,6 +45,8 @@ async function platNaLogin(j){platZet(j);S.set("sjabloon",j.salon.sjabloon||"tri
 /* ---------- bij het starten ---------- */
 async function platStart(){
  if(!STANDALONE)return;
+ /* net ingelogd via de welkomstpagina of gestart als support: dat account gaat voor op een oude code-koppeling */
+ if(legacyCode()&&S.get("nieuwLogin",0)){let n;try{n=await authCall("ik")}catch(x){n=null}if(n&&n.salon){S.del("nieuwLogin");await platNaLogin(n);return}S.del("nieuwLogin")}
  if(legacyCode()){/* oude manier: alleen kijken of overstappen naar een account kan */try{await authCall("ik")}catch(x){if(x.platform)S.set("platAan",1)}platUi();return}
  const terug=new URLSearchParams(location.search).get("abonnement")==="terug";if(terug)history.replaceState(null,"",location.pathname);
  let j;try{j=await authCall("ik")}catch(x){j=x}

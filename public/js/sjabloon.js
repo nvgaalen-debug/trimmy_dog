@@ -48,7 +48,7 @@ const SJ=(()=>{let id;try{const u=new URLSearchParams(location.search).get("sjab
     ["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers","berichten","bedrijf","init"].forEach(k=>S.del(k))}
    S.set("sjabloon",u);history.replaceState(null,"",location.pathname+location.hash)}}catch(e){}
  /* volgorde: keuze van de salon > eerder gekozen op dit apparaat (demo) > instelling van deze site (TRIMMY_SJABLOON) > trimsalon */
- id=((S.get("platform",null)||{}).salon||{}).sjabloon||(S.get("bedrijf",{})||{}).sjabloon||S.get("sjabloon","")||(self.SITE&&SITE.sjabloon)||"trimsalon";return SJABLONEN[id]||SJABLONEN.trimsalon})();
+ id=((S.get("platform",null)||{}).salon||{}).sjabloon||(S.get("bedrijf",{})||{}).sjabloon||S.get("sjabloon","")||(self.SITE&&SITE.sjabloon)||"trimsalon";const b=SJABLONEN[id]||SJABLONEN.trimsalon;return self.SITE&&SITE.naam?{...b,app:SITE.naam}:b})();
 const W=SJ.w;
 document.documentElement.classList.add("sj-"+SJ.id);if(!SJ.object)document.documentElement.classList.add("geen-obj");
 

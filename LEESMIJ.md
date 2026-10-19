@@ -341,6 +341,8 @@ Eén app, meerdere branches. Het sjabloon staat in `public/js/sjabloon.js` en be
 
 Kiezen: *Instellingen > Salon > Branche*. De keuze hoort bij de salon en gaat mee naar alle apparaten. Teksten die je zelf hebt aangepast, blijven staan. **Per Netlify-site vastleggen:** zet bij de site in Netlify de omgevingsvariabele `TRIMMY_SJABLOON` (bijvoorbeeld `nagelstudio`) en publiceer opnieuw. Bij het publiceren maakt `tools/site.mjs` dan `public/js/site.js` aan, zodat de app vanaf de allereerste start in die branche opent (ook offline), en krijgt de installeerbare app de juiste naam en kleur. Het klantportaal gebruikt dezelfde instelling. Een keuze die de salon zelf maakt bij Instellingen gaat voor. Zonder `TRIMMY_SJABLOON` is het gewoon Trimmy.
 
+**Eén algemene naam voor alle salons:** zet in Netlify `PLATFORM_NAAM` (bijvoorbeeld `Salonplanner`) en publiceer opnieuw. Die naam vervangt dan Trimmy en Nailly overal: inlogscherm, kop van de app, naam en icoon op het beginscherm (een neutraal kalendericoon), tabbladtitel, uitnodigingsmails en de omschrijving bij Mollie. De branche blijft per salon bepalen welke woorden en velden de app gebruikt. Apparaten die de app al geïnstalleerd hadden, houden het oude icoon tot ze de app opnieuw toevoegen aan het beginscherm.
+
 Een demo bekijken kan met `?sjabloon=nagelstudio` achter het adres (alleen zolang je voorbeeldgegevens gebruikt).
 
 Het klantportaal volgt het sjabloon ook: bij een nagelstudio geen hondentegel, en de privacyverklaring spreekt over voorkeuren en een eventuele allergie in plaats van over een hond. De allergie is een gezondheidsgegeven en gaat nooit naar het portaal.
