@@ -41,6 +41,7 @@ function drawStart(){const nu=new Date(),tdy=ymd(today()),uur=nu.getHours(),m=cu
   ["artikelen","Artikelen",`${D.artikelen.length} artikelen`,"Behandelingen en producten",0],
   ["inst","Instellingen","Salon en team","Werktijden, berichten, koppelingen",0]
  ].filter(x=>x&&canTab(x[0]));
+ {/* online aanvragen die op goedkeuring wachten: melding op de agendategel */const n=D.afspraken.filter(a=>a.status==="aanvraag"&&a.datum>=tdy).length,t=T.find(x=>x[0]==="agenda");if(n&&t){t[3]=`${n} online aanvra${n===1?"ag wacht":"gen wachten"} op jou`;t[4]=n}}
  const af=a=>{const voorbij=toMin(a.start)+(+a.duur||30)<=nuMin,bezig=!voorbij&&toMin(a.start)<=nuMin;
   return`<button type="button" class="sa${voorbij?" voorbij":""}${bezig?" bezig":""}" data-af="${esc(a.id)}"><span class="st">${esc(a.start)}</span><i style="background:${esc(mwKleur(a.mwId))}"></i><span class="sn"><b>${esc(hn(a)||"Afspraak")}</b><small>${esc(kn(a))}${bezig?" · nu bezig":a.status==="afgerekend"?" · afgerekend":""}</small></span></button>`};
  $("#startBody").innerHTML=`<div class="shead"><div><h1>${groet}${m?", "+esc(m.naam):""}</h1><p class="mute">${esc(nu.toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long"}))}${bed.naam?" · "+esc(bed.naam):""}</p></div>

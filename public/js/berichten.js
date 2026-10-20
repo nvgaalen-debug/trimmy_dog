@@ -22,11 +22,12 @@ function fillMsg(t,a){const k=get("klanten",a.klantId)||{},h=get("honden",a.hond
  const bi=a.hondId&&typeof beurtInfo==="function"?beurtInfo(h):null;
  const map={portaal:portaalUrl(),weken:bi?String(bi.sinds):"",laatst:bi?fromYmd(bi.last).toLocaleDateString("nl-NL",{day:"numeric",month:"long"}):"",klant:k.naam||"",hond:(SJ.object?h.naam:k.naam)||(SJ.object?"uw "+W.hond:""),dag:d?d.toLocaleDateString("nl-NL",{weekday:"long"}):"",datum:d?d.toLocaleDateString("nl-NL",{day:"numeric",month:"long"}):"",tijd:a.start||"",behandeling:dn||SJ.msg.beurtStandaard,salon:bed.naam||"",salontel:bed.tel||"",adres:[bed.straat,bed.plaats].filter(Boolean).join(", ")};
  return String(t||"").replace(/\{(\w+)\}/g,(m,x)=>x in map?map[x]:m)}
-const MSGK=[["bevestiging","Bevestiging"],["herinnering","Herinnering"],["wijziging","Afspraak verplaatst"],["vrij","Eigen bericht"]];
-const msgTpl=k=>k==="portaal"?sjTekst("msgPortaal"):k==="beurt"?sjTekst("msgBeurt"):k==="bevestiging"?sjTekst("msgBev"):k==="herinnering"?sjTekst("msgHer"):k==="wijziging"?sjTekst("msgWij"):"Hoi {klant},\n\n\nGroet, {salon}";
-function mailHtml(a,kind,text){const c=/^#[0-9a-f]{6}$/i.test(bed.kleur||"")?bed.kleur:"#6a3560",h=get("honden",a.hondId)||{},hasAf=!!a.datum&&kind!=="vrij";
+const MSGK=[["bevestiging","Bevestiging"],["herinnering","Herinnering"],["wijziging","Afspraak verplaatst"],["afwijzing","Aanvraag afgewezen"],["vrij","Eigen bericht"]];
+const MSG_AFW="Hoi {klant}, bedankt voor je aanvraag. Helaas kunnen we je op {dag} {datum} om {tijd} niet inplannen. Bel of app ons gerust voor een ander moment: {salontel}. Groet, {salon}";
+const msgTpl=k=>k==="portaal"?sjTekst("msgPortaal"):k==="beurt"?sjTekst("msgBeurt"):k==="bevestiging"?sjTekst("msgBev"):k==="herinnering"?sjTekst("msgHer"):k==="wijziging"?sjTekst("msgWij"):k==="afwijzing"?(bed.msgAfw||MSG_AFW):"Hoi {klant},\n\n\nGroet, {salon}";
+function mailHtml(a,kind,text){const c=/^#[0-9a-f]{6}$/i.test(bed.kleur||"")?bed.kleur:"#6a3560",h=get("honden",a.hondId)||{},hasAf=!!a.datum&&kind!=="vrij"&&kind!=="afwijzing";
  const dn=(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", "),adres=[bed.straat,[bed.pc,bed.plaats].filter(Boolean).join(" ")].filter(Boolean).join(", ");
- const title={bevestiging:"Je afspraak is bevestigd",herinnering:"Tot binnenkort!",wijziging:"Je afspraak is verplaatst",beurt:SJ.msg.beurtTitel,portaal:"Welkom in ons klantportaal"}[kind]||"";
+ const title={afwijzing:"Je aanvraag",bevestiging:"Je afspraak is bevestigd",herinnering:"Tot binnenkort!",wijziging:"Je afspraak is verplaatst",beurt:SJ.msg.beurtTitel,portaal:"Welkom in ons klantportaal"}[kind]||"";
  const para=esc(text).split(/\n{2,}/).map(x=>`<p style="margin:0 0 14px">${x.replace(/\n/g,"<br>")}</p>`).join("");
  const row=(l,v)=>`<tr><td style="padding:5px 12px 5px 0;color:#6b706d;font-size:14px;width:110px;vertical-align:top">${l}</td><td style="padding:5px 0;font-size:15px;font-weight:bold;color:#1c2220">${v}</td></tr>`;
  const day=hasAf?fromYmd(a.datum).toLocaleDateString("nl-NL",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):"";
@@ -63,7 +64,7 @@ function msgDlg(a,kind){const k=get("klanten",a&&a.klantId);if(!k){toast("Er hoo
  let html="";
  const upd=()=>{const t=q("#mT").value;if(q("#mWa"))q("#mWa").href=waUrl(k.tel,t);
   if(k.email){html=mailHtml(a,kind,t);q("#mMa").href=mailUrl(q("#mTo").value,q("#mS").value,t);const m=html.match(/<body[^>]*>([\s\S]*)<\/body>/i);q("#mHtml").innerHTML=m?m[1]:html}};
- const setKind=k2=>{kind=k2;q("#mT").value=fillMsg(msgTpl(kind),a);if(q("#mS"))q("#mS").value=kind==="vrij"?(bed.naam||"Bericht"):kind==="beurt"?fillMsg(SJ.msg.beurtOnderwerp,a):kind==="portaal"?fillMsg("Jouw klantportaal bij {salon}",a):(kind==="bevestiging"?"Bevestiging: ":"")+fillMsg(sjTekst("msgOnd"),a);
+ const setKind=k2=>{kind=k2;q("#mT").value=fillMsg(msgTpl(kind),a);if(q("#mS"))q("#mS").value=kind==="vrij"?(bed.naam||"Bericht"):kind==="beurt"?fillMsg(SJ.msg.beurtOnderwerp,a):kind==="portaal"?fillMsg("Jouw klantportaal bij {salon}",a):kind==="afwijzing"?fillMsg("Je aanvraag bij {salon}",a):(kind==="bevestiging"?"Bevestiging: ":"")+fillMsg(sjTekst("msgOnd"),a);
   q("#mH").textContent=(kind==="beurt"?"Na versturen onthoudt "+SJ.app+" dat deze klant een bericht heeft gekregen. ":kind==="bevestiging"?"Na versturen zet "+SJ.app+" de afspraak op Bevestigd. ":kind==="herinnering"?"Na versturen zet "+SJ.app+" de afspraak op herinnerd. ":"")+"WhatsApp en de platte e-mail openen in een nieuw venster; je verstuurt het bericht daar zelf.";upd()};
  q("#mT").oninput=upd;if(q("#mS"))q("#mS").oninput=upd;if(q("#mTo"))q("#mTo").oninput=upd;if(q("#mK"))q("#mK").onchange=e=>setKind(e.target.value);setKind(kind);
  const mark=()=>{if(kind==="beurt"){const hh=get("honden",a.hondId);if(hh){hh.beurtMsg=Date.now();delete hh.beurtLater;saveC("honden");setTimeout(draw,300)}return}if(!isAf)return;const r=get("afspraken",a.id);if(!r)return;

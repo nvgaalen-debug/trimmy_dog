@@ -97,7 +97,8 @@ function tOverzicht() {
   const honden = d.honden.map(h => h.naam).filter(Boolean);
   const tel = String(d.salon.tel || "").replace(/[^\d+]/g, "");
   const T = [
-    ["afspraken", "agenda", "Afspraken", d.afspraken.length ? `${d.afspraken.length} gepland` : "Geen gepland", volg ? `Volgende: ${fKort(volg.datum)} ${volg.start}` : "Stuur ons een bericht", 0],
+    ["afspraken", "agenda", "Afspraken", d.afspraken.length ? `${d.afspraken.length} gepland` : "Geen gepland", volg ? `Volgende: ${fKort(volg.datum)} ${volg.start}` : d.boeken ? "Maak online een afspraak" : "Stuur ons een bericht", 0],
+    d.boeken && [boekLink(), "agenda", "Afspraak maken", "Online boeken", "Kies zelf een dag en tijd", 0],
     OBJ() && ["honden", "hond", honden.length === 1 ? "Mijn hond" : "Mijn honden", honden.length ? honden.slice(0, 2).join(" en ") + (honden.length > 2 ? ` +${honden.length - 2}` : "") : "Nog niet bekend", honden.length ? "Ras, leeftijd en vacht" : "", 0],
     ["historie", "historie", "Historie", d.historie.length ? `${d.historie.length} keer geweest` : "Nog geen bezoek", laatst ? `Laatst: ${fDatum(laatst.datum)}` : "", 0],
     ["facturen", "factuur", "Facturen", nOpen ? `${eur(open)} open` : "Alles betaald", nOpen ? `${nOpen} factu${nOpen === 1 ? "ur" : "ren"} te betalen` : `${d.facturen.length} factu${d.facturen.length === 1 ? "ur" : "ren"}`, nOpen],
@@ -108,15 +109,24 @@ function tOverzicht() {
   ].filter(Boolean);
   const tegel = ([doel, ic, l, big, sub, alert]) => {
     const inh = `<span class="ti">${pico(ic)}</span><span class="tl">${esc(l)}</span><b>${esc(big)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}${alert ? `<span class="nb" aria-hidden="true">${alert}</span>` : ""}`;
-    return /^(tel:|#privacy)/.test(doel) ? `<a class="tegel${alert ? " let" : ""}" href="${esc(doel)}">${inh}</a>` : `<button type="button" class="tegel${alert ? " let" : ""}" data-doel="${esc(doel)}">${inh}</button>`;
+    return /^(tel:|#privacy|boeken)/.test(doel) ? `<a class="tegel${alert ? " let" : ""}" href="${esc(doel)}">${inh}</a>` : `<button type="button" class="tegel${alert ? " let" : ""}" data-doel="${esc(doel)}">${inh}</button>`;
   };
   $("#v-overzicht").innerHTML = `
    ${volg ? `<div class="hero"><span class="ti">${pico("agenda", 26)}</span><div><span class="tl">Volgende afspraak</span><b>${esc((t => t.charAt(0).toUpperCase() + t.slice(1))(fDag(volg.datum)))}</b><div>${esc(volg.start)}–${esc(eind(volg.start, volg.duur))}${OBJ() ? " · " + esc(volg.hond) : ""}${volg.behandelingen.length ? " · " + esc(volg.behandelingen.join(", ")) : ""}</div></div>${volg.bevestigd ? `<span class="pill ok">Bevestigd</span>` : ""}</div>` : ""}
    <div class="tegels">${T.map(tegel).join("")}</div>
   `;
 }
-function tAfspraken() { const d = data; $("#v-afspraken").innerHTML = `<button type="button" class="btn link terug" data-doel="overzicht">← Start</button><div class="card"><h2>Komende afspraken</h2>${d.afspraken.length ? `<div class="list">${d.afspraken.map(a => `<div class="row"><div><div class="when">${esc(fDag(a.datum))}</div><div>${esc(a.start)}–${esc(eind(a.start, a.duur))}${OBJ() ? ` · <b>${esc(a.hond)}</b>` : ""}</div><div class="mute">${esc(a.behandelingen.join(", "))}</div></div>${a.bevestigd ? `<span class="pill ok">Bevestigd</span>` : `<span class="pill">Gepland</span>`}</div>`).join("")}</div>` : `<p class="empty">Er staat geen afspraak gepland. Stuur ons een bericht als je een afspraak wilt maken.</p>`}
-   <p class="mute" style="margin:12px 0 0;font-size:14px">Verhinderd of een andere tijd nodig? Stuur een bericht${d.salon.tel ? " of bel " + esc(d.salon.tel) : ""}.</p></div>`; }
+const boekLink = () => "boeken" + (SALON ? "?s=" + encodeURIComponent(SALON) : "");
+function tAfspraken() { const d = data; $("#v-afspraken").innerHTML = `<button type="button" class="btn link terug" data-doel="overzicht">← Start</button><div class="card"><h2>Komende afspraken</h2>${d.afspraken.length ? `<div class="list">${d.afspraken.map(a => `<div class="row"><div><div class="when">${esc(fDag(a.datum))}</div><div>${esc(a.start)}–${esc(eind(a.start, a.duur))}${OBJ() ? ` · <b>${esc(a.hond)}</b>` : ""}</div><div class="mute">${esc(a.behandelingen.join(", "))}</div>${a.magAnnuleren ? `<button type="button" class="btn link annul" data-annul="${esc(a.id)}">Afspraak annuleren</button>` : ""}</div>${a.aanvraag ? `<span class="pill">Wacht op bevestiging</span>` : a.bevestigd ? `<span class="pill ok">Bevestigd</span>` : `<span class="pill">Gepland</span>`}</div>`).join("")}</div>` : `<p class="empty">Er staat geen afspraak gepland.${d.boeken ? "" : " Stuur ons een bericht als je een afspraak wilt maken."}</p>`}
+   ${d.boeken ? `<div class="acts" style="justify-content:flex-start;margin-top:12px"><a class="btn p" href="${boekLink()}">Afspraak maken</a></div>` : ""}
+   <p class="mute" style="margin:12px 0 0;font-size:14px">Verhinderd of een andere tijd nodig? ${d.afspraken.some(a => a.magAnnuleren) ? "Annuleer hierboven, stuur" : "Stuur"} een bericht${d.salon.tel ? " of bel " + esc(d.salon.tel) : ""}.</p><p class="msg" id="annMsg" role="alert"></p></div>`; }
+$("#v-afspraken").addEventListener("click", async e => {
+  const b = e.target.closest("[data-annul]"); if (!b) return;
+  if (!b.dataset.zeker) { b.dataset.zeker = "1"; b.textContent = "Zeker weten? Klik nogmaals om te annuleren"; return; }
+  b.disabled = true;
+  try { await api("annuleer", { id: b.dataset.annul }); await laad(true); tab = "afspraken"; teken(); }
+  catch (x) { $("#annMsg").textContent = x.message; b.disabled = false; }
+});
 function tHonden() { const d = data; $("#v-honden").innerHTML = `<button type="button" class="btn link terug" data-doel="overzicht">← Start</button><div class="card"><h2>${d.honden.length === 1 ? "Je hond" : "Je honden"}</h2>${d.honden.length ? `<div class="dogs">${d.honden.map(h => `<div class="dog"><div class="av" ${h.foto ? `style="background-image:url('${esc(h.foto)}')"` : ""}>${h.foto ? "" : esc((h.naam || "?")[0])}</div><div><b style="font:700 18px var(--f-d)">${esc(h.naam)}</b><div class="mute" style="font-size:14px">${esc([h.ras, leeftijd(h.geb), h.geslacht, h.gewicht !== "" && h.gewicht != null ? String(h.gewicht).replace(".", ",") + " kg" : "", h.vacht].filter(Boolean).join(" · "))}</div></div></div>`).join("")}</div>` : `<p class="empty">Nog geen hond bekend.</p>`}</div>`; }
 const fKort = s => s ? new Date(s + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" }) : "";
 ["#v-overzicht", "#v-afspraken", "#v-honden"].forEach(v => $(v).addEventListener("click", e => {

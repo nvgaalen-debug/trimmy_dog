@@ -1,7 +1,7 @@
 /* Trimmy · gegevens.js */
 "use strict";
 /* ---------- gegevens ---------- */
-const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers","berichten"];
+const COLS=["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers","berichten","blokkades"];
 const D={};COLS.forEach(c=>D[c]=S.get(c,[]));
 const BED0={sjabloon:SJ.id,privacyJaren:2,naam:SJ.w.Zaak,straat:"",pc:"",plaats:"",tel:"",mail:"",kvk:"",btwnr:"",iban:"",termijn:14,voet:SJ.voet,kassa:"K1",open:8,sluit:18,zondag:false,dubbel:"waarschuw",kleur:"#6a3560",mailDirect:false,autoLock:0,perms:{historie:true,facturen:true,prijsBon:true,omzet:false,klantDel:false,artikelen:false,inst:false},autoHer:false,autoUur:24,autoStil:true,beurtWk:SJ.beurtWk,slepen:"vraag",
  msgBev:SJ.msg.msgBev,msgHer:SJ.msg.msgHer,msgWij:SJ.msg.msgWij,msgOnd:SJ.msg.msgOnd,msgPortaal:SJ.msg.msgPortaal,msgBeurt:SJ.msg.msgBeurt};
@@ -13,7 +13,7 @@ const get=(c,id)=>id?D[c].find(x=>x.id===id):null;
 const klLab=k=>k.naam+(k.plaats?" · "+k.plaats:"");
 const hondLab=h=>{const k=get("klanten",h.klantId);if(!SJ.object)return k?k.naam:h.naam;return h.naam+(h.ras?" ("+h.ras+")":"")+(k?" · "+k.naam:"")};
 const mwKleur=id=>(get("medewerkers",id)||{}).kleur||"#8a8f8c";
-const STAT=[["gepland","Gepland",""],["bevestigd","Bevestigd","acc"],["binnen",W.binnen,"amber"],["klaar",W.klaar,"ok"],["afgerekend","Afgerekend","ok"],["noshow","Niet gekomen","warn"],["geannuleerd","Geannuleerd","warn"]];
+const STAT=[["aanvraag","Aanvraag (online)","amber"],["gepland","Gepland",""],["bevestigd","Bevestigd","acc"],["binnen",W.binnen,"amber"],["klaar",W.klaar,"ok"],["afgerekend","Afgerekend","ok"],["noshow","Niet gekomen","warn"],["geannuleerd","Geannuleerd","warn"]];
 const statLab=s=>(STAT.find(x=>x[0]===s)||STAT[0])[1];
 const statCls=s=>(STAT.find(x=>x[0]===s)||STAT[0])[2];
 function leeftijd(geb){if(!geb)return"";const g=fromYmd(geb),n=new Date();let m=(n.getFullYear()-g.getFullYear())*12+n.getMonth()-g.getMonth();if(n.getDate()<g.getDate())m--;if(m<0)return"";return m<24?m+" mnd":Math.floor(m/12)+" jaar"}

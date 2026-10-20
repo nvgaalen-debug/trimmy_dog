@@ -35,6 +35,7 @@
    <span class="sp"></span>
    <select id="agMw" aria-label="Medewerker"></select>
    <div class="seg" id="agSeg"><button type="button" data-m="dag">Dag</button><button type="button" data-m="week">Week</button></div>
+   <button class="btn" id="agBlok" type="button">Tijd blokkeren</button>
    <button class="btn" id="agRem" type="button">Herinneringen</button>
    <button class="btn p" id="agNew" type="button">Nieuwe afspraak</button>
   </div>
@@ -126,6 +127,7 @@
     <button type="button" data-p="agenda">Agenda</button>
     <button type="button" data-p="team">Medewerkers en toegang</button>
     <button type="button" data-p="berichten">Berichten aan klanten</button>
+    <button type="button" data-p="online">Online boeken</button>
     <button type="button" data-p="koppel">Koppelingen</button>
     <button type="button" data-p="gegevens">Gegevens en apparaat</button>
    </nav>
@@ -201,6 +203,35 @@
      <div class="acts l"><button class="btn p" id="bSave2" type="button">Opslaan</button><button class="btn" id="bMailTest" type="button">Testmail naar salonadres</button><span class="mute" id="bMsg2" role="status"></span></div>
     </div></div>
 
+    <div class="pane panel" data-p="online" hidden><h2>Online boeken</h2><p class="lead">Klanten maken zelf een afspraak via je boekpagina. Jij bepaalt met deze regels welke tijden ze te zien krijgen.</p><div class="sbody">
+     <label class="chk"><input type="checkbox" id="oAan"> Online boeken aanzetten</label>
+     <div class="note" id="oStat"></div>
+     <h3>Boekingswijze</h3>
+     <div class="g2"><label>Bekende klanten<select id="oWijze"><option value="direct">Direct bevestigen</option><option value="aanvraag">Eerst aanvraag, ik bevestig</option></select></label>
+      <label>Nieuwe klanten<select id="oNieuweKlant"><option value="direct">Direct bevestigen</option><option value="aanvraag">Eerst aanvraag, ik bevestig</option><option value="nee">Niet online (bellen of mailen)</option></select></label></div>
+     <label class="obj">Bekende klant met een nieuwe hond<select id="oNieuwDier" style="max-width:320px"><option value="direct">Direct bevestigen</option><option value="aanvraag">Eerst aanvraag, ik bevestig</option></select></label>
+     <small>Een aanvraag staat gestreept in de agenda en houdt de tijd vast tot je hem goedkeurt of afwijst.</small>
+     <h3>Planning</h3>
+     <div class="opties" id="oPlanning">
+      <label class="chk"><input type="radio" name="oPlan" value="vrij"> <span><b>Vrij</b> · elk tijdstip waar de behandeling past</span></label>
+      <label class="chk"><input type="radio" name="oPlan" value="slim"> <span><b>Slim</b> · geen tijden die een te klein gat laten vallen (aanbevolen)</span></label>
+      <label class="chk"><input type="radio" name="oPlan" value="strak"> <span><b>Strak</b> · alleen aansluitend aan andere afspraken, pauzes of begin en eind van de dag</span></label>
+     </div>
+     <div class="g2"><label>Tijden tonen per<select id="oInterval"><option value="10">10 minuten</option><option value="15">15 minuten</option><option value="30">30 minuten</option><option value="60">uur</option></select></label>
+      <label>Buffer na elke afspraak (minuten)<input id="oBuffer" type="number" min="0" max="120" step="5"></label></div>
+     <div class="g2"><label>Minimaal vooraf boeken<select id="oMinUur"><option value="0">Geen minimum</option><option value="1">1 uur</option><option value="2">2 uur</option><option value="4">4 uur</option><option value="12">12 uur</option><option value="24">1 dag</option><option value="48">2 dagen</option></select></label>
+      <label>Maximaal vooruit boeken<select id="oMaxDag"><option value="14">2 weken</option><option value="30">1 maand</option><option value="60">2 maanden</option><option value="90">3 maanden</option><option value="180">6 maanden</option></select></label></div>
+     <label>Annuleren door de klant<select id="oAnnuleer" style="max-width:320px"><option value="-1">Niet online, alleen bellen of mailen</option><option value="12">Tot 12 uur van tevoren</option><option value="24">Tot 24 uur van tevoren</option><option value="48">Tot 48 uur van tevoren</option></select></label>
+     <h3>Medewerkers</h3>
+     <label class="chk"><input type="checkbox" id="oKiesMw"> Klant mag een medewerker kiezen</label>
+     <label class="chk"><input type="checkbox" id="oGeenVoorkeur"> Ook "geen voorkeur" aanbieden</label>
+     <small>Wie welke behandeling doet, stel je hieronder per behandeling in. Werktijden per medewerker en blokkades (pauze, verlof) gelden ook voor online boeken.</small>
+     <h3>Behandelingen online</h3>
+     <div class="scroll"><table class="otab"><thead><tr><th>Online</th><th>Behandeling</th><th class="r">Duur</th><th class="r">Buffer</th><th id="oMwKop">Wie</th></tr></thead><tbody id="oDiensten"></tbody></table></div>
+     <h3>Tekst op de boekpagina</h3>
+     <label>Welkomsttekst (optioneel)<textarea id="oTekst" rows="2" maxlength="1000" placeholder="Bijvoorbeeld: Voor een eerste trimbeurt rekenen we wat extra tijd."></textarea></label>
+     <div class="acts l"><button class="btn" type="button" id="oKopieer">Link naar boekpagina kopiëren</button><a class="btn" id="oOpen" target="_blank" rel="noopener">Boekpagina bekijken</a></div>
+    </div></div>
     <div class="pane panel" data-p="koppel" hidden><h2>Koppelingen <small id="dbSum" class="mute"></small></h2><p class="lead">De koppelservice op Netlify verstuurt e-mail en kan je gegevens in een database bewaren.</p><div class="sbody">
      <div id="platAcc" hidden></div>
      <div id="platAbo" hidden></div>
@@ -266,6 +297,7 @@
 <script src="js/avg.js"></script>
 <script src="js/thuis.js"></script>
 <script src="js/instellingen.js"></script>
+<script src="js/online.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/herinneringen.js"></script>
 <script src="js/toegang.js"></script>

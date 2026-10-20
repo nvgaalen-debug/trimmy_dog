@@ -273,6 +273,24 @@ De datum *bijgewerkt op* zet Trimmy zelf zodra je hier iets wijzigt. Let op: wat
 
 **Verwijderen is echt verwijderen.** Verwijder je iets in Trimmy, dan wist de database de inhoud (de JSON en de leesbare kolommen). Alleen een lege regel met het id en `deleted = true` blijft over, zodat andere apparaten het verwijderen overnemen. Records die al eerder waren verwijderd, worden bij de volgende start van de koppelservice ook leeggemaakt. Facturen worden nooit verwijderd.
 
+## Online boeken
+
+Klanten maken zelf een afspraak via de boekpagina: `/boeken` (bij het platform `/boeken?s=<korte-naam>`). De klant kiest wat, voor wie (trimsalon: welke hond), bij wie en wanneer. De **server** rekent uit welke tijden er te kiezen zijn (`netlify/lib/beschikbaar.mjs`); de klant kiest nooit zelf een gat in de agenda.
+
+**Aanzetten:** *Instellingen > Online boeken*. Nodig: database aan en e-mail (SMTP) ingesteld.
+
+- **Boekingswijze:** direct bevestigen of eerst een aanvraag, apart voor bekende klanten, nieuwe klanten (of: niet online) en bekende klanten met een nieuwe hond.
+- **Planning:** *Vrij* (elk passend tijdstip), *Slim* (geen tijden die een gat kleiner dan de kortste online behandeling laten vallen) of *Strak* (alleen aansluitend aan afspraken, blokkades en begin/eind van de werktijd).
+- **Regels:** tijden per 10/15/30/60 minuten, buffer na elke afspraak (algemeen en per behandeling), minimaal vooraf, maximaal vooruit, annuleren door de klant tot 12/24/48 uur vooraf of niet online.
+- **Per behandeling:** online aan/uit, buffer en welke medewerkers hem doen. Werktijden per medewerker gelden ook.
+- **Blokkades:** in de agenda *Tijd blokkeren* (pauze, verlof, ziek, administratie), voor één medewerker of de hele salon, eenmalig, meerdere dagen, elke week of elke dag. Gearceerd in de agenda; geen online boekingen in die tijd.
+
+**Nieuwe klanten** vullen naam, e-mail en telefoon in en bevestigen met een code per mail (geen account nodig); daarna zijn ze ingelogd en zien ze hun afspraak in het portaal. **Bekende klanten** loggen in met hun e-mailadres en kiezen hun eigen hond.
+
+**Aanvragen** staan gestreept in de agenda, met een melding op de startpagina en bij Berichten. Open de afspraak en kies *Goedkeuren* (bevestiging naar de klant) of *Afwijzen* (bericht met tekst naar keuze). Een aanvraag houdt de tijd vast.
+
+**Veilig:** boeken gebeurt in een transactie met een slot per salon en een hercontrole van de tijd, dus twee klanten krijgen nooit hetzelfde tijdstip. Codes 15 minuten geldig, maximaal 5 pogingen, limieten per e-mailadres en IP-adres, maximaal 5 online afspraken per klant per dag.
+
 ## Creditfacturen
 
 Open een factuur en klik **Crediteren** (alleen voor wie omzet mag zien). Kies **Hele factuur**, **Regels kiezen** (per regel een aantal) of **Vrij bedrag** (bedrag incl. btw met btw-tarief), en vul eventueel een reden in. De app maakt een creditfactuur met een eigen nummer uit dezelfde reeks en negatieve bedragen; de originele factuur blijft ongewijzigd.
@@ -334,7 +352,7 @@ Het portaal staat op `/portaal?s=<korte-naam>`. De app gebruikt die link zelf in
 3. Op elk apparaat verschijnt bij *Instellingen > Koppelingen* de knop om over te stappen op inloggen. Daarna is de code niet meer nodig. Zodra alle apparaten over zijn, kun je `TRIMMY_CODE` verwijderen; de oude manier blijft tot dan gewoon werken.
 
 ### Salon verwijderen
-/beheer > **Bewerken** > **Salon verwijderen…** en typ de korte naam ter bevestiging. Verwijdert de salon, accounts, apparaten en (bij een eigen `s_…`-schema) alle gegevens. Een gekoppeld bestaand schema (zoals `trimmy`) blijft bewaard. Kan niet zolang er een lopend Mollie-abonnement is. Niet terug te draaien: laat eerst een back-up maken.
+/beheer > **Verwijderen** bij de salon (of via *Bewerken*), en typ de korte naam ter bevestiging. Verwijdert de salon, alle accounts, apparaten en supportsessies, de ingeplande herinneringsmails en (bij een eigen `s_…`-schema) alle gegevens in de database. Een gekoppeld bestaand schema (zoals `trimmy`) blijft bewaard. Een lopend Mollie-abonnement wordt automatisch gestopt. Niet terug te draaien; de salon maakt zelf een export van de facturen als die bewaard moeten blijven.
 
 ### Eigen domein
 Koppel het domein in Netlify (*Domain management*) en zet `APP_URL` op het nieuwe adres (en eventueel `TRIMMY_ORIGIN`). Links in mails en de Mollie-meldingen gebruiken dan het nieuwe adres. Apparaten moeten op het nieuwe adres één keer opnieuw inloggen, omdat de koppeling bij het webadres hoort. Laat het oude Netlify-adres doorverwijzen naar het nieuwe.

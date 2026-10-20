@@ -49,6 +49,11 @@ const TABLES = {
     map: r => ({ naam: s(r.naam, 120) || "", kleur: s(r.kleur, 9), rol: s(r.rol, 20) }),
     idx: [],
   },
+  blokkades: {
+    ddl: [["van", "DATE"], ["tot", "DATE"], ["starttijd", "TIME"], ["eindtijd", "TIME"], ["herhaal", "VARCHAR(10)"], ["medewerker_id", "VARCHAR(40)"], ["soort", "VARCHAR(20)"], ["notitie", "TEXT"]],
+    map: r => ({ van: d(r.van), tot: d(r.tot), starttijd: tm(r.start), eindtijd: tm(r.eind), herhaal: s(r.herhaal, 10), medewerker_id: s(r.mwId, 40), soort: s(r.soort, 20), notitie: s(r.notitie, 65000) }),
+    idx: ["van"],
+  },
   afspraken: {
     ddl: [["datum", "DATE"], ["starttijd", "TIME"], ["duur_min", "INTEGER"], ["klant_id", "VARCHAR(40)"], ["hond_id", "VARCHAR(40)"], ["medewerker_id", "VARCHAR(40)"], ["behandelingen", "TEXT"], ["status", "VARCHAR(20)"], ["notitie", "TEXT"], ["factuur_id", "VARCHAR(40)"]],
     map: r => ({ datum: d(r.datum), starttijd: tm(r.start), duur_min: n(r.duur) == null ? null : Math.round(n(r.duur)), klant_id: s(r.klantId, 40), hond_id: s(r.hondId, 40), medewerker_id: s(r.mwId, 40), behandelingen: Array.isArray(r.diensten) ? r.diensten.join(",") : null, status: s(r.status, 20), notitie: s(r.notitie, 65000), factuur_id: s(r.factuurId, 40) }),

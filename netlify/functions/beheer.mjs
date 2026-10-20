@@ -12,6 +12,8 @@ import crypto from "node:crypto";
 import { getPool, ensureSchema, upsertRow, vergeetSchema } from "./db.mjs";
 import { P, ensurePlatform, SCHEMA_OK, DEF_SCHEMA, uid, norm, mailOk, ipVan, cookieVan, zetCookie, teVaak, sha, nieuwToken } from "../lib/platform.mjs";
 import { stuurLink } from "./auth.mjs";
+import { getStore } from "@netlify/blobs";
+import { mollie, mollieAan } from "../lib/mollie.mjs";
 
 const json = (status, body, extra = {}) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra } });
 const SJABLONEN = ["trimsalon", "nagelstudio", "pedicure"];
@@ -113,7 +115,13 @@ export default async (req) => {
       const s = (await db.query(`SELECT * FROM ${P("salons")} WHERE id = $1`, [String(body.id || "")])).rows[0];
       if (!s) return json(404, { error: "Onbekende salon." });
       if (String(body.bevestig || "").trim() !== s.slug) return json(400, { error: `Typ ter bevestiging de korte naam: ${s.slug}` });
-      if (s.mollie_abonnement) return json(409, { error: "Deze salon heeft nog een lopend Mollie-abonnement. Laat de eigenaar eerst opzeggen, of stop het abonnement in Mollie." });
+      /* lopend Mollie-abonnement altijd stoppen; lukt dat niet, dan gaat het verwijderen gewoon door en meldt beheer het */
+      let abonnement = null;
+      if (s.mollie_abonnement) {
+        if (!mollieAan()) abonnement = "niet gestopt: Mollie is niet ingesteld; stop het abonnement zelf in het Mollie-dashboard";
+        else try { await mollie(`/customers/${s.mollie_klant}/subscriptions/${s.mollie_abonnement}`, "DELETE"); abonnement = "gestopt"; }
+        catch (e) { abonnement = (e.status === 404 || e.status === 410) ? "gestopt" : "niet gestopt (" + e.message + "); stop het abonnement zelf in het Mollie-dashboard"; }
+      }
       /* alleen een schema dat voor deze salon is aangemaakt (s_…) wordt gewist; een gekoppeld bestaand schema (zoals trimmy) blijft staan */
       const wis = /^s_[a-z0-9_]{1,60}$/.test(s.schema_naam) && s.schema_naam !== DEF_SCHEMA;
       const c = await db.connect();
@@ -127,8 +135,12 @@ export default async (req) => {
         await c.query("COMMIT");
       } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; } finally { c.release(); }
       vergeetSchema(s.schema_naam);
+      /* ingeplande herinneringsmails van deze salon wissen, zodat er na verwijderen niets meer wordt verstuurd */
+      let herinneringen = 0;
+      try { const store = getStore("trimmy-herinneringen"); const { blobs } = await store.list({ prefix: s.id + "/" }); for (const b of blobs) { await store.delete(b.key); herinneringen++; } }
+      catch (e) { console.error("beheer: herinneringen wissen", e && e.message); }
       console.log("beheer: salon verwijderd", s.slug, wis ? "(schema gewist)" : "(schema bewaard)");
-      return json(200, { ok: true, schemaGewist: wis, schema: s.schema_naam });
+      return json(200, { ok: true, schemaGewist: wis, schema: s.schema_naam, herinneringen, abonnement });
     }
     /* ---------- supporttoegang ---------- */
     if (actie === "support" && req.method === "POST") {

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Afspraak maken</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="portaal.css">
+<link rel="stylesheet" href="boeken.css">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<meta name="theme-color" content="#6a3560">
+</head>
+<body>
+<header class="top"><div class="wrap">
+ <div class="brand"><img id="logo" alt="" hidden><span id="salonNaam">Afspraak maken</span></div>
+ <span id="wieIk" class="mute ik" hidden></span>
+</div></header>
+
+<main class="wrap">
+ <p id="laden" class="mute">Even laden…</p>
+ <section id="uitStaat" class="card narrow" hidden><h1>Afspraak maken</h1><p id="uitTekst">Online een afspraak maken kan op dit moment niet. Neem gerust contact op met de salon.</p></section>
+
+ <section id="boek" hidden>
+  <h1 id="kop">Afspraak maken</h1>
+  <p id="intro" class="mute" hidden></p>
+  <ol class="stappen" id="stappen" aria-label="Stappen"></ol>
+
+  <!-- 1 wat -->
+  <form class="card stap" id="s-wat" data-stap="wat">
+   <h2>Wat wil je laten doen?</h2>
+   <div id="diensten" class="keuzes"></div>
+   <p class="msg" id="watMsg" role="alert"></p>
+   <div class="acts"><span class="sp"></span><button class="btn p" type="submit">Verder</button></div>
+  </form>
+
+  <!-- 2 voor wie (alleen trimsalon) -->
+  <form class="card stap" id="s-wie" data-stap="wie" hidden>
+   <h2>Voor welke hond?</h2>
+   <div id="honden" class="keuzes"></div>
+   <div id="nieuweHond" class="g2" hidden>
+    <label>Naam van je hond<input id="hNaam" maxlength="120" autocomplete="off"></label>
+    <label>Ras (optioneel)<input id="hRas" maxlength="120" autocomplete="off"></label>
+   </div>
+   <p class="msg" id="wieMsg" role="alert"></p>
+   <div class="acts"><button class="btn" type="button" data-terug>Terug</button><span class="sp"></span><button class="btn p" type="submit">Verder</button></div>
+  </form>
+
+  <!-- 3 bij wie -->
+  <form class="card stap" id="s-bij" data-stap="bij" hidden>
+   <h2>Bij wie?</h2>
+   <div id="mws" class="keuzes"></div>
+   <div class="acts"><button class="btn" type="button" data-terug>Terug</button><span class="sp"></span><button class="btn p" type="submit">Verder</button></div>
+  </form>
+
+  <!-- 4 wanneer -->
+  <section class="card stap" id="s-wanneer" data-stap="wanneer" hidden aria-labelledby="whKop">
+   <h2 id="whKop">Wanneer?</h2>
+   <div class="dagnav"><button class="btn s" type="button" id="dVorig" aria-label="Eerdere dagen">‹</button><span id="dLabel" class="mute"></span><button class="btn s" type="button" id="dVolg" aria-label="Latere dagen">›</button></div>
+   <div id="dagen" class="dagen" role="group" aria-label="Kies een dag"></div>
+   <div id="tijdenKop" class="mute" hidden></div>
+   <div id="tijden" class="tijden" role="group" aria-label="Kies een tijd"></div>
+   <p class="msg" id="whMsg" role="alert"></p>
+   <div class="acts"><button class="btn" type="button" data-terug>Terug</button></div>
+  </section>
+
+  <!-- 5 bevestigen -->
+  <form class="card stap" id="s-klaar" data-stap="klaar" hidden>
+   <h2>Bevestigen</h2>
+   <div id="samen" class="samen"></div>
+   <div id="nieuwKlant">
+    <p class="mute" id="nkUitleg">Vul je gegevens in. Je krijgt een code per mail om je afspraak te bevestigen.</p>
+    <label>Naam<input id="kNaam" autocomplete="name" maxlength="120"></label>
+    <div class="g2"><label>E-mailadres<input id="kMail" type="email" autocomplete="email" inputmode="email" maxlength="200"></label><label>Telefoon<input id="kTel" type="tel" autocomplete="tel" maxlength="40"></label></div>
+    <div id="codeVak" hidden><label>Code uit de e-mail<input id="kCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label></div>
+    <p class="mute klein">Al klant? <button class="btn link" type="button" id="naarLogin">Log in met je e-mailadres</button></p>
+   </div>
+   <label>Opmerking voor de salon (optioneel)<textarea id="opm" rows="2" maxlength="500"></textarea></label>
+   <p class="msg" id="klMsg" role="alert"></p>
+   <div class="acts"><button class="btn" type="button" data-terug>Terug</button><span class="sp"></span><button class="btn p" type="submit" id="bevestig">Afspraak bevestigen</button></div>
+  </form>
+
+  <!-- inloggen voor bestaande klanten -->
+  <form class="card stap narrow" id="s-login" hidden>
+   <h2>Inloggen</h2>
+   <p class="mute">Vul het e-mailadres in dat bij de salon bekend is. Je krijgt een code per mail.</p>
+   <label>E-mailadres<input id="lMail" type="email" autocomplete="email" inputmode="email"></label>
+   <div id="lCodeVak" hidden><label>Code uit de e-mail<input id="lCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label></div>
+   <p class="msg" id="lMsg" role="alert"></p>
+   <div class="acts"><button class="btn" type="button" id="lTerug">Terug</button><span class="sp"></span><button class="btn p" type="submit" id="lOk">Code sturen</button></div>
+  </form>
+
+  <!-- klaar -->
+  <section class="card stap" id="s-gedaan" hidden aria-live="polite"></section>
+ </section>
+</main>
+<footer class="wrap pfoot"><a id="prvLink" href="portaal#privacy">Privacyverklaring</a></footer>
+<script src="boeken.js"></script>
+</body>
+</html>

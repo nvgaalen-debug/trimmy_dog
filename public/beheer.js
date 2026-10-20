@@ -24,7 +24,7 @@ function teken() {
    <td>${esc(s.eigenaar || "–")}<div class="klein">${s.eigenaarActief ? "account actief" : "uitgenodigd, nog niet actief"}</div></td>
    <td>${s.gebruikers} gebruiker${s.gebruikers === 1 ? "" : "s"} · ${s.apparaten} apparat${s.apparaten === 1 ? "" : "en"}<div class="klein">laatst actief ${fd(s.laatst)}</div></td>
    <td>${eur(s.prijs)}/mnd<div class="klein">${s.abonnement ? "incasso actief" : "geen incasso"}${s.betaaldTot ? " · betaald tot " + fd(s.betaaldTot) : ""}${s.betaalstatus === "mislukt" ? ' · <b style="color:var(--warn)">mislukt</b>' : ""}</div></td>
-   <td><div class="acts"><button class="btn s" data-b="${esc(s.id)}">Bewerken</button><button class="btn s" data-u="${esc(s.id)}">Uitnodiging</button><button class="btn s" data-p="${esc(s.portaal)}">Portaallink</button><button class="btn s${s.supportActief ? " p" : ""}" data-sup="${esc(s.id)}" title="${s.supportToegestaan ? "Meekijken of helpen in deze salon" : "De salon heeft supporttoegang uitgezet"}">${s.supportActief ? "Support actief" : "Support"}</button></div></td></tr>`).join("") : `<tr><td colspan="6" class="mute">Nog geen salons. Maak de eerste aan met Nieuwe salon.</td></tr>`;
+   <td><div class="acts"><button class="btn s" data-b="${esc(s.id)}">Bewerken</button><button class="btn s" data-u="${esc(s.id)}">Uitnodiging</button><button class="btn s" data-p="${esc(s.portaal)}">Portaallink</button><button class="btn s${s.supportActief ? " p" : ""}" data-sup="${esc(s.id)}" title="${s.supportToegestaan ? "Meekijken of helpen in deze salon" : "De salon heeft supporttoegang uitgezet"}">${s.supportActief ? "Support actief" : "Support"}</button><button class="btn s" data-del="${esc(s.id)}" style="color:#b3261e">Verwijderen</button></div></td></tr>`).join("") : `<tr><td colspan="6" class="mute">Nog geen salons. Maak de eerste aan met Nieuwe salon.</td></tr>`;
 }
 const dlg = $("#dlg"), open = h => { $("#dlgIn").innerHTML = h; dlg.showModal(); };
 function linkHtml(j) { return j.gemaild ? `<p class="msg ok">Uitnodiging gemaild.</p><p class="klein">Link (ook te kopiëren): <input readonly value="${esc(j.link)}" onclick="this.select()"></p>` : `<p class="msg">Mailen lukte niet (controleer SMTP). Geef deze link zelf door:</p><input readonly value="${esc(j.link)}" onclick="this.select()">`; }
@@ -45,6 +45,8 @@ $("#nieuw").onclick = () => {
     } catch (x) { $("#nm").textContent = x.message; b.disabled = false; } };
 };
 document.addEventListener("click", async e => {
+  const dl = e.target.closest("[data-del]");
+  if (dl) { const s = data.salons.find(x => x.id === dl.dataset.del); if (s) verwijderDlg(s); return; }
   const sp = e.target.closest("[data-sup]");
   if (sp) { const s = data.salons.find(x => x.id === sp.dataset.sup); if (s) supportDlg(s); return; }
   const b = e.target.closest("[data-b],[data-u],[data-p]"); if (!b) return;
@@ -61,15 +63,7 @@ document.addEventListener("click", async e => {
    <p class="klein">Een nieuwe prijs geldt voor nieuwe abonnementen; een lopende incasso houdt de oude prijs tot de salon opnieuw start.</p>
    <p class="msg" id="bm"></p><div class="acts"><button class="btn" type="button" id="bDel" style="color:#b3261e">Salon verwijderen…</button><span class="sp"></span><button class="btn" type="button" id="bx">Annuleren</button><button class="btn p" type="submit">Opslaan</button></div></form>`);
   $("#bx").onclick = () => dlg.close();
-  $("#bDel").onclick = () => { open(`<h2>${esc(s.naam)} verwijderen?</h2>
-   <p>Dit verwijdert de salon, alle accounts en gekoppelde apparaten${s.schema && /^s_/.test(s.schema) ? `, en <b>alle gegevens</b> in de database (klanten, afspraken, facturen; schema ${esc(s.schema)})` : `. Het gekoppelde schema ${esc(s.schema || "")} blijft bewaard`}. Dit is niet terug te draaien.</p>
-   <p class="klein">Laat de salon eerst een back-up maken als de gegevens bewaard moeten blijven.</p>
-   <form id="vf"><label>Typ ter bevestiging de korte naam: <b>${esc(s.slug)}</b><input id="vN" autocomplete="off"></label>
-   <p class="msg" id="vm"></p><div class="acts"><span class="sp"></span><button class="btn" type="button" id="vx">Annuleren</button><button class="btn p" type="submit" style="background:#b3261e;border-color:#b3261e">Definitief verwijderen</button></div></form>`);
-    $("#vx").onclick = () => dlg.close();
-    $("#vf").onsubmit = async ev => { ev.preventDefault(); $("#vm").textContent = "";
-      try { await api("verwijder", { id: s.id, bevestig: $("#vN").value }); dlg.close(); laad(); }
-      catch (x) { $("#vm").textContent = x.message; } }; };
+  $("#bDel").onclick = () => verwijderDlg(s);
   $("#bf").onsubmit = async ev => { ev.preventDefault();
     try { await api("bijwerken", { id: s.id, naam: $("#bN").value, status: $("#bSt").value, proefTot: $("#bP").value || null, prijs: $("#bPr").value.replace(",", "."), notitie: $("#bNo").value, afmelden: $("#bAf").checked }); dlg.close(); laad(); }
     catch (x) { $("#bm").textContent = x.message; } };
@@ -79,6 +73,24 @@ $("#uit").onclick = async () => { try { await api("uit", {}); } catch (e) {} sho
 laad();
 
 /* ---------- supporttoegang: tijdelijk meekijken of helpen in een salon ---------- */
+function verwijderDlg(s) {
+  const eigen = s.schema && /^s_/.test(s.schema);
+  open(`<h2>${esc(s.naam)} verwijderen?</h2>
+   <p>Dit verwijdert definitief:</p><ul style="margin:0 0 10px 18px;padding:0">
+    <li>de salon en alle accounts (eigenaar en medewerkers);</li><li>alle gekoppelde apparaten en supportsessies (die worden direct afgemeld);</li>
+    <li>de ingeplande herinneringsmails;</li>
+    <li>${eigen ? `<b>alle gegevens</b> in de database: klanten, afspraken, behandelingen, facturen, berichten en het klantportaal (schema ${esc(s.schema)})` : `de koppeling met schema ${esc(s.schema || "")}; dat schema zelf blijft bewaard`}.</li></ul>
+   ${s.abonnement ? `<p>Het lopende Mollie-abonnement wordt automatisch gestopt.</p>` : ""}
+   <p class="klein">Niet terug te draaien. De salon maakt zelf een export van de facturen (Facturen &gt; Export voor accountant) als die bewaard moeten blijven.</p>
+   <form id="vf"><label>Typ ter bevestiging de korte naam: <b>${esc(s.slug)}</b><input id="vN" autocomplete="off"></label>
+   <p class="msg" id="vm"></p><div class="acts"><span class="sp"></span><button class="btn" type="button" id="vx">Annuleren</button><button class="btn p" type="submit" style="background:#b3261e;border-color:#b3261e">Definitief verwijderen</button></div></form>`);
+  $("#vx").onclick = () => dlg.close();
+  $("#vf").onsubmit = async ev => { ev.preventDefault(); $("#vm").textContent = "";
+    try { const j = await api("verwijder", { id: s.id, bevestig: $("#vN").value });
+      open(`<h2>${esc(s.naam)} is verwijderd</h2><p>${j.schemaGewist ? "Alle gegevens in de database zijn gewist." : `Schema ${esc(j.schema)} is bewaard gebleven.`}${j.herinneringen ? ` ${j.herinneringen} ingeplande herinnering${j.herinneringen === 1 ? "" : "en"} gewist.` : ""}${j.abonnement ? ` Mollie-abonnement ${esc(j.abonnement)}.` : ""}</p><div class="acts"><span class="sp"></span><button class="btn p" id="vok">Klaar</button></div>`);
+      $("#vok").onclick = () => dlg.close(); laad(); }
+    catch (x) { $("#vm").textContent = x.message; } };
+}
 function supportDlg(s) {
   open(`<h2>Support bij ${esc(s.naam)}</h2>
    ${s.supportToegestaan ? "" : `<p class="msg">Deze salon heeft supporttoegang uitgezet. Vraag de eigenaar om die even aan te zetten bij Instellingen, Koppelingen.</p>`}

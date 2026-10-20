@@ -8,6 +8,13 @@
 //   POST gegevens { tel, straat, pc, plaats }
 //   POST uit                         -> uitloggen
 //   GET  salon                       -> openbare salongegevens voor de kop en de privacyverklaring
+// Online boeken (alleen als de salon het aanzet bij Instellingen > Online boeken):
+//   GET  boek-opties                 -> behandelingen, medewerkers, regels; met sessie ook de eigen klant en honden
+//   GET  boek-dagen  ?d=ids&mw=&van= -> per dag het aantal vrije tijden
+//   GET  boek-tijden ?d=ids&mw=&datum= -> vrije begintijden (door de server berekend volgens de regels van de salon)
+//   POST boek-code   { email }       -> code voor een nieuwe klant (bevestigt het e-mailadres)
+//   POST boek        { diensten, datum, start, mwId, hond, opmerking, nieuw:{naam,email,tel,code} }
+//   POST annuleer    { id }          -> eigen afspraak annuleren, als dat nog mag volgens de salon
 // Beveiliging:
 //   - codes en sessies staan alleen gehasht in de database; code 10 minuten geldig, max. 5 pogingen
 //   - max. 3 codes per e-mailadres per 15 minuten en 10 per IP-adres per uur
@@ -19,6 +26,7 @@ import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 import { getPool, ensureSchema, upsertRow, foutmelding, Q as Q0, SCHEMA, qs } from "./db.mjs";
 import { P, ensurePlatform, salonOpen, afzender } from "../lib/platform.mjs";
+import { online, onlineDiensten, tijden, dagen, vraag, nuLokaal, plusDagen, toMin, toHM } from "../lib/beschikbaar.mjs";
 /* per verzoek: het schema van de salon (via ?s=<salon>) of het standaardschema (één salon per site).
    Netlify voert per functie-exemplaar één verzoek tegelijk uit, dus deze waarden lopen niet door elkaar. */
 let Q = Q0, SCH = SCHEMA;
@@ -99,12 +107,168 @@ export default async (req) => {
   catch (e) { console.error("portaal schema", e); return json(503, { error: "Het portaal is even niet bereikbaar. Probeer het later opnieuw." }); }
 
   try {
-    const salon = await salonVan(db);
-    if (!salon.portaal) return json(403, { error: "Het klantportaal staat uit.", uit: true });
+    const salon = await salonVan(db), ob = online(salon);
+    const boekRoute = actie === "boek" || actie.startsWith("boek-");
+    if (boekRoute && !ob.aan) return json(403, { error: "Online boeken staat bij deze salon uit.", uit: true });
+    /* inloggen, uitloggen en annuleren mogen ook als alleen online boeken aanstaat (de boekpagina gebruikt ze) */
+    if (!boekRoute && !salon.portaal && !(ob.aan && ["salon", "code", "login", "uit", "annuleer"].includes(actie))) return json(403, { error: "Het klantportaal staat uit.", uit: true });
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
 
     /* ---------- openbaar: salongegevens voor de kop en de privacyverklaring (geen klantgegevens) ---------- */
     if (actie === "salon" && req.method === "GET") return json(200, { salon: publiekSalon(salon), sessieDagen: SESSIE_DAGEN });
+
+    /* ---------- online boeken: keuzes, dagen en tijden (openbaar; met sessie ook de eigen klant) ---------- */
+    const objMode = (salon.sjabloon || process.env.TRIMMY_SJABLOON || "trimsalon") === "trimsalon";
+    const lijstIds = v => String(v || "").split(",").map(x => x.trim()).filter(x => /^[\w-]{1,40}$/.test(x)).slice(0, 6);
+    const laadCtx = async (c, van, tot) => {
+      const rij = async (t, extra = "", p = []) => (await c.query(`SELECT id, data FROM ${Q(t)} WHERE NOT deleted ${extra}`, p)).rows.map(r => ({ ...r.data, id: r.id }));
+      const [medewerkers, artikelen, blokkades, afspraken] = await Promise.all([rij("medewerkers"), rij("artikelen"), rij("blokkades"), rij("afspraken", "AND datum BETWEEN $1 AND $2", [van, tot])]);
+      return { salon, medewerkers, artikelen, blokkades, afspraken, nu: nuLokaal() };
+    };
+    const mwNaam = (ctx, id) => ((ctx.medewerkers.find(m => m.id === id) || {}).naam) || "";
+    if (actie === "boek-opties" && req.method === "GET") {
+      const ctx = await laadCtx(db, "1900-01-01", "1900-01-01");
+      const ds = onlineDiensten(ctx.artikelen);
+      const mws = ctx.medewerkers.filter(m => m && !m.inactief);
+      const ses0 = await sessie(db, req);
+      let ik = null;
+      if (ses0) {
+        const kl0 = await klantenVan(db, ses0.email);
+        if (kl0.length) {
+          const g = String(url.searchParams.get("k") || ""), k0 = kl0.find(k => k.id === g) || kl0[0];
+          const hs = objMode ? (await db.query(`SELECT id, data FROM ${Q("honden")} WHERE NOT deleted AND klant_id = $1`, [k0.id])).rows.map(r => ({ id: r.id, ...r.data })).filter(h => !h.auto && !h.inactief) : [];
+          ik = { email: ses0.email, klanten: kl0.map(k => ({ id: k.id, naam: (k.data && k.data.naam) || "Klant" })), kSel: k0.id, naam: (k0.data && k0.data.naam) || "", honden: hs.map(h => ({ id: h.id, naam: String(h.naam || ""), ras: String(h.ras || "") })) };
+        }
+      }
+      return json(200, {
+        salon: publiekSalon(salon), portaal: !!salon.portaal,
+        regels: { wijze: ob.wijze, nieuweKlant: ob.nieuweKlant, nieuwDier: ob.nieuwDier, kiesMw: ob.kiesMw && mws.length > 1, geenVoorkeur: ob.geenVoorkeur, maxDag: ob.maxDag, minUur: ob.minUur, annuleerUur: ob.annuleerUur, tekst: String(ob.tekst || "").slice(0, 1000) },
+        diensten: ds.map(a => ({ id: a.id, naam: String(a.naam || ""), cat: String(a.cat || ""), duur: Math.round(+a.duur || 0), prijs: +a.prijs || 0, mw: Array.isArray(a.mw) && a.mw.length ? a.mw : null })),
+        medewerkers: ob.kiesMw ? mws.map(m => ({ id: m.id, naam: String(m.naam || ""), kleur: String(m.kleur || "") })) : [],
+        ik, nu: nuLokaal(),
+      });
+    }
+    if ((actie === "boek-dagen" || actie === "boek-tijden") && req.method === "GET") {
+      const diensten = lijstIds(url.searchParams.get("d")), mwId0 = ob.kiesMw ? String(url.searchParams.get("mw") || "") : "";
+      const mwId = /^[\w-]{0,40}$/.test(mwId0) ? mwId0 : "";
+      if (!mwId && !ob.geenVoorkeur && ob.kiesMw) return json(400, { error: "Kies bij wie je wilt boeken." });
+      const nu = nuLokaal();
+      if (actie === "boek-dagen") {
+        const van0 = String(url.searchParams.get("van") || ""), van = /^\d{4}-\d{2}-\d{2}$/.test(van0) && van0 >= nu.datum ? van0 : nu.datum;
+        const n = Math.min(42, Math.max(1, +url.searchParams.get("n") || 14)), tot = plusDagen(van, n - 1);
+        const ctx = await laadCtx(db, van, tot);
+        if (!vraag(ctx, diensten)) return json(400, { error: "Kies eerst een behandeling." });
+        return json(200, { dagen: dagen(ctx, van, n, { diensten, mwId }), laatste: plusDagen(nu.datum, ob.maxDag) });
+      }
+      const datum = String(url.searchParams.get("datum") || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) return json(400, { error: "Kies een dag." });
+      const ctx = await laadCtx(db, datum, datum), v = vraag(ctx, diensten);
+      if (!v) return json(400, { error: "Kies eerst een behandeling." });
+      const toon = ob.kiesMw && mwId === "";
+      return json(200, { duur: v.duur, tijden: tijden(ctx, datum, { diensten, mwId }).map(t => ({ start: t.start, ...(toon ? { mw: mwNaam(ctx, t.mwId) } : {}) })) });
+    }
+    /* ---------- online boeken: code voor een nieuwe klant ---------- */
+    if (actie === "boek-code" && req.method === "POST") {
+      const email = norm(body.email), ip = ipVan(req);
+      if (!mailOk(email)) return json(400, { error: "Vul een geldig e-mailadres in." });
+      const lim = await db.query(`SELECT (SELECT count(*) FROM ${Q("portaal_codes")} WHERE email = $1 AND aangemaakt > now() - interval '15 minutes') AS per_mail, (SELECT count(*) FROM ${Q("portaal_codes")} WHERE ip = $2 AND aangemaakt > now() - interval '1 hour') AS per_ip`, [email, ip]);
+      if (+lim.rows[0].per_mail >= 3 || +lim.rows[0].per_ip >= 10) return json(429, { error: "Je hebt al een paar codes aangevraagd. Wacht een kwartier en probeer het dan opnieuw." });
+      if (!smtpOk()) { console.error("boek-code: SMTP ontbreekt"); return json(503, { error: "De salon kan nu geen e-mail versturen. Bel de salon om je afspraak te maken." }); }
+      const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+      await db.query(`INSERT INTO ${Q("portaal_codes")} (email, code_hash, ip, verloopt) VALUES ($1, $2, $3, now() + interval '15 minutes')`, [email, sha(SECRET, "boek", email, code), ip]);
+      try {
+        await mailer().sendMail({ ...afzender(salon.naam, salon.mail), to: email, subject: `Je code om te boeken: ${code}`,
+          text: `Je code om je afspraak bij ${salon.naam || "de salon"} te bevestigen is: ${code}\n\nDe code is 15 minuten geldig. Heb je dit niet aangevraagd? Dan kun je deze mail negeren.`,
+          html: mailHtml(salon, "Je code om te boeken", `<p>Je code om je afspraak te bevestigen is:</p><p style="font-size:30px;font-weight:bold;letter-spacing:6px;margin:10px 0 16px">${code}</p><p style="color:#6b706d;font-size:13px">De code is 15 minuten geldig. Heb je dit niet aangevraagd? Dan kun je deze mail negeren.</p>`) });
+      } catch (e) { console.error("boek-code mail", e && e.message); return json(503, { error: "De e-mail met de code kon niet worden verstuurd. Probeer het over een paar minuten opnieuw." }); }
+      return json(200, { ok: true });
+    }
+    /* ---------- online boeken: de afspraak vastleggen ---------- */
+    if (actie === "boek" && req.method === "POST") {
+      const diensten = lijstIds((body.diensten || []).join(",")), datum = String(body.datum || ""), start = String(body.start || "");
+      const mwId = ob.kiesMw && /^[\w-]{1,40}$/.test(String(body.mwId || "")) ? String(body.mwId) : "";
+      if (!diensten.length || !/^\d{4}-\d{2}-\d{2}$/.test(datum) || toMin(start) == null) return json(400, { error: "Kies een behandeling, dag en tijd." });
+      if (!mwId && ob.kiesMw && !ob.geenVoorkeur) return json(400, { error: "Kies bij wie je wilt boeken." });
+      const opm = str(body.opmerking, 500);
+      /* wie boekt er? met sessie: die klant; anders een (nieuwe) klant die zijn e-mailadres met een code bevestigt */
+      const ses1 = await sessie(db, req);
+      let email, klant = null, nieuwKlant = false, kl1 = [];
+      if (ses1) { email = ses1.email; kl1 = await klantenVan(db, email); const g = String(body.k || ""); klant = kl1.find(k => k.id === g) || kl1[0] || null; }
+      if (!klant) {
+        const n0 = body.nieuw || {}; email = norm(n0.email);
+        const naam = str(n0.naam, 120), tel = str(n0.tel, 40), code = String(n0.code || "").replace(/\D/g, "");
+        if (!naam || !mailOk(email)) return json(400, { error: "Vul je naam en e-mailadres in." });
+        if (tel && !/^[0-9+()\s-]{6,40}$/.test(tel)) return json(400, { error: "Dit telefoonnummer lijkt niet te kloppen." });
+        const r = await db.query(`SELECT id, code_hash, pogingen FROM ${Q("portaal_codes")} WHERE email = $1 AND verloopt > now() AND code_hash <> 'x' ORDER BY aangemaakt DESC LIMIT 1`, [email]);
+        const row = r.rows[0], fout = json(401, { error: "Deze code klopt niet of is verlopen. Vraag eventueel een nieuwe code aan.", code: true });
+        if (!row || code.length !== 6) return fout;
+        if (row.pogingen >= 5) return json(429, { error: "Te veel pogingen. Vraag een nieuwe code aan.", code: true });
+        await db.query(`UPDATE ${Q("portaal_codes")} SET pogingen = pogingen + 1 WHERE id = $1`, [row.id]);
+        const a = Buffer.from(row.code_hash), b = Buffer.from(sha(SECRET, "boek", email, code));
+        if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return fout;
+        await db.query(`DELETE FROM ${Q("portaal_codes")} WHERE id = $1`, [row.id]);
+        kl1 = await klantenVan(db, email);
+        if (kl1.length) klant = kl1[0];   // al klant met dit e-mailadres: daaraan koppelen
+        else {
+          if (ob.nieuweKlant === "nee") return json(403, { error: "Nieuwe klanten kunnen nog niet online boeken. Bel of mail de salon voor je eerste afspraak." });
+          nieuwKlant = true; klant = { id: "k" + crypto.randomBytes(7).toString("hex"), data: { naam, email, tel, bron: "online", aangemaakt: Date.now() } };
+        }
+      }
+      if (!nieuwKlant && klant) { const n24 = await db.query(`SELECT count(*) FROM ${Q("afspraken")} WHERE klant_id = $1 AND data->>'bron' = 'online' AND bijgewerkt > now() - interval '1 day'`, [klant.id]); if (+n24.rows[0].count >= 5) return json(429, { error: "Je hebt vandaag al een paar afspraken geboekt. Bel de salon als je er nog meer wilt maken." }); }
+      /* voor wie (trimsalon: welke hond) */
+      let hond = null, nieuwDier = false;
+      if (objMode) {
+        const h0 = body.hond || {};
+        if (h0.id && !nieuwKlant) { const r = await db.query(`SELECT id, data FROM ${Q("honden")} WHERE NOT deleted AND id = $1 AND klant_id = $2`, [String(h0.id).slice(0, 40), klant.id]); if (r.rowCount) hond = { id: r.rows[0].id, data: r.rows[0].data }; }
+        if (!hond) {
+          const hn = str(h0.naam, 120); if (!hn) return json(400, { error: "Vul de naam van je hond in." });
+          if (!nieuwKlant) { const r = await db.query(`SELECT id, data FROM ${Q("honden")} WHERE NOT deleted AND klant_id = $1 AND lower(trim(data->>'naam')) = $2`, [klant.id, hn.toLowerCase()]); if (r.rowCount) hond = { id: r.rows[0].id, data: r.rows[0].data }; }
+          if (!hond) { nieuwDier = true; hond = { id: "h" + crypto.randomBytes(7).toString("hex"), data: { klantId: klant.id, naam: hn, ras: str(h0.ras, 120), bron: "online", aangemaakt: Date.now() } }; }
+        }
+      }
+      /* een nieuwe klant volgt de regel voor nieuwe klanten (zijn eerste hond hoort daarbij); een bekende klant met een nieuwe hond de regel voor nieuwe honden */
+      const aanvraag = ob.wijze === "aanvraag" || (nieuwKlant ? ob.nieuweKlant === "aanvraag" : (nieuwDier && ob.nieuwDier === "aanvraag"));
+      /* vastleggen met een slot: twee klanten kunnen nooit hetzelfde tijdstip krijgen */
+      const c = await db.connect(); let af, ctx;
+      try {
+        await c.query("BEGIN");
+        await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["boek:" + SCH]);
+        ctx = await laadCtx(c, datum, datum);
+        const v = vraag(ctx, diensten);
+        const vrij = v ? tijden(ctx, datum, { diensten, mwId }) : [];
+        const slot = vrij.find(t => t.start === toHM(toMin(start)));
+        if (!slot) { await c.query("ROLLBACK"); return json(409, { error: "Dit tijdstip is net niet meer vrij. Kies een andere tijd.", bezet: true }); }
+        if (nieuwKlant) await upsertRow(c, "klanten", klant.id, { id: klant.id, ...klant.data }, "ONLINE", SCH);
+        let hondId = null;
+        if (objMode) { if (nieuwDier) await upsertRow(c, "honden", hond.id, { id: hond.id, ...hond.data }, "ONLINE", SCH); hondId = hond.id; }
+        else { hondId = "s_" + klant.id; const r = await c.query(`SELECT 1 FROM ${Q("honden")} WHERE id = $1`, [hondId]); if (!r.rowCount) await upsertRow(c, "honden", hondId, { id: hondId, klantId: klant.id, naam: (klant.data && klant.data.naam) || "", auto: true, inactief: false }, "ONLINE", SCH); }
+        af = { id: "ob" + crypto.randomBytes(7).toString("hex"), datum, start: slot.start, duur: v.duur, buffer: v.buffer, klantId: klant.id, hondId, mwId: slot.mwId || "", diensten: v.ds.map(a => a.id), status: aanvraag ? "aanvraag" : "bevestigd", notitie: opm ? "Opmerking van de klant: " + opm : "", factuurId: null, bron: "online", aangemaakt: Date.now() };
+        await upsertRow(c, "afspraken", af.id, af, "ONLINE", SCH);
+        const wat = v.ds.map(a => a.naam).join(", "), wanneer = new Date(datum + "T12:00:00Z").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }) + " om " + slot.start;
+        const voorWie = objMode && hond ? " voor " + (hond.data.naam || "") : "", bij = slot.mwId ? " bij " + mwNaam(ctx, slot.mwId) : "";
+        const bid = "pb" + crypto.randomBytes(8).toString("hex");
+        await upsertRow(c, "berichten", bid, { id: bid, klantId: klant.id, van: "klant", ts: Date.now(), gelezen: false, afspraakId: af.id,
+          tekst: (aanvraag ? "Online aanvraag: " : "Online geboekt: ") + wat + voorWie + " op " + wanneer + bij + "." + (nieuwKlant ? " (nieuwe klant)" : "") + (nieuwDier && !nieuwKlant ? " (nieuwe hond)" : "") + (opm ? "\nOpmerking: " + opm : "") + (aanvraag ? "\nKeur de aanvraag goed of af in de agenda." : "") }, "ONLINE", SCH);
+        await c.query("COMMIT");
+        af._wat = wat; af._wanneer = wanneer; af._bij = bij; af._voorWie = voorWie;
+      } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; } finally { c.release(); }
+      /* mails (na het vastleggen; een mislukte mail maakt de afspraak niet ongedaan) */
+      const naamK = (klant.data && klant.data.naam) || "";
+      if (smtpOk()) {
+        const kop = aanvraag ? "We hebben je aanvraag ontvangen" : "Je afspraak staat vast";
+        const uitleg = aanvraag ? "We kijken zo snel mogelijk of het lukt en laten het je weten." : (ob.annuleerUur >= 0 ? `Verhinderd? Je kunt tot ${ob.annuleerUur} uur van tevoren annuleren${salon.portaal ? " in het klantportaal" : ""}, of bel ons${salon.tel ? " op " + salon.tel : ""}.` : `Verhinderd? Bel ons${salon.tel ? " op " + salon.tel : ""}.`);
+        mailer().sendMail({ ...afzender(salon.naam, salon.mail), to: email, subject: `${kop}: ${af._wanneer}`,
+          text: `Hoi ${naamK},\n\n${kop}.\n\n${af._wat}${af._voorWie}\n${af._wanneer}${af._bij}\n${[salon.straat, salon.plaats].filter(Boolean).join(", ")}\n\n${uitleg}\n\nGroet, ${salon.naam || ""}`,
+          html: mailHtml(salon, kop, `<p>Hoi ${esc(naamK)},</p><table style="border-left:4px solid #6a3560;padding:6px 14px;margin:0 0 14px"><tr><td><b>${esc(af._wat)}${esc(af._voorWie)}</b><br>${esc(af._wanneer)}${esc(af._bij)}<br><span style="color:#6b706d">${esc([salon.straat, salon.plaats].filter(Boolean).join(", "))}</span></td></tr></table><p>${esc(uitleg)}</p>`) }).catch(e => console.error("boek mail klant", e && e.message));
+        const naar = salon.mail || process.env.MAIL_REPLY_TO;
+        if (naar) mailer().sendMail({ from: afzender(salon.naam).from, to: naar, replyTo: email, subject: `${aanvraag ? "Online aanvraag" : "Online geboekt"}: ${naamK}, ${af._wanneer}`,
+          text: `${naamK} (${email}) ${aanvraag ? "vraagt aan" : "heeft geboekt"}: ${af._wat}${af._voorWie} op ${af._wanneer}${af._bij}.${opm ? "\nOpmerking: " + opm : ""}${aanvraag ? "\n\nKeur de aanvraag goed of af in de agenda." : ""}` }).catch(e => console.error("boek mail salon", e && e.message));
+      }
+      /* een nieuwe of niet-ingelogde klant meteen inloggen, zodat hij zijn afspraak terugziet */
+      let extra = {};
+      if (!ses1) { const tok = crypto.randomBytes(32).toString("base64url"); await db.query(`INSERT INTO ${Q("portaal_sessies")} (token_hash, email, verloopt) VALUES ($1, $2, now() + interval '${SESSIE_DAGEN} days')`, [sha(SECRET, "sessie", tok), email]); extra = { "Set-Cookie": setCookie(tok, SESSIE_DAGEN * 86400) }; }
+      return json(200, { ok: true, aanvraag, afspraak: { id: af.id, datum: af.datum, start: af.start, duur: af.duur, wat: af._wat, bij: af._bij.replace(/^ bij /, ""), voor: af._voorWie.replace(/^ voor /, "") } }, extra);
+    }
 
     /* ---------- code aanvragen ---------- */
     if (actie === "code" && req.method === "POST") {
@@ -171,6 +335,30 @@ export default async (req) => {
       return json(200, { ok: true }, { "Set-Cookie": setCookie("x".repeat(20), 0) });
     }
 
+    /* mag de klant deze afspraak zelf annuleren? alleen als online boeken aanstaat en het nog ruim genoeg van tevoren is */
+    function magAnnuleren(a) {
+      if (!ob.aan || ob.annuleerUur < 0 || !a || ["afgerekend", "geannuleerd", "noshow", "binnen", "klaar"].includes(a.status)) return false;
+      const nu = nuLokaal(), s = toMin(a.start); if (s == null) return false;
+      const minuten = Math.round((new Date(a.datum + "T00:00:00Z") - new Date(nu.datum + "T00:00:00Z")) / 6e4) + s - nu.min;
+      return minuten >= ob.annuleerUur * 60;
+    }
+    if (actie === "annuleer" && req.method === "POST") {
+      const id = String(body.id || "").slice(0, 40);
+      const r = await db.query(`SELECT id, data FROM ${Q("afspraken")} WHERE NOT deleted AND id = $1 AND klant_id = ANY($2)`, [id, ids]);
+      if (!r.rowCount) return json(404, { error: "Deze afspraak is niet gevonden." });
+      const a = { ...r.rows[0].data, id };
+      if (!magAnnuleren(a)) return json(403, { error: ob.annuleerUur >= 0 ? `Annuleren kan tot ${ob.annuleerUur} uur van tevoren. Bel de salon${salon.tel ? " op " + salon.tel : ""}.` : `Bel de salon${salon.tel ? " op " + salon.tel : ""} om je afspraak te annuleren.` });
+      const c = await db.connect();
+      try {
+        await c.query("BEGIN");
+        await upsertRow(c, "afspraken", id, { ...a, status: "geannuleerd", geannuleerdDoor: "klant", geannuleerdOp: Date.now() }, "ONLINE", SCH);
+        const bid = "pb" + crypto.randomBytes(8).toString("hex"), wanneer = new Date(a.datum + "T12:00:00Z").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }) + " om " + a.start;
+        await upsertRow(c, "berichten", bid, { id: bid, klantId: a.klantId, van: "klant", ts: Date.now(), gelezen: false, afspraakId: id, tekst: `Ik heb mijn afspraak van ${wanneer} geannuleerd via ${salon.portaal ? "het klantportaal" : "de boekpagina"}.` }, "ONLINE", SCH);
+        await c.query("COMMIT");
+      } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; } finally { c.release(); }
+      return json(200, { ok: true });
+    }
+
     if (actie === "ik" && req.method === "GET") {
       const q = (t, extra = "") => db.query(`SELECT id, data FROM ${Q(t)} WHERE NOT deleted AND klant_id = $1 ${extra}`, [sel]).then(r => r.rows.map(x => ({ id: x.id, ...x.data })));
       const [honden, afs, beh, fac, ber] = await Promise.all([q("honden"), q("afspraken", "AND datum >= (now() AT TIME ZONE 'Europe/Amsterdam')::date - 1"), q("behandelingen"), q("facturen"), q("berichten")]);
@@ -188,11 +376,12 @@ export default async (req) => {
       // alleen velden die voor de klant bedoeld zijn
       return json(200, {
         salon: { ...publiekSalon(salon), btwnr: salon.btwnr || "", iban: salon.iban || "", voet: salon.voet || "" },
+        boeken: ob.aan,
         klanten: kl.map(k => ({ id: k.id, naam: (k.data && k.data.naam) || "Klant" })), kSel: sel,
         klant: { naam: tekst(k0.naam), straat: tekst(k0.straat), pc: tekst(k0.pc), plaats: tekst(k0.plaats), tel: tekst(k0.tel), email: ses.email },
         honden: veilig("hond", honden.filter(h => h && !h.inactief && !h.auto), h => ({ id: h.id, naam: tekst(h.naam), ras: tekst(h.ras), geb: tekst(h.geb), geslacht: tekst(h.geslacht), gewicht: h.gewicht ?? "", vacht: tekst(h.vacht), kleur: tekst(h.kleur), chip: tekst(h.chip), foto: typeof h.foto === "string" && h.foto.length < 200000 ? h.foto : "" })),
         afspraken: veilig("afspraak", afs.filter(a => a && typeof a.datum === "string" && a.datum >= vandaag && !["geannuleerd", "noshow", "afgerekend"].includes(a.status)).sort((a, b) => (a.datum + tekst(a.start)).localeCompare(b.datum + tekst(b.start))),
-          a => ({ datum: a.datum, start: tekst(a.start), duur: +a.duur || 30, hond: hondNaam[a.hondId] || "", behandelingen: lijst(a.diensten).map(i => artNaam[i]).filter(Boolean), bevestigd: a.status === "bevestigd" })),
+          a => ({ id: a.id, datum: a.datum, start: tekst(a.start), duur: +a.duur || 30, hond: hondNaam[a.hondId] || "", behandelingen: lijst(a.diensten).map(i => artNaam[i]).filter(Boolean), bevestigd: a.status === "bevestigd", aanvraag: a.status === "aanvraag", magAnnuleren: magAnnuleren(a) })),
         historie: veilig("behandeling", beh.filter(Boolean).sort((a, b) => tekst(b.datum).localeCompare(tekst(a.datum))).slice(0, 100),
           b => ({ datum: tekst(b.datum), hond: hondNaam[b.hondId] || "", behandelingen: tekst(b.diensten), mesje: tekst(b.mesje), vacht: tekst(b.vacht), techniek: tekst(b.techniek), vorm: tekst(b.vorm), kleur: tekst(b.kleur), extra: tekst(b.extra), notitie: tekst(b.klantNotitie) })),
         facturen: veilig("factuur", fac.filter(Boolean).sort((a, b) => ts(b.ts) - ts(a.ts)), f => ({ id: f.id, nr: tekst(f.nr), ts: f.ts, vervalt: tekst(f.vervalt), hond: hondNaam[f.hondId] || "", korting: +f.korting || 0, sub: +f.sub || 0, totaal: +f.totaal || 0, betaald: +f.betaald || 0, rest: +f.rest || 0, credit: !!f.credit, creditNr: f.credit ? tekst(f.creditNr) : "", reden: f.credit ? tekst(f.reden) : "",

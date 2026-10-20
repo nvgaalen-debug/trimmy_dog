@@ -1,0 +1,65 @@
+/* Trimmy · online boeken: bouwt voort op portaal.css (kleuren, lettertypen, knoppen, kaarten) */
+.sp{flex:1}
+.ik{font-size:14px;text-align:right}
+.klein{font-size:14px}
+.stap{scroll-margin-top:16px}
+.stap h2{margin-bottom:14px}
+
+/* voortgang */
+.stappen{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--mute)}
+.stappen li{display:flex;align-items:center;gap:7px}
+.stappen span{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:700 13px var(--f-d);background:var(--sunk);color:var(--mute);font-variant-numeric:tabular-nums}
+.stappen li.af span{background:var(--acc-soft);color:var(--acc)}
+.stappen li.nu{color:var(--ink);font-weight:600}
+.stappen li.nu span{background:var(--acc);color:var(--acc-ink)}
+
+/* keuzelijsten */
+.keuzes{display:flex;flex-direction:column;gap:8px}
+.keuzes fieldset{border:0;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+.keuzes legend{font:700 13px var(--f-d);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-bottom:6px;padding:0}
+.keuze{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:4px 12px;border:1.5px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--panel);cursor:pointer;min-height:48px}
+.keuze:hover{border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}
+.keuze:has(input:checked){border-color:var(--acc);background:var(--acc-soft)}
+.keuze input{width:20px;height:20px;margin:0;accent-color:var(--acc)}
+.keuze .kn{font-weight:600;display:flex;align-items:center;gap:8px;min-width:0}
+.keuze .kd{color:var(--mute);font-size:14px;white-space:nowrap}
+.keuze .kp{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stip{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+
+/* dagen en tijden */
+.dagnav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.dagnav .btn{min-width:44px;min-height:40px;font-size:20px;line-height:1}
+.dagen{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.dag{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 2px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--panel);color:var(--ink);font:inherit;cursor:pointer;min-height:64px}
+.dag span{font-size:12px;color:var(--mute);text-transform:capitalize}
+.dag b{font:700 19px var(--f-d);font-variant-numeric:tabular-nums}
+.dag small{font-size:11px;color:var(--mute)}
+.dag:hover:not(:disabled){border-color:var(--acc)}
+.dag.gekozen{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.dag.gekozen span,.dag.gekozen small{color:var(--acc-ink)}
+.dag:disabled{opacity:.45;cursor:not-allowed;background:var(--sunk)}
+#tijdenKop{margin:18px 0 8px;font-weight:600;color:var(--ink)}
+.tijden{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.tijd{display:flex;flex-direction:column;align-items:center;gap:0;padding:10px 6px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--panel);color:var(--ink);font:inherit;cursor:pointer;min-height:48px}
+.tijd b{font:700 17px var(--f-d);font-variant-numeric:tabular-nums}
+.tijd small{font-size:12px;color:var(--mute)}
+.tijd:hover{border-color:var(--acc);background:var(--acc-soft)}
+
+/* samenvatting en klaar */
+.samen dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;margin:0 0 14px}
+.samen dt{color:var(--mute)}
+.samen dd{margin:0;font-weight:600}
+.gedaan{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.gedaan svg{color:var(--ok)}
+.gedaan.aanv svg{color:var(--acc)}
+.gedaan h2{margin:0}
+.gedaan p{margin:0}
+.acts.l{justify-content:flex-start}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--acc) 60%,transparent);outline-offset:2px}
+
+@media (max-width:520px){
+  .dagen{grid-template-columns:repeat(7,minmax(40px,1fr));overflow-x:auto}
+  .keuze{grid-template-columns:auto minmax(0,1fr) auto}
+  .keuze .kd{grid-column:2;grid-row:2}
+  .keuze .kp{grid-column:3;grid-row:1}
+}

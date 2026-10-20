@@ -97,3 +97,4 @@ body.pv .pfoot{display:none}
 .btn.link.terug{padding:0 0 10px;text-decoration:none;font-weight:600}
 @media(max-width:560px){.tegels{grid-template-columns:1fr 1fr;gap:10px}.tegel{min-height:132px;padding:13px}.tegel b{font-size:16px}.hero b{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.tegel{transition:none}.tegel:hover{transform:none}}
+.annul{padding:0;margin-top:6px;font-size:14px;color:var(--warn);text-decoration:underline}

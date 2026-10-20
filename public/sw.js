@@ -1,7 +1,7 @@
 /* Trimmy · sw.js — bewaart de app op het apparaat zodat hij ook zonder internet start.
    Werkwijze: altijd eerst het nieuwste van Netlify proberen; lukt dat niet, dan de bewaarde versie.
    Gegevens (/api/...) worden nooit bewaard: die regelt Trimmy zelf. */
-const CACHE = "trimmy-app-v13";
+const CACHE = "trimmy-app-v16";
 const VAST = ["/", "/index.html", "/app.css", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png", "/icons/favicon-32.png"];
 
 self.addEventListener("install", (e) => {
@@ -27,7 +27,7 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  if (url.origin !== location.origin || url.pathname.startsWith("/api/") || url.pathname.startsWith("/.netlify/") || url.pathname.startsWith("/portaal") || url.pathname.startsWith("/beheer") || url.pathname.startsWith("/welkom")) return;
+  if (url.origin !== location.origin || url.pathname.startsWith("/api/") || url.pathname.startsWith("/.netlify/") || url.pathname.startsWith("/portaal") || url.pathname.startsWith("/boeken") || url.pathname.startsWith("/beheer") || url.pathname.startsWith("/welkom")) return;
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
     try {

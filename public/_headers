@@ -14,6 +14,10 @@
   Referrer-Policy: no-referrer
   Cache-Control: no-cache
 
+/boeken*
+  Referrer-Policy: no-referrer
+  Cache-Control: no-cache
+
 /sw.js
   Cache-Control: no-cache
   Service-Worker-Allowed: /

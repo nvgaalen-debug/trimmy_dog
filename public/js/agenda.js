@@ -29,11 +29,13 @@ function drawAg(){
   const wt=x.mw&&x.mw!=="-"?werkTijd(x.mw,fromYmd(x.date)):undefined,vrij=wt===null;
   h+=`<div class="col ${dicht||vrij?"dicht":""}" data-date="${x.date}" data-mw="${x.mw==="-"?"none":(x.mw||"")}" style="height:${H}px;--hh:${60*PXM}px" ${vrij?`title="${esc((get("medewerkers",x.mw)||{}).naam||"")} werkt niet op deze dag"`:""}>`;
   if(wt){if(wt[0]>o)h+=`<div class="off" style="top:0;height:${(Math.min(wt[0],c)-o)*PXM}px"></div>`;if(wt[1]<c)h+=`<div class="off" style="top:${(Math.max(wt[1],o)-o)*PXM}px;height:${(c-Math.max(wt[1],o))*PXM}px"></div>`}
+  if(typeof blokkadesVoor==="function")for(const {b,r} of blokkadesVoor(x.date,x.mw==null?agMw:x.mw)){const s0=Math.max(o,r[0]),e0=Math.min(c,r[1]);if(e0<=s0)continue;
+   h+=`<button type="button" class="blok" data-bl="${esc(b.id)}" style="top:${(s0-o)*PXM}px;height:${Math.max(18,(e0-s0)*PXM-2)}px" title="${esc(blokNaam(b)+(b.mwId?" · "+((get("medewerkers",b.mwId)||{}).naam||""):" · hele salon")+(b.notitie?" · "+b.notitie:""))}"><span>${esc(blokNaam(b))}${b.notitie?" · "+esc(b.notitie):""}</span></button>`}
   for(const it of lanes(list)){const a=it.a,s=toMin(a.start),top=Math.max(0,(s-o)*PXM),ht=Math.max(22,(+a.duur||30)*PXM-2);
    const hd=get("honden",a.hondId),kl=get("klanten",a.klantId),w=100/it.n;
    const dn=(a.diensten||[]).map(i=>(get("artikelen",i)||{}).naam).filter(Boolean).join(", ");
    const dbl=conflicts(a).length;
-   h+=`<button type="button" class="blk ${["noshow","geannuleerd"].includes(a.status)?"x":""} ${a.status==="afgerekend"?"paid":""} ${dbl?"dbl":""}" data-af="${a.id}" style="--mw:${mwKleur(a.mwId)};top:${top}px;height:${ht}px;left:calc(${it.L*w}% + 2px);width:calc(${w}% - 4px)" title="${esc(a.start+" "+onderwerp(a.hondId,a.klantId)+" · "+dn)}">${dbl?`<span class="flag">Dubbel</span>`:""}<span class="t">${a.start}–${toHM(s+(+a.duur||30))}${a.status!=="gepland"?" · "+esc(statLab(a.status)):""}</span><b>${esc(onderwerp(a.hondId,a.klantId)||W.geenObj||"–")}${SJ.object&&hd&&hd.ras?` <span class="t">${esc(hd.ras)}</span>`:""}</b>${ht>40?`<span>${esc(SJ.object?(kl?kl.naam:""):dn)}</span>`:""}${SJ.object&&ht>58&&dn?`<br><span class="t">${esc(dn)}</span>`:""}${a.status!=="afgerekend"?`<span class="rz" aria-hidden="true"></span>`:""}</button>`}
+   h+=`<button type="button" class="blk ${["noshow","geannuleerd"].includes(a.status)?"x":""} ${a.status==="afgerekend"?"paid":""} ${a.status==="aanvraag"?"aanv":""} ${dbl?"dbl":""}" data-af="${a.id}" style="--mw:${mwKleur(a.mwId)};top:${top}px;height:${ht}px;left:calc(${it.L*w}% + 2px);width:calc(${w}% - 4px)" title="${esc(a.start+" "+onderwerp(a.hondId,a.klantId)+" · "+dn)}">${dbl?`<span class="flag">Dubbel</span>`:""}<span class="t">${a.start}–${toHM(s+(+a.duur||30))}${a.status!=="gepland"?" · "+esc(statLab(a.status)):""}</span><b>${esc(onderwerp(a.hondId,a.klantId)||W.geenObj||"–")}${SJ.object&&hd&&hd.ras?` <span class="t">${esc(hd.ras)}</span>`:""}</b>${ht>40?`<span>${esc(SJ.object?(kl?kl.naam:""):dn)}</span>`:""}${SJ.object&&ht>58&&dn?`<br><span class="t">${esc(dn)}</span>`:""}${a.status!=="afgerekend"?`<span class="rz" aria-hidden="true"></span>`:""}</button>`}
   if(x.date===tdy&&nowM>o&&nowM<c)h+=`<div class="now" style="top:${(nowM-o)*PXM}px"></div>`;
   h+=`</div>`}
  ag.innerHTML=h;
@@ -50,7 +52,7 @@ $("#agToday").onclick=()=>{agD=today();drawAg()};
 $("#agSeg").onclick=e=>{const m=e.target.dataset.m;if(m){agMode=m;S.set("agmode",m);drawAg()}};
 $("#agMw").onchange=e=>{agMw=e.target.value;S.set("agmw",agMw);drawAg()};
 $("#agNew").onclick=()=>afDlg(null,{datum:ymd(agMode==="dag"?agD:(agDays().some(d=>ymd(d)===ymd(today()))?today():agD)),start:"09:00",mwId:agMw||""});
-$("#ag").onclick=e=>{const b=e.target.closest(".blk");if(b){if(e.detail===0)afDlg(b.dataset.af);return}
+$("#ag").onclick=e=>{const bl=e.target.closest(".blok");if(bl){blokDlg(bl.dataset.bl);return}const b=e.target.closest(".blk");if(b){if(e.detail===0)afDlg(b.dataset.af);return}
  const col=e.target.closest(".col");if(!col)return;const r=col.getBoundingClientRect();const o=(+bed.open||8)*60;
  const m=Math.max(o,Math.min((+bed.sluit||18)*60-15,o+Math.floor((e.clientY-r.top)/PXM/15)*15));
  afDlg(null,{datum:col.dataset.date,start:toHM(m),mwId:col.dataset.mw||agMw||""})};
@@ -120,7 +122,8 @@ function afDlg(id,init={}){
  const a=id?get("afspraken",id):{id:null,datum:init.datum||ymd(today()),start:init.start||"09:00",duur:60,klantId:init.klantId||null,hondId:init.hondId||null,mwId:init.mwId||"",diensten:[],status:"gepland",notitie:"",factuurId:null};
  if(!a)return;
  const dien=D.artikelen.filter(x=>x.type==="dienst"&&(x.actief||(a.diensten||[]).includes(x.id)));
- const d=modal(`<h2>${id?"Afspraak":"Nieuwe afspraak"}</h2>
+ const d=modal(`<h2>${id?(a.status==="aanvraag"?"Online aanvraag":"Afspraak"):"Nieuwe afspraak"}</h2>
+  ${a.status==="aanvraag"?`<div class="note aanvbalk"><span>${esc((get("klanten",a.klantId)||{}).naam||"Een klant")} vroeg deze afspraak online aan${a.aangemaakt?" op "+esc(fDT(a.aangemaakt)):""}. Keur hem goed of wijs hem af; de klant krijgt daarna bericht.</span><span class="acts l"><button class="btn s" type="button" id="afAfw">Afwijzen</button><button class="btn s p" type="button" id="afGoed">Goedkeuren</button></span></div>`:a.bron==="online"?`<div class="note">Online geboekt${a.aangemaakt?" op "+esc(fDT(a.aangemaakt)):""}.</div>`:""}
   ${khHtml(a.klantId)}
   <div class="acts l" style="margin-top:-4px"><button class="btn s" type="button" id="afNk">Nieuwe klant</button><button class="btn s obj" type="button" id="afNh">${W.Hond} toevoegen</button><button class="btn s" type="button" id="afKk" ${a.klantId?"":"hidden"}>Klantkaart openen</button></div>
   <div class="note w" id="afHw" hidden></div>
@@ -142,12 +145,14 @@ function afDlg(id,init={}){
   const w=k?letOp(h&&h.id,k.id):[];d.q("#afHw").hidden=!w.length;d.q("#afHw").textContent=w.join(" · ");conf()};
  const kh=khBind(d,a.hondId,upd);
  function conf(){const x={id:a.id,datum:d.q("#afD").value,start:d.q("#afS").value,duur:num(d.q("#afDu").value),mwId:d.q("#afM").value,status:d.q("#afSt").value},c=conflicts(x);
-  const rw=roosterWaarschuwing(x),tx=[c.length?"Dubbele boeking: "+confText(x,c)+(bed.dubbel==="blokkeer"?" Dubbele boekingen zijn niet toegestaan.":""):"",rw].filter(Boolean).join(" ");
+  const bk=typeof blokConflict==="function"?blokConflict(x):null,rw=[roosterWaarschuwing(x),bk?`Valt in een blokkade: ${blokNaam(bk)}${bk.notitie?" ("+bk.notitie+")":""}.`:""].filter(Boolean).join(" "),tx=[c.length?"Dubbele boeking: "+confText(x,c)+(bed.dubbel==="blokkeer"?" Dubbele boekingen zijn niet toegestaan.":""):"",rw].filter(Boolean).join(" ");
   d.q("#afC").hidden=!tx;d.q("#afC").className="note w";d.q("#afC").textContent=tx;
   if(d.ok2){d.ok2=0;d.q("#afOk").textContent="Opslaan";d.q("#afMsg").textContent=""}}
  d.querySelectorAll(".chk-list input").forEach(cb=>cb.onchange=()=>{const sel=[...d.querySelectorAll(".chk-list input:checked")].map(x=>get("artikelen",x.value));const t=sel.reduce((s,x)=>s+(+x.duur||0),0);if(t)d.q("#afDu").value=t;conf()});
  ["#afD","#afS","#afDu","#afM","#afSt"].forEach(s=>{d.q(s).addEventListener("input",conf);d.q(s).addEventListener("change",conf)});conf();
  d.q("#afX").onclick=()=>d.close();
+ if(d.q("#afGoed"))d.q("#afGoed").onclick=()=>{d.close();aanvraagGoed(a)};
+ if(d.q("#afAfw"))d.q("#afAfw").onclick=()=>{d.close();aanvraagAf(a)};
  if(d.q("#afMsgB"))d.q("#afMsgB").onclick=()=>msgDlg(get("afspraken",id),a.bevestigd?"herinnering":"bevestiging");
  d.q("#afNk").onclick=()=>klantDlg(null,k=>{kh.set(k,null);if(SJ.object)hondDlg(null,k.id,h=>kh.set(k,h.id));else kh.set(k,subj(k.id).id)});
  d.q("#afNh").onclick=()=>{const k=khKlant(d);if(!k){d.q("#afMsg").textContent="Kies eerst een klant.";return}hondDlg(null,k.id,h=>kh.set(k,h.id))};
