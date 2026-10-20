@@ -273,6 +273,15 @@ De datum *bijgewerkt op* zet Trimmy zelf zodra je hier iets wijzigt. Let op: wat
 
 **Verwijderen is echt verwijderen.** Verwijder je iets in Trimmy, dan wist de database de inhoud (de JSON en de leesbare kolommen). Alleen een lege regel met het id en `deleted = true` blijft over, zodat andere apparaten het verwijderen overnemen. Records die al eerder waren verwijderd, worden bij de volgende start van de koppelservice ook leeggemaakt. Facturen worden nooit verwijderd.
 
+## Creditfacturen
+
+Open een factuur en klik **Crediteren** (alleen voor wie omzet mag zien). Kies **Hele factuur**, **Regels kiezen** (per regel een aantal) of **Vrij bedrag** (bedrag incl. btw met btw-tarief), en vul eventueel een reden in. De app maakt een creditfactuur met een eigen nummer uit dezelfde reeks en negatieve bedragen; de originele factuur blijft ongewijzigd.
+
+- Staat de factuur nog open, dan wordt het creditbedrag daarmee verrekend.
+- Was de factuur betaald, dan kies je hoe je terugbetaalt (PIN, contant, overboeking) of **Later**; de creditfactuur staat dan op *Terugbetalen* tot je de terugbetaling vastlegt.
+- Gecrediteerde producten kunnen terug op voorraad.
+- Omzet, dashboard, btw-overzicht en de export voor de accountant tellen de creditfacturen vanzelf mee (kolom *Credit op factuur*). In het klantportaal ziet de klant de creditfactuur ook.
+
 ## Platform: meerdere salons vanuit één omgeving
 
 Eén Netlify-site en één database voor alle salons. Elke salon heeft een **eigen schema** in de database (strikt gescheiden), eigen accounts, eigen apparaten, een eigen klantportaal en een eigen abonnement. Jij beheert alles via **/beheer**.
@@ -324,6 +333,9 @@ Het portaal staat op `/portaal?s=<korte-naam>`. De app gebruikt die link zelf in
 2. Activeer je account via de mail.
 3. Op elk apparaat verschijnt bij *Instellingen > Koppelingen* de knop om over te stappen op inloggen. Daarna is de code niet meer nodig. Zodra alle apparaten over zijn, kun je `TRIMMY_CODE` verwijderen; de oude manier blijft tot dan gewoon werken.
 
+### Salon verwijderen
+/beheer > **Bewerken** > **Salon verwijderen…** en typ de korte naam ter bevestiging. Verwijdert de salon, accounts, apparaten en (bij een eigen `s_…`-schema) alle gegevens. Een gekoppeld bestaand schema (zoals `trimmy`) blijft bewaard. Kan niet zolang er een lopend Mollie-abonnement is. Niet terug te draaien: laat eerst een back-up maken.
+
 ### Eigen domein
 Koppel het domein in Netlify (*Domain management*) en zet `APP_URL` op het nieuwe adres (en eventueel `TRIMMY_ORIGIN`). Links in mails en de Mollie-meldingen gebruiken dan het nieuwe adres. Apparaten moeten op het nieuwe adres één keer opnieuw inloggen, omdat de koppeling bij het webadres hoort. Laat het oude Netlify-adres doorverwijzen naar het nieuwe.
 
@@ -332,7 +344,7 @@ Wachtwoorden met scrypt; inlogtokens en uitnodigingslinks alleen gehasht in de d
 
 ## Sjablonen per branche (trimsalon, nagelstudio, …)
 
-Eén app, meerdere branches. Het sjabloon staat in `public/js/sjabloon.js` en bepaalt:
+Eén app, meerdere branches: **trimsalon** (Trimmy), **nagelstudio** (Nailly) en **pedicure** (Pedly). Het sjabloon staat in `public/js/sjabloon.js` en bepaalt:
 - de **woorden** (hond, trimbeurt, Weer aan de beurt, Hond is binnen …) en de **app-naam** (Trimmy, Nailly);
 - of er een **apart onderwerp** is (een hond per klant) of dat de **klant zelf** het onderwerp is. Zonder onderwerp maakt de app per klant één onzichtbaar record (`s_<klant-id>`) aan, zodat agenda, kassa, historie en "aan de beurt" ongewijzigd werken;
 - de **dossiervelden** op de klantkaart (nagelstudio: natuurlijke nagels, vorm, lengte, opvulritme, vaste kleuren, allergie);
@@ -341,7 +353,9 @@ Eén app, meerdere branches. Het sjabloon staat in `public/js/sjabloon.js` en be
 
 Kiezen: *Instellingen > Salon > Branche*. De keuze hoort bij de salon en gaat mee naar alle apparaten. Teksten die je zelf hebt aangepast, blijven staan. **Per Netlify-site vastleggen:** zet bij de site in Netlify de omgevingsvariabele `TRIMMY_SJABLOON` (bijvoorbeeld `nagelstudio`) en publiceer opnieuw. Bij het publiceren maakt `tools/site.mjs` dan `public/js/site.js` aan, zodat de app vanaf de allereerste start in die branche opent (ook offline), en krijgt de installeerbare app de juiste naam en kleur. Het klantportaal gebruikt dezelfde instelling. Een keuze die de salon zelf maakt bij Instellingen gaat voor. Zonder `TRIMMY_SJABLOON` is het gewoon Trimmy.
 
-**Eén algemene naam voor alle salons:** zet in Netlify `PLATFORM_NAAM` (bijvoorbeeld `Salonplanner`) en publiceer opnieuw. Die naam vervangt dan Trimmy en Nailly overal: inlogscherm, kop van de app, naam en icoon op het beginscherm (een neutraal kalendericoon), tabbladtitel, uitnodigingsmails en de omschrijving bij Mollie. De branche blijft per salon bepalen welke woorden en velden de app gebruikt. Apparaten die de app al geïnstalleerd hadden, houden het oude icoon tot ze de app opnieuw toevoegen aan het beginscherm.
+**Eén algemene naam voor alle salons:** zet in Netlify `PLATFORM_NAAM` (bijvoorbeeld `MySalon`) en publiceer opnieuw. Die naam vervangt dan Trimmy en Nailly overal: inlogscherm, kop van de app, naam en icoon op het beginscherm (een salonstoel), tabbladtitel, uitnodigingsmails en de omschrijving bij Mollie. De branche blijft per salon bepalen welke woorden en velden de app gebruikt. Apparaten die de app al geïnstalleerd hadden, houden het oude icoon tot ze de app opnieuw toevoegen aan het beginscherm.
+
+**Pedicure:** dossier met huid, teennagels, ritme (standaard 6 weken), lakkleur en *medische aandachtspunten* (zoals diabetes of bloedverdunners; gezondheidsgegeven, alleen met toestemming, nooit in het portaal, wel als waarschuwing bij de afspraak). Bij een behandeling: soort behandeling, interne bevindingen (niet in het portaal) en lak. Standaard 10 behandelingen en 4 producten; pas prijzen en eventueel het btw-tarief aan (medische pedicure kan onder voorwaarden btw-vrij zijn, overleg met je boekhouder).
 
 Een demo bekijken kan met `?sjabloon=nagelstudio` achter het adres (alleen zolang je voorbeeldgegevens gebruikt).
 

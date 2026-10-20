@@ -45,7 +45,7 @@ function dbData(){
   if(inP){for(const r of (f.regels||[])){const net=(+r.totaal||0)*(1-(+f.korting||0)/100),key=r.naam||"Onbekend";const o=perBeh.get(key)||{naam:key,artId:r.artId,omzet:0,aantal:0};o.omzet+=net;o.aantal+=+r.aantal||0;perBeh.set(key,o)}}
   const rg=fRegels(f);if(DB.beh&&!rg.length)continue;const sum=DB.beh?rg.reduce((s,r)=>s+r.netto,0):(+f.totaal||0);
   if(inV)omzetV[k]=(omzetV[k]||0)+sum;
-  if(inP){omzet[k]+=sum;aantF[k]++;const mid=fMw(f);perMw.set(mid,(perMw.get(mid)||0)+sum);
+  if(inP){omzet[k]+=sum;if(!f.credit)aantF[k]++;const mid=fMw(f);perMw.set(mid,(perMw.get(mid)||0)+sum);
   }}
  /* afspraken, bezetting, weekdagen */
  const wdCap=[0,0,0,0,0,0,0];

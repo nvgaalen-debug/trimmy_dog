@@ -132,7 +132,10 @@ export function getPool() {
 }
 // Het schema alleen (opnieuw) aanleggen als het veranderd is: één snelle controle per koude start
 // in plaats van tientallen opdrachten. De versie is een hash van alle schema-opdrachten.
-const versies = new Map(), klaar = new Set();
+const versies = new Map(), klaarT = new Map();
+/* schema gecontroleerd: 10 minuten onthouden (een verwijderde en opnieuw aangemaakte salon wordt dan vanzelf weer ingericht) */
+const klaar = { has: s => (klaarT.get(s) || 0) > Date.now() - 600e3, add: s => klaarT.set(s, Date.now()) };
+export const vergeetSchema = s => { if (s) klaarT.delete(s); else klaarT.clear(); };
 const versieVan = schema => { if (!versies.has(schema)) versies.set(schema, createHash("sha256").update(schemaSql(schema).join(";\n")).digest("hex").slice(0, 32)); return versies.get(schema); };
 export async function ensureSchema(db, schema = SCHEMA) {
   if (!SCHEMA_OK(schema)) throw Object.assign(new Error("ongeldige schemanaam"), { code: "SCHEMA" });
@@ -191,7 +194,7 @@ export { SCHEMA, Q, SEQ, TABLES, qs };
 const cors = { "Access-Control-Allow-Origin": process.env.TRIMMY_ORIGIN || "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Trimmy-Code, X-Trimmy-App", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: cors });
 
-export function foutmelding(e, table) {
+export function foutmelding(e, table) { if (e && (e.code === "42P01" || e.code === "3F000")) klaarT.clear();  /* tabel of schema weg (salon verwijderd): opnieuw controleren */
   const c = e && e.code;
   if (c === "NOURL") return e.message;
   if (c === "28P01") return "de database weigert de inlog; controleer gebruiker en wachtwoord in DATABASE_URL";

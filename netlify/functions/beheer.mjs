@@ -9,12 +9,12 @@
 //   POST /api/beheer/support-stop { id }             -> alle supportsessies bij die salon beëindigen
 // Omgevingsvariabelen: BEHEER_CODE (verplicht, lang en geheim), PLATFORM_SECRET (aanbevolen).
 import crypto from "node:crypto";
-import { getPool, ensureSchema, upsertRow } from "./db.mjs";
-import { P, ensurePlatform, SCHEMA_OK, uid, norm, mailOk, ipVan, cookieVan, zetCookie, teVaak, sha, nieuwToken } from "../lib/platform.mjs";
+import { getPool, ensureSchema, upsertRow, vergeetSchema } from "./db.mjs";
+import { P, ensurePlatform, SCHEMA_OK, DEF_SCHEMA, uid, norm, mailOk, ipVan, cookieVan, zetCookie, teVaak, sha, nieuwToken } from "../lib/platform.mjs";
 import { stuurLink } from "./auth.mjs";
 
 const json = (status, body, extra = {}) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra } });
-const SJABLONEN = ["trimsalon", "nagelstudio"];
+const SJABLONEN = ["trimsalon", "nagelstudio", "pedicure"];
 const geheim = () => process.env.PLATFORM_SECRET || crypto.createHash("sha256").update("beheer|" + (process.env.BEHEER_CODE || "")).digest("hex");
 const teken = exp => crypto.createHmac("sha256", geheim()).update("beheer|" + exp).digest("base64url");
 function sessieOk(req) {
@@ -107,6 +107,28 @@ export default async (req) => {
       const eig = (await db.query(`SELECT * FROM ${P("gebruikers")} WHERE salon_id = $1 AND rol = 'eigenaar' LIMIT 1`, [String(body.id || "")])).rows[0];
       if (!eig) return json(404, { error: "Geen eigenaar gevonden." });
       return json(200, { ok: true, ...(await stuurLink(db, url, eig, eig.hash ? "herstel" : "uitnodiging")) });
+    }
+    /* ---------- salon verwijderen (alleen na intypen van de korte naam; niet terug te draaien) ---------- */
+    if (actie === "verwijder" && req.method === "POST") {
+      const s = (await db.query(`SELECT * FROM ${P("salons")} WHERE id = $1`, [String(body.id || "")])).rows[0];
+      if (!s) return json(404, { error: "Onbekende salon." });
+      if (String(body.bevestig || "").trim() !== s.slug) return json(400, { error: `Typ ter bevestiging de korte naam: ${s.slug}` });
+      if (s.mollie_abonnement) return json(409, { error: "Deze salon heeft nog een lopend Mollie-abonnement. Laat de eigenaar eerst opzeggen, of stop het abonnement in Mollie." });
+      /* alleen een schema dat voor deze salon is aangemaakt (s_…) wordt gewist; een gekoppeld bestaand schema (zoals trimmy) blijft staan */
+      const wis = /^s_[a-z0-9_]{1,60}$/.test(s.schema_naam) && s.schema_naam !== DEF_SCHEMA;
+      const c = await db.connect();
+      try {
+        await c.query("BEGIN");
+        const g = `SELECT id FROM ${P("gebruikers")} WHERE salon_id = $1`;
+        await c.query(`DELETE FROM ${P("uitnodigingen")} WHERE gebruiker_id IN (${g})`, [s.id]);
+        for (const t of ["apparaten", "support_log", "betalingen", "gebruikers"]) await c.query(`DELETE FROM ${P(t)} WHERE salon_id = $1`, [s.id]);
+        await c.query(`DELETE FROM ${P("salons")} WHERE id = $1`, [s.id]);
+        if (wis) await c.query(`DROP SCHEMA IF EXISTS "${s.schema_naam}" CASCADE`);
+        await c.query("COMMIT");
+      } catch (e) { await c.query("ROLLBACK").catch(() => {}); throw e; } finally { c.release(); }
+      vergeetSchema(s.schema_naam);
+      console.log("beheer: salon verwijderd", s.slug, wis ? "(schema gewist)" : "(schema bewaard)");
+      return json(200, { ok: true, schemaGewist: wis, schema: s.schema_naam });
     }
     /* ---------- supporttoegang ---------- */
     if (actie === "support" && req.method === "POST") {

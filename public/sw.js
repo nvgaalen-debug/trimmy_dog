@@ -1,7 +1,7 @@
 /* Trimmy · sw.js — bewaart de app op het apparaat zodat hij ook zonder internet start.
    Werkwijze: altijd eerst het nieuwste van Netlify proberen; lukt dat niet, dan de bewaarde versie.
    Gegevens (/api/...) worden nooit bewaard: die regelt Trimmy zelf. */
-const CACHE = "trimmy-app-v8";
+const CACHE = "trimmy-app-v13";
 const VAST = ["/", "/index.html", "/app.css", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png", "/icons/favicon-32.png"];
 
 self.addEventListener("install", (e) => {

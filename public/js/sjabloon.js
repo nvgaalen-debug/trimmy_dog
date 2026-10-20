@@ -40,7 +40,29 @@ const SJABLONEN={
    msgPortaal:"Hoi {klant}! In ons klantportaal zie je voortaan je komende afspraken, je behandelhistorie en je facturen, en kun je ons makkelijk een bericht sturen. Inloggen gaat met je e-mailadres; je krijgt dan een code per mail. {portaal}",
    msgBeurt:"Hoi {klant}! Het is alweer {weken} weken geleden dat je nagels gedaan zijn. Tijd om op te vullen? Laat even weten welke dag je het beste uitkomt, of bel ons op {salontel}. Liefs, {salon}",
    beurtOnderwerp:"Tijd om op te vullen · {salon}",beurtStandaard:"een opvulbeurt",beurtTitel:"Tijd om op te vullen?"}},
+ pedicure:{id:"pedicure",label:"Pedicure",app:"Pedly",object:false,icoon:'<path d="M9.6 8.2c2.9 0 4.8 2.3 4.6 5.4-.2 2.5-1.7 3.7-2 5.7-.3 2-1.7 3.2-3.5 3.2-2.1 0-3.3-1.7-3.1-3.8.2-1.8 1.1-2.8 1-4.8C6.5 11.1 7 8.2 9.6 8.2z" fill="currentColor" stroke="none"/><g fill="currentColor" stroke="none"><circle cx="7.9" cy="4.7" r="2.1"/><circle cx="11.6" cy="3.6" r="1.5"/><circle cx="14.5" cy="4.3" r="1.3"/><circle cx="16.7" cy="6" r="1.1"/><circle cx="17.9" cy="8.4" r=".95"/></g>',
+  w:{hond:"klant",honden:"klanten",Hond:"Klant",Honden:"Klanten",beurt:"behandeling",Beurt:"Behandeling",historie:"Behandelhistorie",aanDeBeurt:"tijd voor een pedicure",AanDeBeurt:"Tijd voor een pedicure",
+   binnen:"Klant is binnen",klaar:"Klaar",zaak:"pedicurepraktijk",Zaak:"Pedicurepraktijk",interval:"Ritme",geenObj:""},
+  dossier:[{k:"huid",l:"Huid van de voeten",t:"select",o:["","Normaal","Droog","Eelt","Kloven","Vochtig of zweterig"]},
+   {k:"nagels",l:"Teennagels",t:"select",o:["","Gezond","Verdikt","Ingroeiend","Kalknagel","Brokkelig"]},
+   {k:"interval",l:"Pedicure elke",t:"select",o:[["","standaard"],["4","4 weken"],["5","5 weken"],["6","6 weken"],["8","8 weken"],["10","10 weken"],["0","geen herinnering"]]},
+   {k:"voorkeur",l:"Lakkleur of voorkeuren",t:"text",breed:1,vb:"Bijvoorbeeld: rode gellak, geen voetmassage"},
+   {k:"risico",l:"Medische aandachtspunten",t:"text",breed:1,let:1,vb:"Bijvoorbeeld: diabetes, bloedverdunners, reuma. Alleen met toestemming van de klant",hint:"Gezondheidsgegeven: alleen zichtbaar voor de praktijk, niet in het klantportaal. Verschijnt als waarschuwing bij de afspraak."}],
+  beh:[{k:"techniek",l:"Behandeling",t:"select",o:["Basispedicure","Medische pedicure","Cosmetische pedicure","Gellak voeten","Eeltbehandeling","Likdoorn","Ingegroeide nagel","Nagels knippen"]},
+   {k:"bevindingen",l:"Bevindingen voeten en nagels (intern)",t:"text",breed:1,vb:"Bijvoorbeeld: eelt hiel links, beginnende kalknagel grote teen"},
+   {k:"kleur",l:"Lak of gellak",t:"text",breed:1}],
+  behVb:"Bijvoorbeeld: medische pedicure",knVb:"Bijvoorbeeld: voeten dagelijks insmeren, katoenen sokken dragen",
+  beurtWk:6,voet:"Bedankt voor je bezoek en tot de volgende keer!",
+  msg:{msgBev:"Hoi {klant}! Hierbij de bevestiging van je afspraak: {dag} {datum} om {tijd} bij {salon}, {adres}. Behandeling: {behandeling}. Verhinderd? Laat het ons graag 24 uur van tevoren weten via {salontel}. Tot dan!",
+   msgHer:"Hoi {klant}! Even een herinnering: je bent {dag} {datum} om {tijd} welkom bij {salon} voor {behandeling}. Lukt het niet? Laat het ons dan even weten via {salontel}. Tot dan!",
+   msgWij:"Hoi {klant}, je afspraak is verplaatst naar {dag} {datum} om {tijd}. Komt dit niet uit? Laat het ons weten via {salontel}. Groet, {salon}",
+   msgOnd:"Afspraak {klant} op {dag} {datum} om {tijd}",
+   msgPortaal:"Hoi {klant}! In ons klantportaal zie je voortaan je komende afspraken, je behandelhistorie en je facturen, en kun je ons makkelijk een bericht sturen. Inloggen gaat met je e-mailadres; je krijgt dan een code per mail. {portaal}",
+   msgBeurt:"Hoi {klant}! Het is alweer {weken} weken geleden dat je voeten bij ons verzorgd zijn. Tijd voor een nieuwe pedicure? Laat even weten welke dag je het beste uitkomt, of bel ons op {salontel}. Groet, {salon}",
+   beurtOnderwerp:"Tijd voor je pedicure · {salon}",beurtStandaard:"een pedicurebehandeling",beurtTitel:"Tijd voor een pedicure?"}},
 };
+/* icoon van het platform (salonstoel) als PLATFORM_NAAM is ingesteld */
+const PLATFORM_ICOON='<path d="M9.5 3h5a3 3 0 0 1 3 3v5h-11V6a3 3 0 0 1 3-3z"/><rect x="5" y="11" width="14" height="4" rx="2"/><path d="M12 15v5M8.5 21h7"/>';
 /* actief sjabloon: ?sjabloon=… (demo), anders wat bij de salon is ingesteld */
 const SJ=(()=>{let id;try{const u=new URLSearchParams(location.search).get("sjabloon");if(u&&SJABLONEN[u]){
    const was=(S.get("bedrijf",{})||{}).sjabloon||S.get("sjabloon","")||(self.SITE&&SITE.sjabloon)||"trimsalon";
@@ -48,10 +70,19 @@ const SJ=(()=>{let id;try{const u=new URLSearchParams(location.search).get("sjab
     ["klanten","honden","artikelen","afspraken","facturen","behandelingen","medewerkers","berichten","bedrijf","init"].forEach(k=>S.del(k))}
    S.set("sjabloon",u);history.replaceState(null,"",location.pathname+location.hash)}}catch(e){}
  /* volgorde: keuze van de salon > eerder gekozen op dit apparaat (demo) > instelling van deze site (TRIMMY_SJABLOON) > trimsalon */
- id=((S.get("platform",null)||{}).salon||{}).sjabloon||(S.get("bedrijf",{})||{}).sjabloon||S.get("sjabloon","")||(self.SITE&&SITE.sjabloon)||"trimsalon";const b=SJABLONEN[id]||SJABLONEN.trimsalon;return self.SITE&&SITE.naam?{...b,app:SITE.naam}:b})();
+ /* met de oude code-koppeling telt een (achtergebleven) account-salon niet mee */
+ const plSj=/[?&]code=/.test(S.get("dburl",""))?"":((S.get("platform",null)||{}).salon||{}).sjabloon;
+ id=plSj||(S.get("bedrijf",{})||{}).sjabloon||S.get("sjabloon","")||(self.SITE&&SITE.sjabloon)||"trimsalon";const b=SJABLONEN[id]||SJABLONEN.trimsalon;return self.SITE&&SITE.naam?{...b,app:SITE.naam,icoon:PLATFORM_ICOON}:b})();
 const W=SJ.w;
 document.documentElement.classList.add("sj-"+SJ.id);if(!SJ.object)document.documentElement.classList.add("geen-obj");
 
+/* opgeslagen tekst van de salon, maar zonder resten van een ander sjabloon: een standaardtekst van een andere branche,
+   of {hond} bij een branche zonder hond, wordt de standaardtekst van deze branche */
+function sjTekst(k){const v=(typeof bed!=="undefined"&&bed)?bed[k]:null,eigen=k==="voet"?SJ.voet:SJ.msg[k],std=eigen??(typeof BED0!=="undefined"?BED0[k]:"");
+ if(v==null||v==="")return std;
+ if(!SJ.object&&/\{hond\}/.test(v))return std;
+ if(Object.values(SJABLONEN).some(t=>t.id!==SJ.id&&(k==="voet"?t.voet:t.msg[k])===v))return std;
+ return v}
 /* onzichtbaar onderwerp per klant (alleen zonder object); vaste id, zodat twee apparaten hetzelfde record maken */
 function subj(klantId,bewaar=true){if(SJ.object||!klantId)return null;const id="s_"+klantId;let h=D.honden.find(x=>x.id===id);const k=get("klanten",klantId);
  if(!h){h={id,klantId,naam:k?k.naam:"",auto:true,inactief:false};D.honden.push(h);if(bewaar)saveC("honden")}
@@ -77,6 +108,8 @@ const SJ_VERVANG={nagelstudio:[["Weer aan de beurt (hond heeft nog geen nieuwe a
  ["Weer aan de beurt","Tijd om op te vullen"],["klant, hond, plaats of telefoon","klant, plaats of telefoon"],["factuurnummer, klant of hond","factuurnummer of klant"],["Klant en hond","Klant"],["hond, klant, behandeling of notitie","klant, behandeling of notitie"],
  ["verzonnen klanten, honden en afspraken","verzonnen klanten en afspraken"],["Standaard trim-interval","Standaard opvulritme"],["{klant} {hond}","{klant}"],["eigen gegevens, honden, komende afspraken","eigen gegevens, komende afspraken"],
  ["foto's van je hond","foto's van je nagels"],["Wist klanten, honden, afspraken","Wist klanten, afspraken"],["het eigen ritme van de hond","het eigen ritme van de klant"],["per hond stel je in bij Hond wijzigen","per klant stel je in bij het dossier (Opvullen elke)"],["Geldt voor honden","Geldt voor klanten"]]};
+/* pedicure: dezelfde vervangingen als de nagelstudio, met pedicurewoorden */
+SJ_VERVANG.pedicure=SJ_VERVANG.nagelstudio.map(([a,b])=>[a,b.split("Tijd om op te vullen").join("Tijd voor een pedicure").split("weer moeten opvullen").join("weer moeten komen").split("Standaard opvulritme").join("Standaard ritme").split("foto's van je nagels").join("foto's van je voeten").split("(Opvullen elke)").join("(Pedicure elke)")]);
 function sjToepassen(){const L=SJ_VERVANG[SJ.id]||[];const app=SJ.app;
  const doe=t=>{let x=t;for(const[a,b]of L)if(x.includes(a))x=x.split(a).join(b);if(app!=="Trimmy"&&x.includes("Trimmy"))x=x.split("Trimmy").join(app);return x};
  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){const v=doe(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}

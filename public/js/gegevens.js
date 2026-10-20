@@ -29,8 +29,12 @@ function standaardArt(id=SJ.id){
   A("n4","Gel nieuwe set","Gel en acryl","dienst",60,90),A("n5","Gel opvullen","Gel en acryl","dienst",45,75),A("n6","Acryl nieuwe set","Gel en acryl","dienst",62,90),A("n7","Acryl opvullen","Gel en acryl","dienst",47,75),
   A("n8","Verwijderen","Extra","dienst",15,20),A("n9","Manicure","Manicure en pedicure","dienst",25,30),A("n10","Gellak voeten","Gellak","dienst",35,45),A("n11","Nail art per nagel","Extra","dienst",2,5),A("n12","Reparatie per nagel","Extra","dienst",5,10),
   A("q1","Nagelolie 15 ml","Thuisverzorging","product",9.95,0,14),A("q2","Handcrème 75 ml","Thuisverzorging","product",12.5,0,9),A("q3","Vijl 180/240","Thuisverzorging","product",3.5,0,30)];
- return id==="nagelstudio"?nagel:trim}
-function seed(){if(SJ.id==="nagelstudio")return seedNagel();
+ const pedi=[A("e1","Basispedicure","Pedicure","dienst",42,45),A("e2","Medische pedicure","Pedicure","dienst",48,50),A("e3","Pedicure met gellak","Pedicure","dienst",65,75),
+  A("e4","Gellak voeten","Gellak","dienst",35,45),A("e5","Eeltbehandeling","Behandelingen","dienst",28,30),A("e6","Likdoorn verwijderen","Behandelingen","dienst",12,15),A("e7","Ingegroeide nagel behandelen","Behandelingen","dienst",30,30),
+  A("e8","Nagels knippen en vijlen","Behandelingen","dienst",18,20),A("e9","Voetmassage","Extra","dienst",15,15),A("e10","Toeslag huisbezoek","Extra","dienst",12.5,0),
+  A("v1","Voetcrème 75 ml","Thuisverzorging","product",12.95,0,15),A("v2","Eeltcrème 50 ml","Thuisverzorging","product",14.5,0,10),A("v3","Nagelolie 15 ml","Thuisverzorging","product",9.95,0,12),A("v4","Teenspreiders","Thuisverzorging","product",4.5,0,20)];
+ return id==="nagelstudio"?nagel:id==="pedicure"?pedi:trim}
+function seed(){if(SJ.id==="nagelstudio")return seedNagel();if(SJ.id==="pedicure")return seedPedicure();
  const T=today(),d=n=>ymd(addDays(T,n)),wd=(()=>{const k=T.getDay();return k===0?1:0})();
  const mw=[{id:"mw1",naam:"Sanne",kleur:"#8a4a7e"},{id:"mw2",naam:"Joris",kleur:"#2f7d6d"}];
  const art=standaardArt("trimsalon");
@@ -119,6 +123,40 @@ function seedNagel(){
  const ho=kl.map(k=>({id:"s_"+k.id,klantId:k.id,naam:k.naam,auto:true,inactief:false,...(k.interval?{interval:k.interval}:{})}));
  Object.assign(D,{medewerkers:mw,artikelen:art,klanten:kl,honden:ho,afspraken:af,facturen:fa,behandelingen:be});
  bed={...BED0,kassa:S.get("kassa","K1"),naam:"Nagelstudio Glans",straat:"Ferdinand Bolstraat 44",pc:"1072 LK",plaats:"Amsterdam",tel:"020 7654321",mail:"info@voorbeeld.nl",kvk:"87654321",btwnr:"NL009876543B01",iban:"NL00 BANK 0987 6543 21",kleur:"#b0477f",open:9,sluit:19};
+ COLS.forEach(c=>S.set(c,D[c]));S.set("bedrijf",bed);S.set("demo",1);
+}
+/* voorbeeldgegevens voor een pedicurepraktijk */
+function seedPedicure(){
+ const T=today(),d=n=>ymd(addDays(T,n)),wd=(()=>{const k=T.getDay();return k===0?1:0})(),y=T.getFullYear(),ts=n=>addDays(T,n).getTime()+11*3600e3;
+ const mw=[{id:"mw1",naam:"Marieke",kleur:"#2f7f6f"},{id:"mw2",naam:"Daan",kleur:"#6a5aa8"}];
+ const art=standaardArt("pedicure");
+ const kl=[{id:"k1",naam:"Annie de Groot",straat:"Linnaeusstraat 40",pc:"1093 EK",plaats:"Amsterdam",tel:"06 11223344",email:"annie@voorbeeld.nl",notitie:"Komt met de rollator, begane grond",huid:"Droog",nagels:"Verdikt",interval:"6",voorkeur:"Geen lak",risico:"Diabetes type 2, voorzichtig met snijden"},
+  {id:"k2",naam:"Tessa Kramer",straat:"Bilderdijkstraat 88",pc:"1053 KX",plaats:"Amsterdam",tel:"06 22334455",email:"tessa@voorbeeld.nl",notitie:"",huid:"Eelt",nagels:"Gezond",interval:"",voorkeur:"Rode gellak",risico:""},
+  {id:"k3",naam:"Henk Bos",straat:"Amstelveenseweg 300",pc:"1076 CS",plaats:"Amsterdam",tel:"06 33445566",email:"henk.bos@voorbeeld.nl",notitie:"Huisbezoek op dinsdag",huid:"Kloven",nagels:"Ingroeiend",interval:"8",voorkeur:"",risico:"Bloedverdunners"}];
+ const af=[{id:"af1",datum:d(wd),start:"09:30",duur:50,klantId:"k1",mwId:"mw1",diensten:["e2"],status:"bevestigd",notitie:"",factuurId:null},
+  {id:"af2",datum:d(wd),start:"11:00",duur:75,klantId:"k2",mwId:"mw2",diensten:["e3"],status:"gepland",notitie:"",factuurId:null},
+  {id:"af3",datum:d(wd+1),start:"14:00",duur:30,klantId:"k3",mwId:"mw1",diensten:["e7","e10"],status:"gepland",notitie:"Huisbezoek",factuurId:null},
+  {id:"af4",datum:d(-42),start:"10:00",duur:50,klantId:"k1",mwId:"mw1",diensten:["e2"],status:"afgerekend",notitie:"",factuurId:"f1"}];
+ const be=[{id:"b1",datum:d(-42),klantId:"k1",afspraakId:"af4",factuurId:"f1",diensten:"Medische pedicure",mw:"Marieke",techniek:"Medische pedicure",bevindingen:"Verdikte nagel grote teen rechts, droge hielen",kleur:"",notitie:"Voorzichtig gefreesd",klantNotitie:"Elke avond voetcrème, vooral op de hielen"}];
+ const reg=(a,q=1)=>{const x=art.find(z=>z.id===a);return{artId:a,naam:x.naam,type:x.type,aantal:q,prijs:x.prijs,btw:x.btw,totaal:rnd(q*x.prijs)}};
+ const mkF=(id,nr,t,k,afId,regels,door)=>{const tot=rnd(regels.reduce((s,r)=>s+r.totaal,0));return{id,nr,ts:t,klantId:k,hondId:"s_"+k,afspraakId:afId,regels,korting:0,sub:tot,totaal:tot,betalingen:[{ts:t,methode:"PIN",bedrag:tot}],betaald:tot,rest:0,kassa:"K1",door}};
+ const fa=[mkF("f1",`${y}-K1-0001`,ts(-42),"k1","af4",[reg("e2"),reg("v1")],"Marieke")];
+ {let r=7;const r01=()=>((r=Math.imul(r^(r>>>15),2246822507)+0x9e3779b9>>>0)%10000)/10000;
+  const vn=["Joke","Peter","Ria","Gerard","Ingrid","Wim","Marja","Kees","Els","Ton","Lia","Bert"],an=["Visser","De Boer","Mulder","Smit","Vos","Peters","Dekker","Kok","Jacobs","Van Leeuwen","Willems","Hoekstra"];
+  const pak=[["e1",45,6],["e2",50,6],["e3",75,5],["e1",45,8],["e2",50,8],["e4",45,4]],sl=["09:00","10:30","12:00","13:30","15:00","16:30"],tk={e1:"Basispedicure",e2:"Medische pedicure",e3:"Cosmetische pedicure",e4:"Gellak voeten"};let nr=1;
+  for(let i=0;i<12;i++){const kid="kd"+i,p=pak[i%pak.length],iv=p[2]*7,st=-365+Math.floor(r01()*(i<8?40:250));
+   kl.push({id:kid,naam:vn[i]+" "+an[i],straat:"",pc:"",plaats:"Amsterdam",tel:"06 "+(50000000+i*1234567),email:"",notitie:"",huid:["Droog","Eelt","Normaal","Kloven"][i%4],nagels:["Gezond","Verdikt","Gezond","Kalknagel"][i%4]});
+   for(let n=st;n<-1;n+=iv+Math.floor(r01()*7)-3){const dd=addDays(T,n);if(dd.getDay()===0)continue;const mwI=r01()<.6?"mw1":"mw2",x=r01(),aid="ad"+i+"_"+(n+400),dat=ymd(dd);
+    if(x<.06){af.push({id:aid,datum:dat,start:sl[Math.floor(r01()*6)],duur:p[1],klantId:kid,mwId:mwI,diensten:[p[0]],status:x<.03?"noshow":"geannuleerd",notitie:"",factuurId:null});continue}
+    const extra=r01()<.25?["e9"]:[],t=dd.getTime()+12*3600e3,fid="fd"+i+"_"+(n+400),rg=[reg(p[0]),...extra.map(e=>reg(e))];if(r01()<.15)rg.push(reg(["v1","v2","v3"][Math.floor(r01()*3)]));
+    af.push({id:aid,datum:dat,start:sl[Math.floor(r01()*6)],duur:p[1]+extra.length*15,klantId:kid,mwId:mwI,diensten:[p[0],...extra],status:"afgerekend",notitie:"",factuurId:fid});
+    be.push({id:"bd"+i+"_"+(n+400),datum:dat,klantId:kid,afspraakId:aid,factuurId:fid,diensten:[art.find(z=>z.id===p[0]).naam,...extra.map(()=>"Voetmassage")].join(", "),mw:mwI==="mw1"?"Marieke":"Daan",techniek:tk[p[0]]||"Basispedicure",bevindingen:"",kleur:p[0]==="e3"||p[0]==="e4"?["Rood","Nude","Bordeaux","Koraal"][Math.floor(r01()*4)]:"",notitie:"",klantNotitie:""});
+    nr++;const f=mkF(fid,`${new Date(t).getFullYear()}-K1-${String(nr).padStart(4,"0")}`,t,kid,aid,rg,mwI==="mw1"?"Marieke":"Daan");if(r01()<.3){f.betalingen[0].methode="Contant"}fa.push(f)}
+   if(i%3!==2){const fd=addDays(T,2+Math.floor(r01()*25));if(fd.getDay()!==0)af.push({id:"adf"+i,datum:ymd(fd),start:sl[Math.floor(r01()*6)],duur:p[1],klantId:kid,mwId:r01()<.5?"mw1":"mw2",diensten:[p[0]],status:"gepland",notitie:"",factuurId:null})}}}
+ af.forEach(a=>a.hondId="s_"+a.klantId);be.forEach(b=>b.hondId="s_"+b.klantId);
+ const ho=kl.map(k=>({id:"s_"+k.id,klantId:k.id,naam:k.naam,auto:true,inactief:false,...(k.interval?{interval:k.interval}:{})}));
+ Object.assign(D,{medewerkers:mw,artikelen:art,klanten:kl,honden:ho,afspraken:af,facturen:fa,behandelingen:be});
+ bed={...BED0,kassa:S.get("kassa","K1"),naam:"Pedicurepraktijk Voetenwerk",straat:"Van Woustraat 61",pc:"1074 AD",plaats:"Amsterdam",tel:"020 1122334",mail:"info@voorbeeld.nl",kvk:"11223344",btwnr:"NL001122334B01",iban:"NL00 BANK 0112 2334 45",kleur:"#2f7f6f",open:9,sluit:17};
  COLS.forEach(c=>S.set(c,D[c]));S.set("bedrijf",bed);S.set("demo",1);
 }
 if(!S.get("init",0)){seed();S.set("init",1)}

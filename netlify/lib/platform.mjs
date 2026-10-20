@@ -112,6 +112,9 @@ export const salonInfo = s => ({ id: s.id, slug: s.slug, naam: s.naam, sjabloon:
    { schema, salon } bij een gekoppeld apparaat; { schema: DEF_SCHEMA, legacy: true } met de oude code;
    { fout, status } als het apparaat bekend is maar de salon niet open is; null als het verzoek niet mag. */
 export async function tenant(req, url, db) {
+  /* de oude code gaat altijd voor: een apparaat dat met de code werkt, mag nooit via een (achtergebleven) account-cookie
+     bij een andere salon uitkomen */
+  if (codeOk(req, url)) return { schema: DEF_SCHEMA, legacy: true };
   const tok = cookieVan(req, "tr_app");
   if (tok) {
     await ensurePlatform(db);
@@ -127,7 +130,6 @@ export async function tenant(req, url, db) {
       return { schema: s.schema_naam, salon: s, rol: s.rol || "eigenaar", medewerkerId: s.medewerker_id || null };
     }
   }
-  if (codeOk(req, url)) return { schema: DEF_SCHEMA, legacy: true };
   return null;
 }
 

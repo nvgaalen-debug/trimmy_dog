@@ -354,6 +354,9 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 :root.sj-nagelstudio:not([data-theme="dark"]){--acc:#9c3a6c;--acc-ink:#fff;--acc-soft:#f6e4ee}
 @media(prefers-color-scheme:dark){:root.sj-nagelstudio:not([data-theme="light"]){--acc:#eaa3c8;--acc-ink:#3a0f25;--acc-soft:#3d2431}}
 :root.sj-nagelstudio[data-theme="dark"]{--acc:#eaa3c8;--acc-ink:#3a0f25;--acc-soft:#3d2431}
+:root.sj-pedicure:not([data-theme="dark"]){--acc:#2a6f62;--acc-ink:#fff;--acc-soft:#e1f0ec}
+@media(prefers-color-scheme:dark){:root.sj-pedicure:not([data-theme="light"]){--acc:#8fd3c3;--acc-ink:#0d2a24;--acc-soft:#1f3631}}
+:root.sj-pedicure[data-theme="dark"]{--acc:#8fd3c3;--acc-ink:#0d2a24;--acc-soft:#1f3631}
 
 /* inloggen met een account */
 .plat{position:fixed;inset:0;z-index:95;background:var(--bg);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px));overflow:auto}

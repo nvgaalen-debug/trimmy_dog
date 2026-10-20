@@ -8,6 +8,7 @@ import fs from "node:fs";
 const APPS = {
   trimsalon: { naam: "Trimmy", omschrijving: "Kassa, agenda en klantbeheer voor de trimsalon", kleur: "#6a3560" },
   nagelstudio: { naam: "Nailly", omschrijving: "Agenda, kassa en klantbeheer voor de nagelstudio", kleur: "#9c3a6c" },
+  pedicure: { naam: "Pedly", omschrijving: "Agenda, kassa en klantbeheer voor de pedicurepraktijk", kleur: "#2f7f6f" },
 };
 const gevraagd = String(process.env.TRIMMY_SJABLOON || "").trim().toLowerCase();
 const id = APPS[gevraagd] ? gevraagd : "";
@@ -21,7 +22,7 @@ fs.writeFileSync("public/js/site.js",
 
 if (naam) {
   const pad = "public/manifest.webmanifest", m = JSON.parse(fs.readFileSync(pad, "utf8"));
-  Object.assign(m, { name: naam, short_name: naam.slice(0, 12), description: "Agenda, kassa en klantbeheer voor je salon", theme_color: "#4f3d6b" });
+  Object.assign(m, { name: naam, short_name: naam.slice(0, 12), description: "Agenda, kassa en klantbeheer voor je salon", theme_color: "#2b2f45" });
   m.icons = m.icons.map(i => ({ ...i, src: i.src.replace("/icons/", "/icons/algemeen/") }));
   fs.writeFileSync(pad, JSON.stringify(m, null, 2) + "\n");
   const ip = "public/index.html";

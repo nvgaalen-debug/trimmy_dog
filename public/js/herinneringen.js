@@ -9,8 +9,8 @@ function sendAtFor(a){let t=afEpoch(a)-(+bed.autoUur||24)*36e5;if(bed.autoStil!=
 function planWanted(){const out=new Map();if(!bed.autoHer)return out;const now=Date.now(),H=(+bed.autoUur||24)*36e5;
  for(const a of D.afspraken){if(DEAD.includes(a.status)||a.status==="afgerekend")continue;const k=get("klanten",a.klantId);if(!k||!/^\S+@\S+\.\S+$/.test(String(k.email||"").trim()))continue;
   const at=afEpoch(a);if(!(at>now+30*6e4)||at-now>45*864e5)continue;if(a.aangemaakt&&at-a.aangemaakt<H)continue;if(a.herinnerd&&!a.herinnerdAuto)continue;const sa=sendAtFor(a);if(sa<now&&at-now<H/2&&!S.get("plansnap",{})[a.id])continue;
-  const text=fillMsg(bed.msgHer||BED0.msgHer,a);let html=mailHtml(a,"herinnering",text);const logo=bed.logo&&html.includes(bed.logo)?bed.logo:null;if(logo)html=html.split(bed.logo).join("cid:trimmy-logo");
-  out.set(a.id,{id:a.id,sendAt:sendAtFor(a),afspraakAt:at,to:String(k.email).trim(),subject:"Herinnering: "+fillMsg(bed.msgOnd||BED0.msgOnd,a),html,text,logo})}
+  const text=fillMsg(sjTekst("msgHer"),a);let html=mailHtml(a,"herinnering",text);const logo=bed.logo&&html.includes(bed.logo)?bed.logo:null;if(logo)html=html.split(bed.logo).join("cid:trimmy-logo");
+  out.set(a.id,{id:a.id,sendAt:sendAtFor(a),afspraakAt:at,to:String(k.email).trim(),subject:"Herinnering: "+fillMsg(sjTekst("msgOnd"),a),html,text,logo})}
  return out}
 async function planCall(body){const u=planApi();const r=await apiFetch(u+(body?"":(u.includes("?")?"&":"?")+"t="+Date.now()),body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{cache:"no-store"});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(r.status===404?"de planner staat nog niet op Netlify (plan.mjs ontbreekt)":(j.error||"status "+r.status));return j}
 function planSoon(){clearTimeout(planSoon.t);planSoon.t=setTimeout(()=>planSync(),3000)}

@@ -4,7 +4,7 @@ const $ = s => document.querySelector(s);
 const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const eur = n => (+n || 0).toLocaleString("nl-NL", { style: "currency", currency: "EUR" });
 const fd = v => v ? new Date(String(v).length === 10 ? v + "T12:00" : v).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : "–";
-const SJL = { trimsalon: "Trimsalon (Trimmy)", nagelstudio: "Nagelstudio (Nailly)" };
+const SJL = { trimsalon: "Trimsalon (Trimmy)", nagelstudio: "Nagelstudio (Nailly)", pedicure: "Pedicure (Pedly)" };
 let data = null;
 async function api(pad, body) {
   const r = await fetch("/api/beheer/" + pad, body ? { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Trimmy-Beheer": "1" }, body: JSON.stringify(body) } : { cache: "no-store", credentials: "same-origin" });
@@ -59,8 +59,17 @@ document.addEventListener("click", async e => {
    <label style="margin-top:10px">Notitie (alleen voor jou)<textarea id="bNo" rows="2">${esc(s.notitie)}</textarea></label>
    <label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" id="bAf" style="width:auto;margin:0"> Bij blokkeren ook alle apparaten afmelden</label>
    <p class="klein">Een nieuwe prijs geldt voor nieuwe abonnementen; een lopende incasso houdt de oude prijs tot de salon opnieuw start.</p>
-   <p class="msg" id="bm"></p><div class="acts"><button class="btn" type="button" id="bx">Annuleren</button><button class="btn p" type="submit">Opslaan</button></div></form>`);
+   <p class="msg" id="bm"></p><div class="acts"><button class="btn" type="button" id="bDel" style="color:#b3261e">Salon verwijderen…</button><span class="sp"></span><button class="btn" type="button" id="bx">Annuleren</button><button class="btn p" type="submit">Opslaan</button></div></form>`);
   $("#bx").onclick = () => dlg.close();
+  $("#bDel").onclick = () => { open(`<h2>${esc(s.naam)} verwijderen?</h2>
+   <p>Dit verwijdert de salon, alle accounts en gekoppelde apparaten${s.schema && /^s_/.test(s.schema) ? `, en <b>alle gegevens</b> in de database (klanten, afspraken, facturen; schema ${esc(s.schema)})` : `. Het gekoppelde schema ${esc(s.schema || "")} blijft bewaard`}. Dit is niet terug te draaien.</p>
+   <p class="klein">Laat de salon eerst een back-up maken als de gegevens bewaard moeten blijven.</p>
+   <form id="vf"><label>Typ ter bevestiging de korte naam: <b>${esc(s.slug)}</b><input id="vN" autocomplete="off"></label>
+   <p class="msg" id="vm"></p><div class="acts"><span class="sp"></span><button class="btn" type="button" id="vx">Annuleren</button><button class="btn p" type="submit" style="background:#b3261e;border-color:#b3261e">Definitief verwijderen</button></div></form>`);
+    $("#vx").onclick = () => dlg.close();
+    $("#vf").onsubmit = async ev => { ev.preventDefault(); $("#vm").textContent = "";
+      try { await api("verwijder", { id: s.id, bevestig: $("#vN").value }); dlg.close(); laad(); }
+      catch (x) { $("#vm").textContent = x.message; } }; };
   $("#bf").onsubmit = async ev => { ev.preventDefault();
     try { await api("bijwerken", { id: s.id, naam: $("#bN").value, status: $("#bSt").value, proefTot: $("#bP").value || null, prijs: $("#bPr").value.replace(",", "."), notitie: $("#bNo").value, afmelden: $("#bAf").checked }); dlg.close(); laad(); }
     catch (x) { $("#bm").textContent = x.message; } };
